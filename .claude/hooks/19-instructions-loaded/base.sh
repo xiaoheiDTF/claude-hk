@@ -1,0 +1,11 @@
+#!/bin/bash
+# 19-instructions-loaded: CLAUDE.md 或 .claude/rules/*.md 加载到上下文时触发
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../base.sh"
+
+file_path=$(json_get '.file_path')
+
+log "INFO" "file=$file_path"
+
+hook_output 0 '{}'
