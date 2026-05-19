@@ -1,5 +1,5 @@
 ---
-name: testcode-python
+name: 001-testcode-python
 description: 在 doc/testcode/python 目录下编写和管理 Python 测试脚本、API 自动化测试及其他脚本
 user-invocable: true
 allowed-tools:

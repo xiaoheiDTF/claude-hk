@@ -1,5 +1,5 @@
 ---
-name: otherdoc
+name: 002-otherdoc
 description: 将用户需要记录的内容以 Markdown 文件存储到 doc/otherDoc 目录，按日期归档
 user-invocable: true
 allowed-tools:
