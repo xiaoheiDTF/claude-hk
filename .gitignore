@@ -2,3 +2,6 @@
 .claude/.initialized
 .claude/hooks/logs/
 .claude/python/
+
+# ReCode local database
+.recode

@@ -9,10 +9,4 @@ prompt=$(json_get '.prompt')
 
 log "INFO" "prompt=$prompt"
 
-# 示例: 阻止特定提示
-# if echo "$prompt" | grep -qi "dangerous"; then
-#   log "WARN" "Blocked prompt"
-#   hook_output 2 '{"decision":"block","reason":"Prompt contains dangerous content"}'
-# fi
-
 hook_output 0 '{}'

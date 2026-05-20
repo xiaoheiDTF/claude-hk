@@ -9,7 +9,4 @@ reason=$(json_get '.reason')
 
 log "INFO" "session=$session_id reason=$reason"
 
-# 示例: 清理临时文件或资源
-# rm -rf /tmp/claude-session-"$session_id"
-
 hook_output 0 '{}'

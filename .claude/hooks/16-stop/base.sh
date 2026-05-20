@@ -7,7 +7,10 @@ source "$SCRIPT_DIR/../base.sh"
 
 log "INFO" "Claude finished response"
 
-# 示例: 防止 Claude 停止，让其继续工作
-# hook_output 2 '{"decision":"block","reason":"还有未完成的任务"}'
+# 自动注册新增 skills
+REGISTER_RESULT=$(bash "$SCRIPT_DIR/skill-register.sh")
+if [ "$REGISTER_RESULT" = "UPDATED" ]; then
+  log "INFO" "registry.conf updated with new skills"
+fi
 
 hook_output 0 '{}'
