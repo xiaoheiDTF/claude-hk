@@ -15,11 +15,12 @@ init_log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INIT] $*" >> "$LOG_FILE"; }
 
 init_log "首次运行，开始初始化..."
 
-# ---- 1. 创建项目目录结构 ----
-mkdir -p "$PROJECT_DIR/doc/testcode/python/api"
-mkdir -p "$PROJECT_DIR/doc/testcode/python/other"
+# ---- 1. 从配置文件创建项目目录 ----
+source "$CLAUSE_DIR/scripts/ensure_dirs.sh"
+dir_result=$(ensure_all_dirs "$LOG_FILE")
+# otherDoc 额外创建今日子目录
 mkdir -p "$PROJECT_DIR/doc/otherDoc/$(date +%Y-%m-%d)"
-init_log "doc 目录已就绪"
+init_log "目录初始化完成: $dir_result"
 
 # ---- 2. 平台检测 ----
 source "$CLAUSE_DIR/hooks/platform.sh"
@@ -60,8 +61,65 @@ setup_python() {
 
 setup_python
 
-# ---- 4. 写入标记文件 ----
-echo "{\"os\":\"$OS_TYPE\",\"python\":\"$PYTHON_CMD\",\"initialized_at\":\"$(date +%Y-%m-%dT%H:%M:%S)\"}" > "$INIT_MARKER"
+# ---- 4. 配置 UTF-8 编码（跨平台） ----
+setup_utf8() {
+  local bashrc="$HOME/.bashrc"
+  local marker="# >>> claude-hk-utf8 >>>"
+  local ender="# <<< claude-hk-utf8 <<<"
+  local block=""
+
+  case "$OS_TYPE" in
+    windows)
+      block="${marker}
+export LANG=zh_CN.UTF-8
+export LC_ALL=zh_CN.UTF-8
+chcp.com 65001 > /dev/null 2>&1
+${ender}"
+      ;;
+    linux)
+      block="${marker}
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+${ender}"
+      ;;
+    macos)
+      block="${marker}
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+${ender}"
+      ;;
+  esac
+
+  # 检查是否已有配置：标记块 或 关键内容
+  if [ -f "$bashrc" ]; then
+    if grep -q "$marker" "$bashrc" 2>/dev/null; then
+      init_log "UTF-8 标记块已存在，跳过"
+      return 0
+    fi
+    if grep -q "chcp.com 65001\|LANG=.*UTF-8" "$bashrc" 2>/dev/null; then
+      init_log "UTF-8 配置已存在（无标记），补充写入标记块"
+      # 不重复写，只补标记方便下次判断
+      sed -i "1i $marker" "$bashrc"
+      echo "$ender" >> "$bashrc"
+      return 0
+    fi
+  fi
+
+  echo "" >> "$bashrc"
+  echo "$block" >> "$bashrc"
+  init_log "UTF-8 编码配置已写入 $bashrc (OS=$OS_TYPE)"
+
+  if [ "$OS_TYPE" = "windows" ]; then
+    setx LANG "zh_CN.UTF-8" >> "$LOG_FILE" 2>&1
+    setx LC_ALL "zh_CN.UTF-8" >> "$LOG_FILE" 2>&1
+    init_log "Windows 系统环境变量 LANG/LC_ALL 已设置"
+  fi
+}
+
+setup_utf8
+
+# ---- 5. 写入标记文件 ----
+echo "{\"os\":\"$OS_TYPE\",\"python\":\"$PYTHON_CMD\",\"utf8\":\"true\",\"initialized_at\":\"$(date +%Y-%m-%dT%H:%M:%S)\"}" > "$INIT_MARKER"
 init_log "初始化完成"
 
 exit 0

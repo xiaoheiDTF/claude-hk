@@ -1,10 +1,11 @@
 #!/bin/bash
-# otherdoc skill 加载时触发，注入日期和路径到上下文
+# otherdoc skill 加载时触发
 TODAY=$(date +%Y-%m-%d)
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 DOC_DIR="$PROJECT_DIR/doc/otherDoc/$TODAY"
 
-# 确保日期目录存在
+source "$PROJECT_DIR/.claude/scripts/ensure_dirs.sh"
+ensure_skill_dirs "otherDoc"
 mkdir -p "$DOC_DIR"
 
 cat <<EOF
