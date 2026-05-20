@@ -10,11 +10,16 @@ allowed-tools:
   - Glob
   - Grep
 hooks:
-  InstructionsLoaded:
+  UserPromptSubmit:
     - matcher: ""
       hooks:
         - type: command
           command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/001-testcode-python/scripts/on_load.sh\""
+  Stop:
+    - matcher: ""
+      hooks:
+        - type: command
+          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/001-testcode-python/scripts/on_stop.sh\""
 ---
 
 # Testcode Python Skill
@@ -41,11 +46,3 @@ doc/testcode/python/
 
 - API 测试 → `doc/testcode/python/api/test_<name>.py`
 - 其他脚本 → `doc/testcode/python/other/<name>.py`
-
-运行脚本时使用项目自带 Python：
-
-```bash
-"$CLAUDE_PROJECT_DIR/.claude/localLanguage/python/python.exe" doc/testcode/python/<path>/script.py
-```
-
-如果自带 Python 不可用，回退到系统 `python`。
