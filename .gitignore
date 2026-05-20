@@ -1,7 +1,9 @@
 .claude/localLanguage/
 .claude/.initialized
 .claude/hooks/logs/
+.claude/skills/log/
 .claude/python/
+.claude/settings.local.json
 
 # ReCode local database
 .recode
