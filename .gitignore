@@ -1,7 +1,6 @@
 .claude/localLanguage/
 .claude/.initialized
 .claude/.python-state
-.claude/hooks/logs/
 .claude/python/
 .claude/settings.local.json
 .claude/skills/.active
