@@ -17,20 +17,22 @@ if [ "$REGISTER_RESULT" = "UPDATED" ]; then
   log "INFO" "registry.conf updated with new skills"
 fi
 
-# 运行当前活跃 skill 的 16Stop.sh，传入 session_id
+# 只运行当前 session 激活的 skill 的 16Stop.sh
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 ACTIVE_FILE="$PROJECT_DIR/.claude/skills/.active"
 
-if [ -s "$ACTIVE_FILE" ]; then
+if [ -s "$ACTIVE_FILE" ] && [ -n "$SESSION_ID" ]; then
   source "$PROJECT_DIR/.claude/skills/active.sh"
-  ACTIVE_SKILLS=$(active_skills)
-  for skill_name in $ACTIVE_SKILLS; do
-    STOP_SCRIPT="$PROJECT_DIR/.claude/skills/$skill_name/scripts/16Stop.sh"
+
+  # 精确获取当前 session 的 skill（不再遍历所有）
+  SKILL_NAME=$(active_get "$SESSION_ID")
+  if [ -n "$SKILL_NAME" ]; then
+    STOP_SCRIPT="$PROJECT_DIR/.claude/skills/$SKILL_NAME/scripts/16Stop.sh"
     if [ -f "$STOP_SCRIPT" ]; then
-      log "INFO" "Running 16Stop.sh for $skill_name (session=$SESSION_ID)"
+      log "INFO" "Running 16Stop.sh for $SKILL_NAME (session=$SESSION_ID)"
       bash "$STOP_SCRIPT" "$SESSION_ID" 2>/dev/null
     fi
-  done
+  fi
 fi
 
 hook_output 0 '{}'
