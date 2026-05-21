@@ -5,6 +5,9 @@ user-invocable: true
 allowed-tools:
   - Bash
   - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # Issue PR Skill

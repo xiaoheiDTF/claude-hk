@@ -5,6 +5,10 @@ user-invocable: true
 allowed-tools:
   - Bash
   - Read
+  - Edit
+  - Write
+  - Glob
+  - Grep
 ---
 
 # Issue 解决 Skill
