@@ -9,17 +9,6 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-hooks:
-  UserPromptSubmit:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/001-testcode-python/scripts/on_load.sh\""
-  Stop:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/001-testcode-python/scripts/on_stop.sh\""
 ---
 
 # Testcode Python Skill

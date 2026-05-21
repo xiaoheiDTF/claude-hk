@@ -9,17 +9,6 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-hooks:
-  UserPromptSubmit:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/003-issues/scripts/on_load.sh\""
-  Stop:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/003-issues/scripts/on_stop.sh\""
 ---
 
 # Issues Skill

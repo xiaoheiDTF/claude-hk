@@ -8,17 +8,6 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-hooks:
-  UserPromptSubmit:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/005-git-commit/scripts/on_load.sh\""
-  Stop:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash \"$CLAUDE_PROJECT_DIR/.claude/skills/005-git-commit/scripts/on_stop.sh\""
 ---
 
 # Git Commit Skill
