@@ -1,6 +1,7 @@
 #!/bin/bash
 # 001-testcode-python init: 检查 pip 可用性
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="001-testcode-python"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 # 确保 Python 可用
