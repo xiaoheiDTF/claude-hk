@@ -1,7 +1,7 @@
 #!/bin/bash
 # testcode-python 16Stop: Claude 响应结束后按 session_id 清理 .active
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="testcode-python"
+SKILL_TAG="001-testcode-python"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 source "$PROJECT_DIR/.claude/skills/active.sh"
 

@@ -2,7 +2,7 @@
 # testcode-python on_load: skill 加载时注入动态上下文
 # 日志写文件，stdout 输出 JSON 供 hook 解析
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="testcode-python"
+SKILL_TAG="001-testcode-python"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 TODAY=$(date +%Y-%m-%d)

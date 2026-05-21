@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-2-issue 上下文注入
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-2-issue"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 echo "=== Issue 创建上下文 ==="

@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-1-issue-init 上下文注入
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-1-issue-init"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 echo "=== Issue Init 上下文 ==="

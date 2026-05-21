@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-5-issue-fix 上下文注入
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-5-issue-fix"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 # gh 路径检测

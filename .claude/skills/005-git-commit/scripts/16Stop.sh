@@ -1,7 +1,7 @@
 #!/bin/bash
 # git-commit 16Stop: Claude 响应结束后按 session_id 清理 .active
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="git-commit"
+SKILL_TAG="005-git-commit"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 source "$PROJECT_DIR/.claude/skills/active.sh"
 

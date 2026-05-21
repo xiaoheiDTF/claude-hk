@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-1-issue-init 首次初始化：创建标签体系
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-1-issue-init"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 LABELS_CONF="$PROJECT_DIR/.claude/skills/003-1-issue-init/labels.conf"

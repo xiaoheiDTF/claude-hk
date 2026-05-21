@@ -1,7 +1,7 @@
 #!/bin/bash
 # git-commit on_load: skill 加载时注入动态上下文
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="git-commit"
+SKILL_TAG="005-git-commit"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 BRANCH=$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo "unknown")
