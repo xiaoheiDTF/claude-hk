@@ -1,5 +1,5 @@
 #!/bin/bash
-# 003-issues init_check: 检查 gh CLI 可用
+# 003-3-issue-discuss 巡检：检查 gh CLI
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
