@@ -62,4 +62,22 @@ ensure_utf8
 ensure_python_check
 ensure_dirs
 
+# 4. Skill 级巡检
+ensure_skill_checks() {
+  local skills_dir="$CLAUDE_PROJECT_DIR/.claude/skills"
+  [ -d "$skills_dir" ] || return
+  for check_script in "$skills_dir"/*/scripts/init_check.sh; do
+    [ -f "$check_script" ] || continue
+    local skill_name
+    skill_name=$(basename "$(dirname "$(dirname "$check_script")")")
+    if bash "$check_script" >> "$LOG_FILE" 2>&1; then
+      log "INFO" "Skill check OK: $skill_name"
+    else
+      log "WARN" "Skill check failed: $skill_name (non-blocking)"
+    fi
+  done
+}
+
+ensure_skill_checks
+
 hook_output 0 '{}'

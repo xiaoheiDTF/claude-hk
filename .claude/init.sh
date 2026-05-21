@@ -91,7 +91,22 @@ ${ender}"
 
 setup_utf8
 
-# ---- 5. 写入标记文件 ----
+# ---- 5. Skill 级首次初始化 ----
+SKILLS_DIR="$CLAUSE_DIR/skills"
+if [ -d "$SKILLS_DIR" ]; then
+  for skill_init in "$SKILLS_DIR"/*/scripts/init.sh; do
+    [ -f "$skill_init" ] || continue
+    skill_name=$(basename "$(dirname "$(dirname "$skill_init")")")
+    init_log "Running init for skill: $skill_name"
+    if bash "$skill_init" >> "$LOG_FILE" 2>&1; then
+      init_log "Skill init OK: $skill_name"
+    else
+      init_log "WARN: Skill init failed: $skill_name (non-blocking)"
+    fi
+  done
+fi
+
+# ---- 6. 写入标记文件 ----
 echo "{\"os\":\"$OS_TYPE\",\"python\":\"$PYTHON_CMD\",\"utf8\":\"true\",\"initialized_at\":\"$(date +%Y-%m-%dT%H:%M:%S)\"}" > "$INIT_MARKER"
 init_log "初始化完成"
 
