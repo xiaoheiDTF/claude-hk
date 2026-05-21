@@ -6,4 +6,5 @@ source "$SCRIPT_DIR/../base.sh"
 
 log "INFO" "Context compressed"
 
+dispatch_to_skill "26" || true
 hook_output 0 '{}'

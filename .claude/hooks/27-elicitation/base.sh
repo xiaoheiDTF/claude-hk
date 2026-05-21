@@ -16,4 +16,5 @@ log "INFO" "server=$server tool=$tool"
 # 示例: 拒绝
 # hook_output 2 '{"hookSpecificOutput":{"hookEventName":"Elicitation","action":"decline"}}'
 
+dispatch_to_skill "27" || true
 hook_output 0 '{}'

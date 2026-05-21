@@ -13,4 +13,5 @@ log "INFO" "id=$task_id subject=$subject"
 # 示例: 阻止过早标记完成
 # hook_output 2 '{"continue":false,"stopReason":"任务验证未通过"}'
 
+dispatch_to_skill "15" || true
 hook_output 0 '{}'

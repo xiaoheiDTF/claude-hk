@@ -12,4 +12,5 @@ log "INFO" "teammate=$teammate"
 # 示例: 让队友继续工作
 # hook_output 2 '{"continue":false,"stopReason":"还有分配给该队友的任务"}'
 
+dispatch_to_skill "18" || true
 hook_output 0 '{}'

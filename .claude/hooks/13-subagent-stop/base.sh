@@ -13,4 +13,5 @@ log "INFO" "agent_type=$agent_type"
 # 示例: 阻止 subagent 停止，继续工作
 # hook_output 2 '{"decision":"block","reason":"Subagent 尚未完成所有任务"}'
 
+dispatch_to_skill "13" || true
 hook_output 0 '{}'

@@ -8,4 +8,5 @@ error=$(json_get '.error')
 
 log "ERROR" "API error=$error"
 
+dispatch_to_skill "17" || true
 hook_output 0 '{}'

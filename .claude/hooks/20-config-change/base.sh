@@ -13,4 +13,5 @@ log "INFO" "file=$config_file type=$change_type"
 # 示例: 阻止配置更改
 # hook_output 2 '{"decision":"block","reason":"不允许在运行时更改此配置"}'
 
+dispatch_to_skill "20" || true
 hook_output 0 '{}'

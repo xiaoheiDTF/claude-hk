@@ -9,4 +9,5 @@ new_cwd=$(json_get '.new_cwd')
 
 log "INFO" "old=$old_cwd new=$new_cwd"
 
+dispatch_to_skill "21" || true
 hook_output 0 '{}'

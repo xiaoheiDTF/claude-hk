@@ -13,4 +13,5 @@ log "WARN" "tool=$tool_name error=$error"
 # 示例: 记录失败并提供建议
 # hook_output 0 '{"hookSpecificOutput":{"hookEventName":"PostToolUseFailure","additionalContext":"工具调用失败，请检查参数"}}'
 
+dispatch_to_skill "09" || true
 hook_output 0 '{}'

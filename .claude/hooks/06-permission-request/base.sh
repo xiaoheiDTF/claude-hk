@@ -17,4 +17,5 @@ log "INFO" "tool=$tool_name"
 # 示例: 自动拒绝
 # hook_output 2 '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny"}}}'
 
+dispatch_to_skill "06" || true
 hook_output 0 '{}'

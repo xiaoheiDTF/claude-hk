@@ -10,4 +10,5 @@ log "INFO" "About to compress context"
 # 示例: 阻止压缩
 # hook_output 2 '{"decision":"block","reason":"当前上下文不应被压缩"}'
 
+dispatch_to_skill "25" || true
 hook_output 0 '{}'

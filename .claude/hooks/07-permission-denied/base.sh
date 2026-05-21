@@ -12,4 +12,5 @@ log "INFO" "tool=$tool_name"
 # 示例: 允许重试
 # hook_output 0 '{"hookSpecificOutput":{"hookEventName":"PermissionDenied","retry":true}}'
 
+dispatch_to_skill "07" || true
 hook_output 0 '{}'
