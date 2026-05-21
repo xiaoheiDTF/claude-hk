@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-4-issue-claim 巡检：检查 gh CLI
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-4-issue-claim"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if command -v gh &>/dev/null; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 # otherdoc on_load: skill 加载时注入动态上下文
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="otherdoc"
+SKILL_TAG="002-otherdoc"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 TODAY=$(date +%Y-%m-%d)

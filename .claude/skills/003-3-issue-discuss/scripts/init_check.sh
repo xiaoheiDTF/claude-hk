@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-3-issue-discuss 巡检：检查 gh CLI
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-3-issue-discuss"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if command -v gh &>/dev/null; then

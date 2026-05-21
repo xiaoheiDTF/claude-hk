@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-5-issue-fix 巡检：检查 git
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-5-issue-fix"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if command -v git &>/dev/null; then

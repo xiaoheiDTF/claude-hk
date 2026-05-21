@@ -1,6 +1,7 @@
 #!/bin/bash
 # 004-git-push init: 检查 git 配置
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="004-git-push"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if ! command -v git &>/dev/null; then

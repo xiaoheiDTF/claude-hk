@@ -1,6 +1,7 @@
 #!/bin/bash
 # 002-otherdoc init_check: 检查输出目录存在
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="002-otherdoc"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if [ -d "$PROJECT_DIR/doc/otherDoc" ]; then

@@ -1,6 +1,7 @@
 #!/bin/bash
 # 001-testcode-python init_check: 检查 Python 可用
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="001-testcode-python"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 source "$PROJECT_DIR/.claude/scripts/ensure_python.sh"

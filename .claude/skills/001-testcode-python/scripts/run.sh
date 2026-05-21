@@ -5,7 +5,7 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 EMBED_PYTHON="$PROJECT_DIR/.claude/localLanguage/python/python.exe"
 SCRIPT_PATH="$1"
 
-SKILL_TAG="testcode-python:run"
+SKILL_TAG="001-testcode-python:run"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if [ -z "$SCRIPT_PATH" ]; then

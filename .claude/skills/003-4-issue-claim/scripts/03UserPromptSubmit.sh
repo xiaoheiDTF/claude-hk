@@ -1,6 +1,7 @@
 #!/bin/bash
 # 003-4-issue-claim 上下文注入
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
+SKILL_TAG="003-4-issue-claim"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 # gh 路径检测
