@@ -33,13 +33,15 @@ ensure_utf8() {
   log "INFO" "UTF-8 ensured (OS=$os_type, LANG=$LANG)"
 }
 
-# 2. Python 可用性
-ensure_python() {
-  source "$CLAUDE_PROJECT_DIR/.claude/hooks/platform.sh"
-  if [ -n "$PYTHON_CMD" ]; then
-    log "INFO" "Python 已就绪: $PYTHON_CMD"
+# 2. Python 可用性（巡检 + 自动修复）
+ensure_python_check() {
+  source "$CLAUDE_PROJECT_DIR/.claude/scripts/ensure_python.sh"
+  local result
+  result=$(ensure_python)
+  if [ -n "$result" ]; then
+    log "INFO" "Python 已就绪: $result"
   else
-    log "WARN" "Python 未找到，部分 skill 可能不可用"
+    log "WARN" "Python 不可用，部分功能受限"
   fi
 }
 
@@ -57,7 +59,7 @@ ensure_dirs() {
 }
 
 ensure_utf8
-ensure_python
+ensure_python_check
 ensure_dirs
 
 hook_output 0 '{}'

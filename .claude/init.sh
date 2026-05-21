@@ -25,41 +25,14 @@ init_log "目录初始化完成: $dir_result"
 # ---- 2. 平台检测 ----
 source "$CLAUSE_DIR/hooks/platform.sh"
 
-# ---- 3. 配置 Python 环境 ----
-LOCAL_LANG_DIR="$CLAUSE_DIR/localLanguage"
-
-setup_python() {
-  # 已有可用 Python → 跳过
-  if [ -n "$PYTHON_CMD" ]; then
-    init_log "Python 已就绪: $PYTHON_CMD"
-    return 0
-  fi
-
-  # Windows: 下载嵌入版到 localLanguage/python/
-  if [ "$OS_TYPE" = "windows" ]; then
-    local python_dir="$LOCAL_LANG_DIR/python"
-    local python_url="https://www.python.org/ftp/python/3.13.9/python-3.13.9-embed-amd64.zip"
-    init_log "下载 Python 嵌入版到 localLanguage/python/..."
-    mkdir -p "$python_dir"
-    if curl -L -o "$python_dir/python-embed.zip" "$python_url" 2>>"$LOG_FILE"; then
-      cd "$python_dir" && unzip -o python-embed.zip >>"$LOG_FILE" 2>&1 && rm -f python-embed.zip
-      PYTHON_CMD="$python_dir/python.exe"
-      init_log "Python 嵌入版安装完成: $PYTHON_CMD"
-      return 0
-    else
-      init_log "Python 下载失败"
-      return 1
-    fi
-  fi
-
-  # Linux/macOS: 提示安装
-  init_log "未找到 Python，请安装 python3"
-  init_log "  macOS: xcode-select --install 或 brew install python3"
-  init_log "  Linux: sudo apt install python3"
-  return 1
-}
-
-setup_python
+# ---- 3. 配置 Python 环境（使用 ensure_python 模块） ----
+source "$CLAUSE_DIR/scripts/ensure_python.sh"
+PYTHON_CMD=$(ensure_python)
+if [ -n "$PYTHON_CMD" ]; then
+  init_log "Python 已就绪: $PYTHON_CMD"
+else
+  init_log "WARN" "Python 安装未成功，将在下次会话重试"
+fi
 
 # ---- 4. 配置 UTF-8 编码（跨平台） ----
 setup_utf8() {

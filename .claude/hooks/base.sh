@@ -28,9 +28,11 @@ json_get() {
   fi
   if [ -n "$PYTHON_CMD" ]; then
     printf '%s' "$HOOK_INPUT" | "$PYTHON_CMD" "$HOOKS_DIR/json_get.py" "$key" 2>>"$LOG_FILE"
-  else
-    echo ""
+    return
   fi
+  # 纯 sed fallback：提取 .key 或 ."key" 格式的顶层字段
+  local bare_key="${key#.}"
+  printf '%s' "$HOOK_INPUT" | sed -n "s/.*\"${bare_key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
 }
 
 HOOK_EVENT=$(json_get '.hook_event_name')
