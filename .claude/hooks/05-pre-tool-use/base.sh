@@ -30,4 +30,6 @@ log "INFO" "tool=$tool_name"
 # 示例: 添加上下文提示
 # hook_output 0 '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"当前为生产环境，请谨慎操作"}}'
 
+dispatch_to_skill "05" || true
+
 hook_output 0 '{}'

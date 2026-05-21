@@ -18,4 +18,6 @@ log "INFO" "tool=$tool_name"
 # 示例: 阻止后续操作
 # hook_output 2 '{"decision":"block","reason":"不允许在此目录操作"}'
 
+dispatch_to_skill "08" || true
+
 hook_output 0 '{}'

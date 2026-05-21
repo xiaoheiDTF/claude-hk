@@ -13,4 +13,5 @@ log "INFO" "action=$action"
 # 示例: 阻止响应
 # hook_output 2 '{"hookSpecificOutput":{"hookEventName":"ElicitationResult","action":"decline"}}'
 
+dispatch_to_skill "28" || true
 hook_output 0 '{}'

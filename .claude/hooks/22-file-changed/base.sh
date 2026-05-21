@@ -9,4 +9,5 @@ change_type=$(json_get '.change_type')
 
 log "INFO" "file=$file_path type=$change_type"
 
+dispatch_to_skill "22" || true
 hook_output 0 '{}'

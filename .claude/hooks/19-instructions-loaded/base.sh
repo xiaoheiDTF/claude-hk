@@ -8,4 +8,5 @@ file_path=$(json_get '.file_path')
 
 log "INFO" "file=$file_path"
 
+dispatch_to_skill "19" || true
 hook_output 0 '{}'

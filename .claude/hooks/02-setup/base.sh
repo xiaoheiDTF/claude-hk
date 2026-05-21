@@ -6,4 +6,6 @@ source "$SCRIPT_DIR/../base.sh"
 
 log "INFO" "Setup triggered"
 
+dispatch_to_skill "02" || true
+
 hook_output 0 '{}'

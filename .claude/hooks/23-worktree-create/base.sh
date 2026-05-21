@@ -10,4 +10,5 @@ log "INFO" "WorktreeCreate triggered"
 # 示例: 指定 worktree 路径
 # hook_output 0 '{"hookSpecificOutput":{"hookEventName":"WorktreeCreate","worktreePath":"/custom/path"}}'
 
+dispatch_to_skill "23" || true
 hook_output 0 '{}'

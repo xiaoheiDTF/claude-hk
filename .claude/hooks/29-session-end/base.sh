@@ -9,4 +9,5 @@ reason=$(json_get '.reason')
 
 log "INFO" "session=$session_id reason=$reason"
 
+dispatch_to_skill "29" || true
 hook_output 0 '{}'

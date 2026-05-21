@@ -10,4 +10,5 @@ notification_type=$(json_get '.notification_type')
 
 log "INFO" "type=$notification_type message=$message"
 
+dispatch_to_skill "11" || true
 hook_output 0 '{}'

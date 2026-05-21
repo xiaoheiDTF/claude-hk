@@ -16,4 +16,5 @@ log "INFO" "command=$command_val"
 #   hook_output 2 '{"decision":"block","reason":"Command expansion blocked"}'
 # fi
 
+dispatch_to_skill "04" || true
 hook_output 0 '{}'

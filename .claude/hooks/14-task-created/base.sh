@@ -13,4 +13,5 @@ log "INFO" "id=$task_id subject=$subject"
 # 示例: 阻止特定任务创建
 # hook_output 2 '{"continue":false,"stopReason":"不允许创建此类任务"}'
 
+dispatch_to_skill "14" || true
 hook_output 0 '{}'

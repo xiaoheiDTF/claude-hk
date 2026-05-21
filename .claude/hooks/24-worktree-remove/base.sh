@@ -8,4 +8,5 @@ worktree_path=$(json_get '.worktree_path')
 
 log "INFO" "path=$worktree_path"
 
+dispatch_to_skill "24" || true
 hook_output 0 '{}'
