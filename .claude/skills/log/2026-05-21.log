@@ -1,0 +1,31 @@
+[2026-05-21 20:53:23] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:02:50] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:14:36] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 21:15:21] [INFO] [] [check] Python 可用: python
+[2026-05-21 21:15:21] [INFO] [] [check] otherDoc 目录存在
+[2026-05-21 21:15:21] [WARN] [] [check] 标签体系未初始化，请运行 /003-1-issue-init
+[2026-05-21 21:15:21] [INFO] [] [check] gh CLI 可用，目录已就绪
+[2026-05-21 21:15:21] [INFO] [] [check] gh CLI 可用
+[2026-05-21 21:15:21] [INFO] [] [check] gh CLI 可用
+[2026-05-21 21:15:21] [INFO] [] [check] git 可用
+[2026-05-21 21:15:21] [INFO] [] [check] gh + git 可用
+[2026-05-21 21:15:22] [INFO] [] [check] git 可用
+[2026-05-21 21:15:22] [INFO] [] [check] git 可用
+[2026-05-21 21:16:03] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:21:33] [INFO] [] [inject] issue-pr context injected for #
+[2026-05-21 21:25:54] [INFO] [] [inject] issue-pr context injected for #
+[2026-05-21 21:30:08] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:31:39] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:33:58] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 21:34:24] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 21:42:18] [INFO] [] [inject] issue-pr context injected for #
+[2026-05-21 21:45:18] [INFO] [] [inject] issue-pr context injected for #
+[2026-05-21 21:46:50] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 21:47:05] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:50:20] [INFO] [] [inject] issue-claim context injected for #
+[2026-05-21 21:54:19] [INFO] [] [inject] issue context injected
+[2026-05-21 21:59:03] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 21:59:29] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 22:01:23] [INFO] [] [inject] issue-pr context injected for #
+[2026-05-21 22:01:24] [INFO] [] [inject] issue-fix context injected for #
+[2026-05-21 22:11:35] [INFO] [] [inject] issue-fix context injected for #
