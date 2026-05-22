@@ -1,7 +1,7 @@
 #!/bin/bash
-# 003-6-issue-pr 上下文注入
+# 003-7-issue-pr 上下文注入
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="003-6-issue-pr"
+SKILL_TAG="003-7-issue-pr"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 # gh 路径检测
@@ -31,7 +31,7 @@ if [ -n "$ISSUE_NUM" ]; then
     fi
   fi
 else
-  # 无参数时列出 open PRs 和已 claim 的 issues
+  # 无参数时列出 open PRs 和 ready-for-pr 的 issues
   if _gh --version &>/dev/null; then
     echo ""
     echo "=== PR 状态 ==="
@@ -43,17 +43,17 @@ else
       echo "$prs" | jq -r '.[] | "  PR #\(.number): \(.title) (分支: \(.headRefName))"'
       echo ""
     fi
-    # 列出已领取的 issues（可能需要提 PR）
-    issues=$(_gh issue list --state open --label "in-progress" --assignee @me --json number,title,labels 2>/dev/null)
+    # 列出 ready-for-pr 的 issues
+    issues=$(_gh issue list --state open --label "ready-for-pr" --assignee @me --json number,title,labels 2>/dev/null)
     if [ -n "$issues" ] && [ "$issues" != "[]" ]; then
       count=$(echo "$issues" | jq 'length')
-      echo "已领取待提 PR 的 issues（共 $count 个）:"
+      echo "待提 PR 的 issues（共 $count 个）:"
       echo ""
-      echo "$issues" | jq -r '.[] | "#\(.number) [\([.labels[].name] | join(","))] \(.title)\n  请回复 /003-6-issue-pr #\(.number) 来提交 PR\n"'
+      echo "$issues" | jq -r '.[] | "#\(.number) [\([.labels[].name] | join(","))] \(.title)\n  请回复 /003-7-issue-pr #\(.number) 来提交 PR\n"'
     fi
   else
     echo "gh CLI 不可用，请先安装 GitHub CLI"
-    echo "请指定 issue 编号，例如: /003-6-issue-pr #5"
+    echo "请指定 issue 编号，例如: /003-7-issue-pr #5"
   fi
 fi
 

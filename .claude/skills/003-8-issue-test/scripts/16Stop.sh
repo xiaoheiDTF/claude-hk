@@ -1,11 +1,10 @@
 #!/bin/bash
-# 003-6-issue-pr 16Stop: Claude 响应结束后按 session_id 清理 .active
+# 003-8-issue-test 16Stop: Claude 响应结束后按 session_id 清理 .active
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="003-6-issue-pr"
+SKILL_TAG="003-8-issue-test"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 source "$PROJECT_DIR/.claude/skills/active.sh"
 
-# $1 = session_id（从 16-stop/base.sh 传入）
 SESSION_ID="$1"
 
 skill_log "INFO" "[stop] skill completed | session: $SESSION_ID"

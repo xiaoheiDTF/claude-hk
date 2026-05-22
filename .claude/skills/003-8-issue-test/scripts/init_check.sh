@@ -1,7 +1,7 @@
 #!/bin/bash
-# 003-6-issue-pr 巡检：检查 gh + git
+# 003-8-issue-test 巡检：检查 gh + git
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
-SKILL_TAG="003-6-issue-pr"
+SKILL_TAG="003-8-issue-test"
 source "$PROJECT_DIR/.claude/skills/log.sh"
 
 if command -v gh &>/dev/null && command -v git &>/dev/null; then
