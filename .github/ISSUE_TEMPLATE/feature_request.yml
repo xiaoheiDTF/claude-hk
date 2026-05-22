@@ -1,0 +1,68 @@
+name: Feature Request
+description: 提出新功能需求
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 需求描述
+      description: 清晰描述想要实现的功能
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 背景与动机
+      description: 为什么需要这个功能，解决什么问题
+    validations:
+      required: true
+
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+      description: 本次需求要达成的目标
+      placeholder: |
+        - 目标 1
+        - 目标 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-Goals
+      description: 明确不在本次范围内的内容
+      placeholder: |
+        - 不包含的范围 1
+        - 不包含的范围 2
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 期望行为
+      description: 功能完成后的预期效果
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 考虑过的其他方案及放弃原因（可选）
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: 实现思路
+      description: 技术方案建议（可选）
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 完成后需要满足的条件
+      placeholder: |
+        - [ ] 验收条件 1
+        - [ ] 验收条件 2

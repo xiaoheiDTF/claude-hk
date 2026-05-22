@@ -1,0 +1,33 @@
+title: "[Idea] "
+body:
+  - type: textarea
+    attributes:
+      label: Goals
+      description: 这个想法要解决什么问题？
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Non-Goals
+      description: 明确不在范围内的内容
+      placeholder: |
+        1.
+        2.
+
+  - type: textarea
+    attributes:
+      label: Background
+      description: 讨论背景和已有方案的调研
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposal
+      description: 具体的实现建议，是否愿意贡献？
+    validations:
+      required: true

@@ -1,0 +1,75 @@
+name: Bug Report
+description: 报告一个问题
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰描述遇到的问题
+    validations:
+      required: true
+
+  - type: input
+    id: reproduction-link
+    attributes:
+      label: 复现链接
+      description: 最小复现的 URL 或文件路径（如有）
+      placeholder: https://...
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按步骤描述如何重现问题
+      placeholder: |
+        1. 进入...
+        2. 点击...
+        3. 看到...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 严重程度
+      options:
+        - Critical — 数据丢失、崩溃、安全问题
+        - Major — 核心功能不可用
+        - Minor — 非预期行为，有替代方案
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 操作系统、分支版本等
+      placeholder: |
+        - OS:
+        - 版本/分支:
+      render: shell
+
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: 影响范围
+      description: 列出受影响的文件或模块
+      placeholder: |
+        | 文件/模块 | 影响说明 |
+        |-----------|---------|
+        | | |
