@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 功能讨论
+    url: https://github.com/xiaoheiDTF/claude-hk/discussions/new?category=ideas
+    about: 提出新功能想法前，建议先在 Discussion 中讨论方案可行性。
