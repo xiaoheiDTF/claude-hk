@@ -1,0 +1,5 @@
+[2026-05-22 11:10:45] [INFO] [003-4-issue-claim] [inject] issue-claim context injected for #
+[2026-05-22 11:11:23] [INFO] [003-4-issue-claim] [stop] skill completed | session: 76b18e87-c13b-4314-b425-4330e88469ac
+[2026-05-22 11:11:23] [INFO] [003-4-issue-claim] [stop] .active removed session: 76b18e87-c13b-4314-b425-4330e88469ac
+[2026-05-22 11:11:23] [INFO] [003-4-issue-claim] [stop] skill lifecycle end
+[2026-05-22 11:18:22] [INFO] [003-4-issue-claim] [check] gh CLI 可用

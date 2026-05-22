@@ -38,9 +38,15 @@ claude-hk/
 │   │   ├── 002-otherdoc/
 │   │   │   ├── SKILL.md                # 文档归档 skill 定义
 │   │   │   └── scripts/on_load.sh
-│   │   ├── 003-issues/
-│   │   │   ├── SKILL.md                # GitHub Issues 管理 skill 定义
-│   │   │   └── scripts/on_load.sh
+│   │   ├── 003-1-issue-init/           # 初始化 issue 标签体系
+│   │   ├── 003-2-issue/                # 创建 GitHub Issue
+│   │   ├── 003-3-issue-discuss/        # 拉取 Issue 内容讨论
+│   │   ├── 003-4-issue-claim/          # 原子领取 Issue
+│   │   ├── 003-5-issue-fix/            # 根据 issue 创建分支
+│   │   ├── 003-6-issue-done/           # 标记开发完成
+│   │   ├── 003-7-issue-pr/             # 创建 PR 关联 issue
+│   │   ├── 003-8-issue-test/           # 执行 PR Test Plan
+│   │   ├── 003-9-issue-review/         # 审核合并或打回
 │   │   ├── 004-git-push/
 │   │   │   ├── SKILL.md                # 提交并推送 skill 定义
 │   │   │   └── scripts/on_load.sh
@@ -139,7 +145,15 @@ Directory requirements are centralized in `.claude/dirs.conf` — `ensure_dirs.s
 |-------|-----------------|---------|
 | `001-testcode-python` | `doc/testcode/python/{api,other}/` | Python test scripts and utilities |
 | `002-otherdoc` | `doc/otherDoc/YYYY-MM-DD/` | General documentation by date |
-| `003-issues` | `doc/issues/{drafts,templates}/` | GitHub Issue drafts and templates |
+| `003-1-issue-init` | — | 初始化 issue 标签体系（一次性） |
+| `003-2-issue` | `doc/issues/{drafts,templates}/` | 创建 GitHub Issue |
+| `003-3-issue-discuss` | — | 拉取 Issue 内容进行讨论 |
+| `003-4-issue-claim` | — | 原子领取 Issue |
+| `003-5-issue-fix` | — | 根据 issue 创建分支并开始开发 |
+| `003-6-issue-done` | — | 标记开发完成，准备提 PR |
+| `003-7-issue-pr` | — | 创建 PR 关联 issue |
+| `003-8-issue-test` | — | 执行 PR 的 Test Plan |
+| `003-9-issue-review` | — | 审核合并或打回 PR |
 | `004-git-push` | — | Commit (grouped, Chinese messages) + push |
 | `005-git-commit` | — | Commit only (grouped, Chinese messages), no push |
 
