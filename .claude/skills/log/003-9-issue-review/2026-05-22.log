@@ -1,0 +1,5 @@
+[2026-05-22 12:45:09] [INFO] [003-9-issue-review] [inject] issue-review context injected for #
+[2026-05-22 12:46:07] [INFO] [003-9-issue-review] [inject] issue-review context injected for #
+[2026-05-22 12:47:10] [INFO] [003-9-issue-review] [stop] skill completed | session: 21866f7a-5a36-486a-a29d-86fc5a942cbe
+[2026-05-22 12:47:10] [INFO] [003-9-issue-review] [stop] .active removed session: 21866f7a-5a36-486a-a29d-86fc5a942cbe
+[2026-05-22 12:47:10] [INFO] [003-9-issue-review] [stop] skill lifecycle end
