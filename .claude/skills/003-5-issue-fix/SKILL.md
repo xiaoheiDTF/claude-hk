@@ -17,12 +17,24 @@ allowed-tools:
 
 ## 操作流程
 
+### 创建分支（默认）
+
 1. 用户输入 `/003-5-issue-fix #N`
 2. 检查当前用户是否为 issue 的 assignee
 3. 根据 issue labels 判断分支类型（bug → fix，enhancement → feat，其他 → chore）
 4. 从 issue title 自动生成分支名
 5. 创建分支：`<type>/issue-<N>-<简短描述>`
-6. 输出分支信息，开始开发
+6. 在 issue 中 comment："开始解决，分支: `<branch>`"
+7. 输出分支信息，开始开发
+
+### 标记完成（done 子命令）
+
+1. 用户输入 `/003-5-issue-fix done #N`
+2. 检查当前分支与 issue 对应
+3. 检查是否有未提交的变更（`git status`），如有则提示先提交
+4. 在 issue 中 comment："开发完成，等待提 PR"
+5. 移除 `in-progress` label，添加 `ready-for-pr` label
+6. 提示用户执行 `/003-6-issue-pr #N` 提交 PR
 
 ## 分支命名规则
 
@@ -45,6 +57,7 @@ allowed-tools:
 2. 分支名自动生成，用户也可以手动指定
 3. 如果分支已存在则切换到该分支
 4. 确保在 main 分支上创建新分支
+5. `done` 子命令执行时如果有未提交变更，必须先提交再标记完成
 
 ## gh 命令参考
 
@@ -56,4 +69,11 @@ gh issue view <编号> --json title,labels,assignees
 git checkout main
 git pull origin main
 git checkout -b <branch-name>
+
+# 记录开始
+gh issue comment <编号> --body "开始解决，分支: \`<branch>\`"
+
+# 标记完成
+gh issue comment <编号> --body "开发完成，等待提 PR"
+gh issue edit <编号> --remove-label "in-progress" --add-label "ready-for-pr"
 ```
