@@ -17,5 +17,10 @@ log "INFO" "tool=$tool_name"
 # 示例: 自动拒绝
 # hook_output 2 '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny"}}}'
 
+# Windows: bring terminal to foreground when permission dialog appears
+if [ "$OS_TYPE" = "windows" ] && [ -f "$SCRIPT_DIR/win32-foreground.sh" ]; then
+  source "$SCRIPT_DIR/win32-foreground.sh"
+fi
+
 dispatch_to_skill "06" || true
 hook_output 0 '{}'

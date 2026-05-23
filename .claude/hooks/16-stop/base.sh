@@ -35,4 +35,9 @@ if [ -s "$ACTIVE_FILE" ] && [ -n "$SESSION_ID" ]; then
   fi
 fi
 
+# Windows: bring terminal to foreground when Claude finishes
+if [ "$OS_TYPE" = "windows" ] && [ -f "$SCRIPT_DIR/task-complete-notify.sh" ]; then
+  source "$SCRIPT_DIR/task-complete-notify.sh"
+fi
+
 hook_output 0 '{}'
