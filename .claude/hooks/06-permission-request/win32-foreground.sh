@@ -26,11 +26,12 @@ except: print('')
 fi
 log "INFO" "[win32-fg] PermissionRequest: tool=$tool_name cmd=${tool_input_cmd:0:80}"
 
-# Bring window to foreground
+# Bring window to foreground (pass project dir name as hint for multi-window matching)
+PROJECT_HINT=$(basename "$CLAUDE_PROJECT_DIR" 2>/dev/null || echo "")
 if [ -f "$FOREGROUND_PS1" ]; then
   FOREGROUND_WIN_PATH=$(cygpath -w "$FOREGROUND_PS1" 2>/dev/null || echo "$FOREGROUND_PS1")
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$FOREGROUND_WIN_PATH" 2>>"$LOG_FILE"
-  log "INFO" "[win32-fg] foreground script executed"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$FOREGROUND_WIN_PATH" -Hint "$PROJECT_HINT" 2>>"$LOG_FILE"
+  log "INFO" "[win32-fg] foreground script executed (hint=$PROJECT_HINT)"
 else
   log "WARNING" "[win32-fg] win32-foreground.ps1 not found at $FOREGROUND_PS1"
 fi
