@@ -1,0 +1,17 @@
+[2026-05-23 10:12:39] [INFO] [003-2-issue] [check] gh CLI 可用，目录已就绪
+[2026-05-23 10:12:55] [INFO] [003-2-issue] [inject] issue context injected
+[2026-05-23 10:14:37] [INFO] [003-2-issue] [check] gh CLI 可用，目录已就绪
+[2026-05-23 10:15:28] [INFO] [003-2-issue] [inject] issue context injected
+[2026-05-23 10:17:41] [INFO] [003-2-issue] [stop] skill completed | session: d0f02fb5-d27a-48cb-a2a4-0e33b64f90b7
+[2026-05-23 10:17:41] [INFO] [003-2-issue] [stop] .active removed session: d0f02fb5-d27a-48cb-a2a4-0e33b64f90b7
+[2026-05-23 10:17:41] [INFO] [003-2-issue] [stop] skill lifecycle end
+[2026-05-23 10:18:00] [INFO] [003-2-issue] [stop] skill completed | session: 9a0497f2-fd39-45c5-afeb-3054dbcd7ebf
+[2026-05-23 10:18:00] [INFO] [003-2-issue] [stop] .active removed session: 9a0497f2-fd39-45c5-afeb-3054dbcd7ebf
+[2026-05-23 10:18:00] [INFO] [003-2-issue] [stop] skill lifecycle end
+[2026-05-23 10:19:35] [INFO] [003-2-issue] [check] gh CLI 可用，目录已就绪
+[2026-05-23 10:21:32] [INFO] [003-2-issue] [inject] issue context injected
+[2026-05-23 10:29:19] [INFO] [003-2-issue] [check] gh CLI 可用，目录已就绪
+[2026-05-23 10:29:32] [INFO] [003-2-issue] [stop] skill completed | session: 73eddab6-cc07-45d2-b644-17417d349de0
+[2026-05-23 10:29:32] [INFO] [003-2-issue] [stop] .active removed session: 73eddab6-cc07-45d2-b644-17417d349de0
+[2026-05-23 10:29:32] [INFO] [003-2-issue] [stop] skill lifecycle end
+[2026-05-23 11:51:52] [INFO] [003-2-issue] [check] gh CLI 可用，目录已就绪
