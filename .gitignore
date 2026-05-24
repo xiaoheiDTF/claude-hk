@@ -8,3 +8,5 @@
 
 # ReCode local database
 .recode
+.history
+.idea
