@@ -1,0 +1,375 @@
+[2026-05-23 14:31:53] === win32-foreground started ===
+[2026-05-23 14:31:55] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:31:55] Current foreground lock timeout: 0
+[2026-05-23 14:31:55] Disable foreground lock: True
+[2026-05-23 14:31:55] COM AppActivate(title)=True
+[2026-05-23 14:31:55] SetForeground=True BringToTop=True
+[2026-05-23 14:31:55] SUCCESS: Window is now foreground!
+[2026-05-23 14:31:58] Foreground lock timeout restored to 0
+[2026-05-23 14:31:58] === done ===
+[2026-05-23 14:37:54] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:37:55] Target: WindowsTerminal.exe PID=6804 hwnd=986034 title='Kimi Code'
+[2026-05-23 14:37:55] Current foreground lock timeout: 0
+[2026-05-23 14:37:55] Disable foreground lock: True
+[2026-05-23 14:37:56] COM AppActivate(title)=True
+[2026-05-23 14:37:56] SetForeground=True BringToTop=True
+[2026-05-23 14:37:56] SUCCESS: Window is now foreground!
+[2026-05-23 14:37:58] Foreground lock timeout restored to 0
+[2026-05-23 14:37:58] === done ===
+[2026-05-23 14:39:45] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:39:46] Multiple windows found (2), selecting best match...
+[2026-05-23 14:39:46] No hint or Claude match, using first window: ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:39:46] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:39:46] Current foreground lock timeout: 0
+[2026-05-23 14:39:46] Disable foreground lock: True
+[2026-05-23 14:39:47] COM AppActivate(title)=True
+[2026-05-23 14:39:47] SetForeground=True BringToTop=True
+[2026-05-23 14:39:47] SUCCESS: Window is now foreground!
+[2026-05-23 14:39:49] Foreground lock timeout restored to 0
+[2026-05-23 14:39:49] === done ===
+[2026-05-23 14:40:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:40:15] Multiple windows found (2), selecting best match...
+[2026-05-23 14:40:15] No hint or Claude match, using first window: ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:40:15] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:40:15] Current foreground lock timeout: 0
+[2026-05-23 14:40:15] Disable foreground lock: True
+[2026-05-23 14:40:15] COM AppActivate(title)=True
+[2026-05-23 14:40:15] SetForeground=True BringToTop=True
+[2026-05-23 14:40:16] WARNING: Foreground is still 1377532 (target 132418)
+[2026-05-23 14:40:18] Foreground lock timeout restored to 0
+[2026-05-23 14:40:18] === done ===
+[2026-05-23 14:41:32] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:41:33] Multiple windows found (2), selecting best match...
+[2026-05-23 14:41:33] Claude indicator matched (char=10256): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:41:33] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:41:33] Current foreground lock timeout: 0
+[2026-05-23 14:41:33] Disable foreground lock: False
+[2026-05-23 14:41:34] COM AppActivate(title)=True
+[2026-05-23 14:41:34] SetForeground=True BringToTop=True
+[2026-05-23 14:41:34] SUCCESS: Window is now foreground!
+[2026-05-23 14:41:36] Foreground lock timeout restored to 0
+[2026-05-23 14:41:36] === done ===
+[2026-05-23 14:52:57] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:52:58] Multiple windows found (2), selecting best match...
+[2026-05-23 14:52:58] Claude indicator matched (char=10256): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:52:58] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:52:58] Current foreground lock timeout: 0
+[2026-05-23 14:52:58] Disable foreground lock: True
+[2026-05-23 14:52:58] COM AppActivate(title)=True
+[2026-05-23 14:52:58] SetForeground=True BringToTop=True
+[2026-05-23 14:52:58] SUCCESS: Window is now foreground!
+[2026-05-23 14:53:01] Foreground lock timeout restored to 0
+[2026-05-23 14:53:01] === done ===
+[2026-05-23 14:54:27] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:54:28] Multiple windows found (2), selecting best match...
+[2026-05-23 14:54:28] Claude indicator matched (char=10242): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:54:28] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:54:28] Current foreground lock timeout: 0
+[2026-05-23 14:54:28] Disable foreground lock: True
+[2026-05-23 14:54:28] COM AppActivate(title)=True
+[2026-05-23 14:54:28] SetForeground=True BringToTop=True
+[2026-05-23 14:54:28] SUCCESS: Window is now foreground!
+[2026-05-23 14:54:31] Foreground lock timeout restored to 0
+[2026-05-23 14:54:31] === done ===
+[2026-05-23 14:54:31] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:54:32] Multiple windows found (2), selecting best match...
+[2026-05-23 14:54:32] Claude indicator matched (char=10256): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:54:32] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:54:32] Current foreground lock timeout: 0
+[2026-05-23 14:54:32] Disable foreground lock: True
+[2026-05-23 14:54:32] COM AppActivate(title)=True
+[2026-05-23 14:54:32] SetForeground=True BringToTop=True
+[2026-05-23 14:54:32] SUCCESS: Window is now foreground!
+[2026-05-23 14:54:35] Foreground lock timeout restored to 0
+[2026-05-23 14:54:35] === done ===
+[2026-05-23 14:54:35] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 14:54:36] Multiple windows found (2), selecting best match...
+[2026-05-23 14:54:36] Claude indicator matched (char=10242): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 14:54:36] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 14:54:36] Current foreground lock timeout: 0
+[2026-05-23 14:54:36] Disable foreground lock: True
+[2026-05-23 14:54:36] COM AppActivate(title)=True
+[2026-05-23 14:54:36] SetForeground=True BringToTop=True
+[2026-05-23 14:54:36] SUCCESS: Window is now foreground!
+[2026-05-23 14:54:39] Foreground lock timeout restored to 0
+[2026-05-23 14:54:39] === done ===
+[2026-05-23 17:31:10] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 17:31:10] Target: WindowsTerminal PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 17:31:10] Current foreground lock timeout: 0
+[2026-05-23 17:31:10] Disable foreground lock: True
+[2026-05-23 17:31:10] COM AppActivate(title)=True
+[2026-05-23 17:31:10] SetForeground=True BringToTop=True
+[2026-05-23 17:31:11] SUCCESS: Window is now foreground!
+[2026-05-23 17:31:13] Foreground lock timeout restored to 0
+[2026-05-23 17:31:13] === done ===
+[2026-05-23 18:11:15] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 18:11:16] Multiple windows found (2), selecting best match...
+[2026-05-23 18:11:16] Claude indicator matched (char=10035): ? Adapt script for Claude Code configuration
+[2026-05-23 18:11:16] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Adapt script for Claude Code configuration'
+[2026-05-23 18:11:16] Current foreground lock timeout: 0
+[2026-05-23 18:11:16] Disable foreground lock: True
+[2026-05-23 18:11:16] COM AppActivate(title)=True
+[2026-05-23 18:11:16] SetForeground=True BringToTop=True
+[2026-05-23 18:11:16] SUCCESS: Window is now foreground!
+[2026-05-23 18:11:19] Foreground lock timeout restored to 0
+[2026-05-23 18:11:19] === done ===
+[2026-05-23 18:11:39] === win32-foreground started (hint='claude-hk') ===
+[2026-05-23 18:11:41] Multiple windows found (2), selecting best match...
+[2026-05-23 18:11:41] Claude indicator matched (char=10242): ? Integrate Windows foreground wake and task completion notifications
+[2026-05-23 18:11:41] Target: WindowsTerminal.exe PID=6804 hwnd=132418 title='? Integrate Windows foreground wake and task completion notifications'
+[2026-05-23 18:11:41] Current foreground lock timeout: 0
+[2026-05-23 18:11:41] Disable foreground lock: True
+[2026-05-23 18:11:41] COM AppActivate(title)=True
+[2026-05-23 18:11:41] SetForeground=True BringToTop=True
+[2026-05-23 18:11:41] SUCCESS: Window is now foreground!
+[2026-05-23 18:11:43] Foreground lock timeout restored to 0
+[2026-05-23 18:11:43] === done ===
+[2026-05-24 14:47:40] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 14:47:42] Multiple windows found (2), selecting best match...
+[2026-05-24 14:47:42] Claude indicator matched (char=10035): ? Extract modules from requirements document
+[2026-05-24 14:47:42] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 14:47:42] Current foreground lock timeout: 0
+[2026-05-24 14:47:42] Disable foreground lock: False
+[2026-05-24 14:47:42] COM AppActivate(title)=True
+[2026-05-24 14:47:42] SetForeground=True BringToTop=True
+[2026-05-24 14:47:42] SUCCESS: Window is now foreground!
+[2026-05-24 14:47:44] Foreground lock timeout restored to 0
+[2026-05-24 14:47:44] === done ===
+[2026-05-24 14:49:49] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 14:49:50] Multiple windows found (2), selecting best match...
+[2026-05-24 14:49:50] Claude indicator matched (char=10242): ? Extract modules from requirements document
+[2026-05-24 14:49:50] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 14:49:50] Current foreground lock timeout: 0
+[2026-05-24 14:49:50] Disable foreground lock: True
+[2026-05-24 14:49:50] COM AppActivate(title)=True
+[2026-05-24 14:49:50] SetForeground=True BringToTop=True
+[2026-05-24 14:49:50] SUCCESS: Window is now foreground!
+[2026-05-24 14:49:53] Foreground lock timeout restored to 0
+[2026-05-24 14:49:53] === done ===
+[2026-05-24 15:01:51] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 15:01:52] Multiple windows found (2), selecting best match...
+[2026-05-24 15:01:52] Claude indicator matched (char=10256): ? Extract modules from requirements document
+[2026-05-24 15:01:52] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 15:01:52] Current foreground lock timeout: 0
+[2026-05-24 15:01:52] Disable foreground lock: True
+[2026-05-24 15:01:52] COM AppActivate(title)=True
+[2026-05-24 15:01:52] SetForeground=True BringToTop=True
+[2026-05-24 15:01:52] SUCCESS: Window is now foreground!
+[2026-05-24 15:01:54] Foreground lock timeout restored to 0
+[2026-05-24 15:01:54] === done ===
+[2026-05-24 15:02:50] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 15:02:51] Multiple windows found (2), selecting best match...
+[2026-05-24 15:02:51] Claude indicator matched (char=10242): ? Extract modules from requirements document
+[2026-05-24 15:02:51] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 15:02:51] Current foreground lock timeout: 0
+[2026-05-24 15:02:51] Disable foreground lock: True
+[2026-05-24 15:02:51] COM AppActivate(title)=True
+[2026-05-24 15:02:51] SetForeground=True BringToTop=True
+[2026-05-24 15:02:52] SUCCESS: Window is now foreground!
+[2026-05-24 15:02:54] Foreground lock timeout restored to 0
+[2026-05-24 15:02:54] === done ===
+[2026-05-24 15:03:23] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 15:03:24] Multiple windows found (2), selecting best match...
+[2026-05-24 15:03:24] Claude indicator matched (char=10242): ? Extract modules from requirements document
+[2026-05-24 15:03:24] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 15:03:24] Current foreground lock timeout: 0
+[2026-05-24 15:03:24] Disable foreground lock: True
+[2026-05-24 15:03:24] COM AppActivate(title)=True
+[2026-05-24 15:03:24] SetForeground=True BringToTop=True
+[2026-05-24 15:03:24] SUCCESS: Window is now foreground!
+[2026-05-24 15:03:26] Foreground lock timeout restored to 0
+[2026-05-24 15:03:26] === done ===
+[2026-05-24 15:10:47] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 15:10:48] Multiple windows found (2), selecting best match...
+[2026-05-24 15:10:48] Claude indicator matched (char=10256): ? Extract modules from requirements document
+[2026-05-24 15:10:48] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 15:10:48] Current foreground lock timeout: 0
+[2026-05-24 15:10:48] Disable foreground lock: True
+[2026-05-24 15:10:48] COM AppActivate(title)=True
+[2026-05-24 15:10:48] SetForeground=True BringToTop=True
+[2026-05-24 15:10:48] SUCCESS: Window is now foreground!
+[2026-05-24 15:10:51] Foreground lock timeout restored to 0
+[2026-05-24 15:10:51] === done ===
+[2026-05-24 15:18:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 15:18:16] Multiple windows found (2), selecting best match...
+[2026-05-24 15:18:16] Claude indicator matched (char=10035): ? Review travel streaming rendering plan
+[2026-05-24 15:18:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Review travel streaming rendering plan'
+[2026-05-24 15:18:16] Current foreground lock timeout: 0
+[2026-05-24 15:18:16] Disable foreground lock: True
+[2026-05-24 15:18:16] COM AppActivate(title)=True
+[2026-05-24 15:18:16] SetForeground=True BringToTop=True
+[2026-05-24 15:18:16] SUCCESS: Window is now foreground!
+[2026-05-24 15:18:18] Foreground lock timeout restored to 0
+[2026-05-24 15:18:18] === done ===
+[2026-05-24 16:02:48] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 16:02:49] Multiple windows found (2), selecting best match...
+[2026-05-24 16:02:49] Claude indicator matched (char=10242): ? 修正行程流式渲染与UI布局调整
+[2026-05-24 16:02:49] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? 修正行程流式渲染与UI布局调整'
+[2026-05-24 16:02:49] Current foreground lock timeout: 0
+[2026-05-24 16:02:49] Disable foreground lock: True
+[2026-05-24 16:02:49] COM AppActivate(title)=True
+[2026-05-24 16:02:49] SetForeground=True BringToTop=True
+[2026-05-24 16:02:49] SUCCESS: Window is now foreground!
+[2026-05-24 16:02:51] Foreground lock timeout restored to 0
+[2026-05-24 16:02:51] === done ===
+[2026-05-24 16:11:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 16:11:16] Multiple windows found (2), selecting best match...
+[2026-05-24 16:11:16] Claude indicator matched (char=10035): ? 修正行程流式渲染与UI布局调整
+[2026-05-24 16:11:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? 修正行程流式渲染与UI布局调整'
+[2026-05-24 16:11:16] Current foreground lock timeout: 0
+[2026-05-24 16:11:16] Disable foreground lock: True
+[2026-05-24 16:11:16] COM AppActivate(title)=True
+[2026-05-24 16:11:16] SetForeground=True BringToTop=True
+[2026-05-24 16:11:16] SUCCESS: Window is now foreground!
+[2026-05-24 16:11:18] Foreground lock timeout restored to 0
+[2026-05-24 16:11:18] === done ===
+[2026-05-24 16:13:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 16:13:16] Multiple windows found (2), selecting best match...
+[2026-05-24 16:13:16] Claude indicator matched (char=10035): ? 修正行程流式渲染与UI布局调整
+[2026-05-24 16:13:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? 修正行程流式渲染与UI布局调整'
+[2026-05-24 16:13:16] Current foreground lock timeout: 0
+[2026-05-24 16:13:16] Disable foreground lock: False
+[2026-05-24 16:13:16] COM AppActivate(title)=True
+[2026-05-24 16:13:16] SetForeground=True BringToTop=True
+[2026-05-24 16:13:16] SUCCESS: Window is now foreground!
+[2026-05-24 16:13:18] Foreground lock timeout restored to 0
+[2026-05-24 16:13:18] === done ===
+[2026-05-24 16:28:25] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 16:28:26] Multiple windows found (2), selecting best match...
+[2026-05-24 16:28:26] Claude indicator matched (char=10256): ? Extract modules from requirements document
+[2026-05-24 16:28:26] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 16:28:26] Current foreground lock timeout: 0
+[2026-05-24 16:28:26] Disable foreground lock: True
+[2026-05-24 16:28:26] COM AppActivate(title)=True
+[2026-05-24 16:28:26] SetForeground=True BringToTop=True
+[2026-05-24 16:28:26] SUCCESS: Window is now foreground!
+[2026-05-24 16:28:28] Foreground lock timeout restored to 0
+[2026-05-24 16:28:28] === done ===
+[2026-05-24 18:34:29] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 18:34:30] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? claude-hk'
+[2026-05-24 18:34:30] Current foreground lock timeout: 0
+[2026-05-24 18:34:30] Disable foreground lock: True
+[2026-05-24 18:34:31] COM AppActivate(title)=False
+[2026-05-24 18:34:31] COM AppActivate(name)=False
+[2026-05-24 18:34:31] SetForeground=True BringToTop=True
+[2026-05-24 18:34:31] SUCCESS: Window is now foreground!
+[2026-05-24 18:34:33] Foreground lock timeout restored to 0
+[2026-05-24 18:34:33] === done ===
+[2026-05-24 18:47:30] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 18:47:32] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 18:47:32] Current foreground lock timeout: 0
+[2026-05-24 18:47:32] Disable foreground lock: True
+[2026-05-24 18:47:32] COM AppActivate(title)=True
+[2026-05-24 18:47:32] SetForeground=True BringToTop=True
+[2026-05-24 18:47:32] WARNING: Foreground is still 5179094 (target 395112)
+[2026-05-24 18:47:34] Foreground lock timeout restored to 0
+[2026-05-24 18:47:34] === done ===
+[2026-05-24 18:49:23] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 18:49:24] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 18:49:24] Current foreground lock timeout: 0
+[2026-05-24 18:49:24] Disable foreground lock: True
+[2026-05-24 18:49:24] COM AppActivate(title)=True
+[2026-05-24 18:49:24] SetForeground=True BringToTop=True
+[2026-05-24 18:49:24] SUCCESS: Window is now foreground!
+[2026-05-24 18:49:26] Foreground lock timeout restored to 0
+[2026-05-24 18:49:26] === done ===
+[2026-05-24 18:50:26] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 18:50:27] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 18:50:27] Current foreground lock timeout: 0
+[2026-05-24 18:50:27] Disable foreground lock: True
+[2026-05-24 18:50:27] COM AppActivate(title)=True
+[2026-05-24 18:50:27] SetForeground=True BringToTop=True
+[2026-05-24 18:50:27] SUCCESS: Window is now foreground!
+[2026-05-24 18:50:29] Foreground lock timeout restored to 0
+[2026-05-24 18:50:29] === done ===
+[2026-05-24 18:54:06] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 18:54:07] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 18:54:07] Current foreground lock timeout: 0
+[2026-05-24 18:54:07] Disable foreground lock: True
+[2026-05-24 18:54:07] COM AppActivate(title)=True
+[2026-05-24 18:54:07] SetForeground=True BringToTop=True
+[2026-05-24 18:54:07] SUCCESS: Window is now foreground!
+[2026-05-24 18:54:10] Foreground lock timeout restored to 0
+[2026-05-24 18:54:10] === done ===
+[2026-05-24 19:00:04] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 19:00:06] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Extract modules from requirements document'
+[2026-05-24 19:00:06] Current foreground lock timeout: 0
+[2026-05-24 19:00:06] Disable foreground lock: False
+[2026-05-24 19:00:06] COM AppActivate(title)=True
+[2026-05-24 19:00:06] SetForeground=True BringToTop=True
+[2026-05-24 19:00:06] SUCCESS: Window is now foreground!
+[2026-05-24 19:00:08] Foreground lock timeout restored to 0
+[2026-05-24 19:00:08] === done ===
+[2026-05-24 19:15:58] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 19:16:00] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 19:16:00] Current foreground lock timeout: 0
+[2026-05-24 19:16:00] Disable foreground lock: True
+[2026-05-24 19:16:00] COM AppActivate(title)=True
+[2026-05-24 19:16:00] SetForeground=True BringToTop=True
+[2026-05-24 19:16:00] SUCCESS: Window is now foreground!
+[2026-05-24 19:16:02] Foreground lock timeout restored to 0
+[2026-05-24 19:16:02] === done ===
+[2026-05-24 19:43:09] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 19:43:10] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 19:43:10] Current foreground lock timeout: 0
+[2026-05-24 19:43:10] Disable foreground lock: True
+[2026-05-24 19:43:10] COM AppActivate(title)=True
+[2026-05-24 19:43:10] SetForeground=True BringToTop=True
+[2026-05-24 19:43:10] SUCCESS: Window is now foreground!
+[2026-05-24 19:43:13] Foreground lock timeout restored to 0
+[2026-05-24 19:43:13] === done ===
+[2026-05-24 20:13:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 20:13:29] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 20:13:29] Current foreground lock timeout: 0
+[2026-05-24 20:13:29] Disable foreground lock: True
+[2026-05-24 20:13:29] COM AppActivate(title)=True
+[2026-05-24 20:13:29] SetForeground=True BringToTop=True
+[2026-05-24 20:13:30] SUCCESS: Window is now foreground!
+[2026-05-24 20:13:32] Foreground lock timeout restored to 0
+[2026-05-24 20:13:32] === done ===
+[2026-05-24 21:22:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 21:22:29] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 21:22:29] Current foreground lock timeout: 0
+[2026-05-24 21:22:29] Disable foreground lock: True
+[2026-05-24 21:22:29] COM AppActivate(title)=True
+[2026-05-24 21:22:29] SetForeground=True BringToTop=True
+[2026-05-24 21:22:30] SUCCESS: Window is now foreground!
+[2026-05-24 21:22:32] Foreground lock timeout restored to 0
+[2026-05-24 21:22:32] === done ===
+[2026-05-24 21:28:42] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 21:28:44] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 21:28:44] Current foreground lock timeout: 0
+[2026-05-24 21:28:44] Disable foreground lock: True
+[2026-05-24 21:28:44] COM AppActivate(title)=True
+[2026-05-24 21:28:44] SetForeground=True BringToTop=True
+[2026-05-24 21:28:44] WARNING: Foreground is still 3148538 (target 395112)
+[2026-05-24 21:28:46] Foreground lock timeout restored to 0
+[2026-05-24 21:28:46] === done ===
+[2026-05-24 21:30:19] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 21:30:21] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 21:30:21] Current foreground lock timeout: 0
+[2026-05-24 21:30:21] Disable foreground lock: True
+[2026-05-24 21:30:21] COM AppActivate(title)=True
+[2026-05-24 21:30:21] SetForeground=True BringToTop=True
+[2026-05-24 21:30:21] SUCCESS: Window is now foreground!
+[2026-05-24 21:30:23] Foreground lock timeout restored to 0
+[2026-05-24 21:30:23] === done ===
+[2026-05-24 21:48:53] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 21:48:55] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 21:48:55] Current foreground lock timeout: 0
+[2026-05-24 21:48:55] Disable foreground lock: False
+[2026-05-24 21:48:55] COM AppActivate(title)=False
+[2026-05-24 21:48:55] COM AppActivate(name)=False
+[2026-05-24 21:48:55] SetForeground=True BringToTop=True
+[2026-05-24 21:48:55] SUCCESS: Window is now foreground!
+[2026-05-24 21:48:57] Foreground lock timeout restored to 0
+[2026-05-24 21:48:57] === done ===
+[2026-05-24 22:33:47] === win32-foreground started (hint='claude-hk') ===
+[2026-05-24 22:33:48] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? Claude Code'
+[2026-05-24 22:33:48] Current foreground lock timeout: 0
+[2026-05-24 22:33:48] Disable foreground lock: True
+[2026-05-24 22:33:48] COM AppActivate(title)=True
+[2026-05-24 22:33:48] SetForeground=True BringToTop=True
+[2026-05-24 22:33:48] SUCCESS: Window is now foreground!
+[2026-05-24 22:33:51] Foreground lock timeout restored to 0
+[2026-05-24 22:33:51] === done ===
