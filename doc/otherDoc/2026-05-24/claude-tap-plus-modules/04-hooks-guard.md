@@ -1,0 +1,58 @@
+# 模块 4：Hooks 护栏体系
+
+> 阶段：M4 | 依赖：M3（Issue 状态镜像）
+
+## 目标
+
+在 Claude Code 生命周期中提供自动化的安全护栏，防止常见开发错误。
+
+## 护栏规则
+
+| 优先级 | 功能 | 行为 |
+|--------|------|------|
+| P0 | 禁止 main 分支直接编辑 | 硬阻断 |
+| P0 | PR merge 后清理分支 | 硬阻断 |
+| P1 | commit 关联 issue 提醒 | 默认提醒 |
+| P1 | PR 前 rebase 提醒 | 默认提醒 |
+| P1 | issue 创建重复检测 | 默认提醒 |
+| P1 | claim 前状态检查 | 默认提醒 |
+
+**阻断策略**：P0 硬阻断直接拒绝；P1 默认提醒不阻断。
+
+## 功能
+
+### 功能 1：操作前检查
+
+在 Claude Code 执行关键工具前进行规则检查。
+
+1. 识别工具类型：Edit、Write、MultiEdit、Bash、GitHub CLI。
+2. 识别当前 Git 分支。
+3. 识别当前 issue 上下文。
+4. 根据规则返回 allow、warn、block。
+
+### 功能 2：P0 硬阻断
+
+P0 规则必须阻断高风险行为。
+
+1. 禁止在 main/master 分支直接编辑源代码。
+2. 禁止未确认的 destructive Git 操作。
+3. 禁止 claim 已关闭或 blocked issue。
+4. 阻断信息必须包含原因和建议命令。
+
+### 功能 3：P1 提醒
+
+P1 规则默认提醒，不阻断。
+
+1. commit 未关联 issue 时提醒。
+2. PR 前分支落后 main 时提醒。
+3. issue 标题疑似重复时提醒。
+4. Test Plan 未完成时提醒。
+
+### 功能 4：规则结果记录
+
+每次 guard 判定都应写入活动日志。
+
+1. 记录 rule id。
+2. 记录 action、target、decision。
+3. 记录是否被用户显式覆盖。
+4. 支持后续查询最近 guard 事件。
