@@ -321,26 +321,5 @@
     ]
   },
   "mcpServers": {
-    // jb code 需要在电脑的用户文件夹下来进行一个配�?
-    // "idea": {
-    //   "type": "sse",
-    //   "url": "http://127.0.0.1:64342/sse",
-    //   "headers": {}
-    // },
-    // "goland": {
-    //   "type": "sse",
-    //   "url": "http://127.0.0.1:64343/sse",
-    //   "headers": {}
-    // },
-    // "pycharm": {
-    //   "type": "sse",
-    //   "url": "http://127.0.0.1:64344/sse",
-    //   "headers": {}
-    // },
-    // "webStorm": {
-    //   "type": "sse",
-    //   "url": "http://127.0.0.1:64344/sse",
-    //   "headers": {}
-    // }
   }
 }
