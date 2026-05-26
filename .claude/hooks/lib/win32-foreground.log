@@ -490,3 +490,12 @@
 [2026-05-24 23:58:20] SUCCESS: Window is now foreground!
 [2026-05-24 23:58:23] Foreground lock timeout restored to 0
 [2026-05-24 23:58:23] === done ===
+[2026-05-25 23:42:24] === win32-foreground started (hint='claude-hk') ===
+[2026-05-25 23:42:25] Target: Code.exe PID=25256 hwnd=1508562 title='Commit uncommitted chang°≠ - claude-hk - Visual Studio Code [π‹¿Ì‘±]'
+[2026-05-25 23:42:25] Current foreground lock timeout: 0
+[2026-05-25 23:42:25] Disable foreground lock: False
+[2026-05-25 23:42:25] COM AppActivate(title)=True
+[2026-05-25 23:42:25] SetForeground=True BringToTop=True
+[2026-05-25 23:42:25] SUCCESS: Window is now foreground!
+[2026-05-25 23:42:27] Foreground lock timeout restored to 0
+[2026-05-25 23:42:27] === done ===
