@@ -203,8 +203,8 @@
 [2026-05-24 15:18:18] === done ===
 [2026-05-24 16:02:48] === win32-foreground started (hint='claude-hk') ===
 [2026-05-24 16:02:49] Multiple windows found (2), selecting best match...
-[2026-05-24 16:02:49] Claude indicator matched (char=10242): ? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû
-[2026-05-24 16:02:49] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû'
+[2026-05-24 16:02:49] Claude indicator matched (char=10242): ? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½
+[2026-05-24 16:02:49] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½'
 [2026-05-24 16:02:49] Current foreground lock timeout: 0
 [2026-05-24 16:02:49] Disable foreground lock: True
 [2026-05-24 16:02:49] COM AppActivate(title)=True
@@ -214,8 +214,8 @@
 [2026-05-24 16:02:51] === done ===
 [2026-05-24 16:11:14] === win32-foreground started (hint='claude-hk') ===
 [2026-05-24 16:11:16] Multiple windows found (2), selecting best match...
-[2026-05-24 16:11:16] Claude indicator matched (char=10035): ? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû
-[2026-05-24 16:11:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû'
+[2026-05-24 16:11:16] Claude indicator matched (char=10035): ? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½
+[2026-05-24 16:11:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½'
 [2026-05-24 16:11:16] Current foreground lock timeout: 0
 [2026-05-24 16:11:16] Disable foreground lock: True
 [2026-05-24 16:11:16] COM AppActivate(title)=True
@@ -225,8 +225,8 @@
 [2026-05-24 16:11:18] === done ===
 [2026-05-24 16:13:14] === win32-foreground started (hint='claude-hk') ===
 [2026-05-24 16:13:16] Multiple windows found (2), selecting best match...
-[2026-05-24 16:13:16] Claude indicator matched (char=10035): ? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû
-[2026-05-24 16:13:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ÐÞÕýÐÐ³ÌÁ÷Ê½äÖÈ¾ÓëUI²¼¾Öµ÷Õû'
+[2026-05-24 16:13:16] Claude indicator matched (char=10035): ? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½
+[2026-05-24 16:13:16] Target: WindowsTerminal.exe PID=22156 hwnd=395112 title='? ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½UIï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½'
 [2026-05-24 16:13:16] Current foreground lock timeout: 0
 [2026-05-24 16:13:16] Disable foreground lock: False
 [2026-05-24 16:13:16] COM AppActivate(title)=True
@@ -374,7 +374,7 @@
 [2026-05-24 22:33:51] Foreground lock timeout restored to 0
 [2026-05-24 22:33:51] === done ===
 [2026-05-24 23:48:43] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:48:45] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:48:45] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:48:45] Current foreground lock timeout: 0
 [2026-05-24 23:48:45] Disable foreground lock: True
 [2026-05-24 23:48:45] COM AppActivate(title)=True
@@ -383,7 +383,7 @@
 [2026-05-24 23:48:47] Foreground lock timeout restored to 0
 [2026-05-24 23:48:47] === done ===
 [2026-05-24 23:49:01] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:49:02] Target: Code.exe PID=31132 hwnd=4000338 title='SKILL.md - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:49:02] Target: Code.exe PID=31132 hwnd=4000338 title='SKILL.md - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:49:02] Current foreground lock timeout: 0
 [2026-05-24 23:49:02] Disable foreground lock: True
 [2026-05-24 23:49:02] COM AppActivate(title)=True
@@ -392,7 +392,7 @@
 [2026-05-24 23:49:05] Foreground lock timeout restored to 0
 [2026-05-24 23:49:05] === done ===
 [2026-05-24 23:49:21] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:49:23] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:49:23] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:49:23] Current foreground lock timeout: 0
 [2026-05-24 23:49:23] Disable foreground lock: True
 [2026-05-24 23:49:23] COM AppActivate(title)=True
@@ -401,7 +401,7 @@
 [2026-05-24 23:49:25] Foreground lock timeout restored to 0
 [2026-05-24 23:49:25] === done ===
 [2026-05-24 23:50:44] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:50:46] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:50:46] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:50:46] Current foreground lock timeout: 0
 [2026-05-24 23:50:46] Disable foreground lock: False
 [2026-05-24 23:50:46] COM AppActivate(title)=True
@@ -410,7 +410,7 @@
 [2026-05-24 23:50:48] Foreground lock timeout restored to 0
 [2026-05-24 23:50:48] === done ===
 [2026-05-24 23:51:14] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:51:16] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:51:16] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:51:16] Current foreground lock timeout: 0
 [2026-05-24 23:51:16] Disable foreground lock: True
 [2026-05-24 23:51:16] COM AppActivate(title)=True
@@ -419,7 +419,7 @@
 [2026-05-24 23:51:18] Foreground lock timeout restored to 0
 [2026-05-24 23:51:18] === done ===
 [2026-05-24 23:51:50] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:51:52] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:51:52] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:51:52] Current foreground lock timeout: 0
 [2026-05-24 23:51:52] Disable foreground lock: True
 [2026-05-24 23:51:52] COM AppActivate(title)=True
@@ -428,7 +428,7 @@
 [2026-05-24 23:51:54] Foreground lock timeout restored to 0
 [2026-05-24 23:51:54] === done ===
 [2026-05-24 23:52:19] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:52:21] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:52:21] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:52:21] Current foreground lock timeout: 0
 [2026-05-24 23:52:21] Disable foreground lock: False
 [2026-05-24 23:52:21] COM AppActivate(title)=True
@@ -437,7 +437,7 @@
 [2026-05-24 23:52:23] Foreground lock timeout restored to 0
 [2026-05-24 23:52:23] === done ===
 [2026-05-24 23:52:30] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:52:32] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:52:32] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:52:32] Current foreground lock timeout: 0
 [2026-05-24 23:52:32] Disable foreground lock: True
 [2026-05-24 23:52:32] COM AppActivate(title)=True
@@ -446,7 +446,7 @@
 [2026-05-24 23:52:35] Foreground lock timeout restored to 0
 [2026-05-24 23:52:35] === done ===
 [2026-05-24 23:53:13] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:53:15] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:53:15] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:53:15] Current foreground lock timeout: 0
 [2026-05-24 23:53:15] Disable foreground lock: True
 [2026-05-24 23:53:15] COM AppActivate(title)=True
@@ -455,7 +455,7 @@
 [2026-05-24 23:53:17] Foreground lock timeout restored to 0
 [2026-05-24 23:53:17] === done ===
 [2026-05-24 23:56:01] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:56:03] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:56:03] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:56:03] Current foreground lock timeout: 0
 [2026-05-24 23:56:03] Disable foreground lock: True
 [2026-05-24 23:56:03] COM AppActivate(title)=True
@@ -464,7 +464,7 @@
 [2026-05-24 23:56:06] Foreground lock timeout restored to 0
 [2026-05-24 23:56:06] === done ===
 [2026-05-24 23:56:41] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:56:43] Target: Code.exe PID=31132 hwnd=4000338 title='.gitignore - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:56:43] Target: Code.exe PID=31132 hwnd=4000338 title='.gitignore - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:56:43] Current foreground lock timeout: 0
 [2026-05-24 23:56:43] Disable foreground lock: True
 [2026-05-24 23:56:43] COM AppActivate(title)=True
@@ -473,7 +473,7 @@
 [2026-05-24 23:56:46] Foreground lock timeout restored to 0
 [2026-05-24 23:56:46] === done ===
 [2026-05-24 23:57:33] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:57:35] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:57:35] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:57:35] Current foreground lock timeout: 0
 [2026-05-24 23:57:35] Disable foreground lock: True
 [2026-05-24 23:57:35] COM AppActivate(title)=True
@@ -482,7 +482,7 @@
 [2026-05-24 23:57:37] Foreground lock timeout restored to 0
 [2026-05-24 23:57:37] === done ===
 [2026-05-24 23:58:19] === win32-foreground started (hint='claude-hk') ===
-[2026-05-24 23:58:20] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-24 23:58:20] Target: Code.exe PID=31132 hwnd=4000338 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-24 23:58:20] Current foreground lock timeout: 0
 [2026-05-24 23:58:20] Disable foreground lock: True
 [2026-05-24 23:58:20] COM AppActivate(title)=True
@@ -491,7 +491,7 @@
 [2026-05-24 23:58:23] Foreground lock timeout restored to 0
 [2026-05-24 23:58:23] === done ===
 [2026-05-25 23:42:24] === win32-foreground started (hint='claude-hk') ===
-[2026-05-25 23:42:25] Target: Code.exe PID=25256 hwnd=1508562 title='Commit uncommitted chang¡­ - claude-hk - Visual Studio Code [¹ÜÀíÔ±]'
+[2026-05-25 23:42:25] Target: Code.exe PID=25256 hwnd=1508562 title='Commit uncommitted changï¿½ï¿½ - claude-hk - Visual Studio Code [ï¿½ï¿½ï¿½ï¿½Ô±]'
 [2026-05-25 23:42:25] Current foreground lock timeout: 0
 [2026-05-25 23:42:25] Disable foreground lock: False
 [2026-05-25 23:42:25] COM AppActivate(title)=True
@@ -499,3 +499,147 @@
 [2026-05-25 23:42:25] SUCCESS: Window is now foreground!
 [2026-05-25 23:42:27] Foreground lock timeout restored to 0
 [2026-05-25 23:42:27] === done ===
+[2026-05-26 21:09:08] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 21:09:09] Target: WindowsTerminal.exe PID=30712 hwnd=132396 title='? Claude Code'
+[2026-05-26 21:09:09] Current foreground lock timeout: 0
+[2026-05-26 21:09:09] Disable foreground lock: True
+[2026-05-26 21:09:09] COM AppActivate(title)=True
+[2026-05-26 21:09:09] SetForeground=True BringToTop=True
+[2026-05-26 21:09:09] SUCCESS: Window is now foreground!
+[2026-05-26 21:09:11] Foreground lock timeout restored to 0
+[2026-05-26 21:09:11] === done ===
+[2026-05-26 21:14:52] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 21:14:53] Target: WindowsTerminal.exe PID=30712 hwnd=132396 title='? Remove deleted files and push to GitHub'
+[2026-05-26 21:14:53] Current foreground lock timeout: 0
+[2026-05-26 21:14:53] Disable foreground lock: True
+[2026-05-26 21:14:53] COM AppActivate(title)=True
+[2026-05-26 21:14:53] SetForeground=True BringToTop=True
+[2026-05-26 21:14:53] SUCCESS: Window is now foreground!
+[2026-05-26 21:14:56] Foreground lock timeout restored to 0
+[2026-05-26 21:14:56] === done ===
+[2026-05-26 21:15:15] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 21:15:16] Target: WindowsTerminal.exe PID=30712 hwnd=132396 title='? Remove deleted files and push to GitHub'
+[2026-05-26 21:15:16] Current foreground lock timeout: 0
+[2026-05-26 21:15:16] Disable foreground lock: True
+[2026-05-26 21:15:16] COM AppActivate(title)=True
+[2026-05-26 21:15:16] SetForeground=True BringToTop=True
+[2026-05-26 21:15:16] SUCCESS: Window is now foreground!
+[2026-05-26 21:15:19] Foreground lock timeout restored to 0
+[2026-05-26 21:15:19] === done ===
+[2026-05-26 21:15:38] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 21:15:39] Target: WindowsTerminal.exe PID=30712 hwnd=132396 title='? Remove deleted files and push to GitHub'
+[2026-05-26 21:15:39] Current foreground lock timeout: 0
+[2026-05-26 21:15:39] Disable foreground lock: True
+[2026-05-26 21:15:39] COM AppActivate(title)=True
+[2026-05-26 21:15:39] SetForeground=True BringToTop=True
+[2026-05-26 21:15:39] SUCCESS: Window is now foreground!
+[2026-05-26 21:15:41] Foreground lock timeout restored to 0
+[2026-05-26 21:15:41] === done ===
+[2026-05-26 22:35:13] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 22:35:14] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Remove sendbox command from CLI router'
+[2026-05-26 22:35:14] Current foreground lock timeout: 0
+[2026-05-26 22:35:14] Disable foreground lock: True
+[2026-05-26 22:35:14] COM AppActivate(title)=True
+[2026-05-26 22:35:14] SetForeground=True BringToTop=True
+[2026-05-26 22:35:14] SUCCESS: Window is now foreground!
+[2026-05-26 22:35:16] Foreground lock timeout restored to 0
+[2026-05-26 22:35:16] === done ===
+[2026-05-26 22:36:43] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 22:36:44] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Remove sendbox command from CLI router'
+[2026-05-26 22:36:44] Current foreground lock timeout: 0
+[2026-05-26 22:36:44] Disable foreground lock: True
+[2026-05-26 22:36:44] COM AppActivate(title)=True
+[2026-05-26 22:36:44] SetForeground=True BringToTop=True
+[2026-05-26 22:36:44] SUCCESS: Window is now foreground!
+[2026-05-26 22:36:46] Foreground lock timeout restored to 0
+[2026-05-26 22:36:46] === done ===
+[2026-05-26 22:40:35] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 22:40:36] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Claude Code'
+[2026-05-26 22:40:36] Current foreground lock timeout: 0
+[2026-05-26 22:40:36] Disable foreground lock: True
+[2026-05-26 22:40:36] COM AppActivate(title)=True
+[2026-05-26 22:40:36] SetForeground=True BringToTop=True
+[2026-05-26 22:40:36] SUCCESS: Window is now foreground!
+[2026-05-26 22:40:36] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 22:40:37] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Claude Code'
+[2026-05-26 22:40:37] Current foreground lock timeout: 0
+[2026-05-26 22:40:37] Disable foreground lock: False
+[2026-05-26 22:40:37] COM AppActivate(title)=True
+[2026-05-26 22:40:37] SetForeground=True BringToTop=True
+[2026-05-26 22:40:37] SUCCESS: Window is now foreground!
+[2026-05-26 22:40:38] Foreground lock timeout restored to 0
+[2026-05-26 22:40:38] === done ===
+[2026-05-26 22:40:40] Foreground lock timeout restored to 0
+[2026-05-26 22:40:40] === done ===
+[2026-05-26 23:00:48] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:00:49] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:00:49] Current foreground lock timeout: 0
+[2026-05-26 23:00:49] Disable foreground lock: True
+[2026-05-26 23:00:49] COM AppActivate(title)=True
+[2026-05-26 23:00:49] SetForeground=True BringToTop=True
+[2026-05-26 23:00:49] SUCCESS: Window is now foreground!
+[2026-05-26 23:00:51] Foreground lock timeout restored to 0
+[2026-05-26 23:00:51] === done ===
+[2026-05-26 23:01:40] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:01:41] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:01:41] Current foreground lock timeout: 0
+[2026-05-26 23:01:41] Disable foreground lock: True
+[2026-05-26 23:01:41] COM AppActivate(title)=True
+[2026-05-26 23:01:41] SetForeground=True BringToTop=True
+[2026-05-26 23:01:41] SUCCESS: Window is now foreground!
+[2026-05-26 23:01:44] Foreground lock timeout restored to 0
+[2026-05-26 23:01:44] === done ===
+[2026-05-26 23:21:10] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:21:11] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:21:11] Current foreground lock timeout: 0
+[2026-05-26 23:21:11] Disable foreground lock: True
+[2026-05-26 23:21:11] COM AppActivate(title)=True
+[2026-05-26 23:21:11] SetForeground=True BringToTop=True
+[2026-05-26 23:21:11] SUCCESS: Window is now foreground!
+[2026-05-26 23:21:13] Foreground lock timeout restored to 0
+[2026-05-26 23:21:13] === done ===
+[2026-05-26 23:24:53] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:24:54] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:24:54] Current foreground lock timeout: 0
+[2026-05-26 23:24:54] Disable foreground lock: True
+[2026-05-26 23:24:54] COM AppActivate(title)=True
+[2026-05-26 23:24:54] SetForeground=True BringToTop=True
+[2026-05-26 23:24:55] SUCCESS: Window is now foreground!
+[2026-05-26 23:24:57] Foreground lock timeout restored to 0
+[2026-05-26 23:24:57] === done ===
+[2026-05-26 23:29:27] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:29:28] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:29:28] Current foreground lock timeout: 0
+[2026-05-26 23:29:28] Disable foreground lock: True
+[2026-05-26 23:29:28] COM AppActivate(title)=True
+[2026-05-26 23:29:28] SetForeground=True BringToTop=True
+[2026-05-26 23:29:28] SUCCESS: Window is now foreground!
+[2026-05-26 23:29:30] Foreground lock timeout restored to 0
+[2026-05-26 23:29:30] === done ===
+[2026-05-26 23:31:04] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:31:05] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:31:05] Current foreground lock timeout: 0
+[2026-05-26 23:31:05] Disable foreground lock: True
+[2026-05-26 23:31:05] COM AppActivate(title)=True
+[2026-05-26 23:31:05] SetForeground=True BringToTop=True
+[2026-05-26 23:31:05] SUCCESS: Window is now foreground!
+[2026-05-26 23:31:07] Foreground lock timeout restored to 0
+[2026-05-26 23:31:07] === done ===
+[2026-05-26 23:40:26] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:40:27] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:40:27] Current foreground lock timeout: 0
+[2026-05-26 23:40:27] Disable foreground lock: True
+[2026-05-26 23:40:27] COM AppActivate(title)=True
+[2026-05-26 23:40:27] SetForeground=True BringToTop=True
+[2026-05-26 23:40:27] SUCCESS: Window is now foreground!
+[2026-05-26 23:40:29] Foreground lock timeout restored to 0
+[2026-05-26 23:40:29] === done ===
+[2026-05-26 23:43:54] === win32-foreground started (hint='claude-hk') ===
+[2026-05-26 23:43:54] Target: WindowsTerminal.exe PID=36684 hwnd=132948 title='? Design claude-tap-plus backend tool'
+[2026-05-26 23:43:54] Current foreground lock timeout: 0
+[2026-05-26 23:43:54] Disable foreground lock: True
+[2026-05-26 23:43:54] COM AppActivate(title)=True
+[2026-05-26 23:43:54] SetForeground=True BringToTop=True
+[2026-05-26 23:43:55] SUCCESS: Window is now foreground!
+[2026-05-26 23:43:57] Foreground lock timeout restored to 0
+[2026-05-26 23:43:57] === done ===
