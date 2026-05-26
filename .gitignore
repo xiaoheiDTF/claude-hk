@@ -2,3 +2,7 @@
 .recode
 .history
 .idea
+.claude/localLanguage/
+.claude/skills/.active
+.claude/.initialized
+.claude/.python-state
