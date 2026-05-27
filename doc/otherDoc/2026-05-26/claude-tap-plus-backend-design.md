@@ -29,7 +29,7 @@
   8. 用户确认后，AI 调用脚本发送请求到后端，后端记录被领取的 issue 唯一 ID
   9. 后续技能根据技能不同，标记对应 issue 进行对应更改
 
-**功能2 补充方案：升级 003-5-issue-fix 技能为 worktree 模式**
+**功能2 补充方案：升级 003-5-issue-fix 技能为 worktree 模式**（此补充方案暂不纳入当前实现，留作未来迭代）
 - 将 003-5-issue-fix 升级为创建 worktree
 - 创建 worktree 后，将当前领取的 issue 信息注入到该 worktree 的 CLAUDE.md 中
 - 用户主动 cd 到 worktree 中启动 Claude 去完成任务
@@ -45,6 +45,44 @@
 
 核心设计思路：`claude-tap-plus` 作为本地代理，在启动时向后端注册会话，后续 Issue 相关技能通过 HTTP 调用后端 API 来完成去重、状态查询、状态变更，不再依赖 GitHub 账号区分 Agent。
 
+### 后端服务启动方式
+
+后端服务作为 `claude-tap-plus` 的子命令运行，与代理进程独立：
+
+```bash
+# 启动后端（默认端口 8080）
+claude-tap-plus backend
+
+# 指定端口和数据库路径
+claude-tap-plus backend --port 8080 --db ./backend.db
+
+# 指定配置文件
+claude-tap-plus backend --config ./backend.conf
+```
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--port` | `8080` | 监听端口 |
+| `--db` | `./backend.db` | SQLite 数据库路径 |
+| `--config` | 无 | 配置文件路径（可选） |
+
+### 后端服务代码结构
+
+```
+claude_tap_plus/
+├── cmd/
+│   ├── claude-tap/          # 现有代理 CLI
+│   └── claude-tap-server/   # 新增：后端服务 CLI
+├── internal/
+│   ├── session/             # 现有：session push/pull
+│   ├── backend/             # 新增：后端服务
+│   │   ├── server.go        # HTTP server 生命周期
+│   │   ├── handler.go       # API handler
+│   │   ├── db.go            # SQLite 初始化 + 迁移
+│   │   └── model.go         # 数据模型
+│   └── ...
+```
+
 ---
 
 ## 三、功能需求清单
@@ -59,6 +97,7 @@
 | B3 | Issue 领取 | 标记 issue 为已领取，绑定 session_id，记录领取时间 |
 | B4 | Issue 状态流转 | 支持不同技能触发不同状态变更（fixing → PR → testing → review） |
 | B5 | Issue 释放/过期 | 会话失效或任务完成时释放 issue，允许重新领取 |
+| B8 | 降级策略 | 后端不可用时各技能的降级行为定义 |
 
 ### 模块 C：本地代理改造（claude-tap-plus）后端服务基础
 
@@ -74,6 +113,7 @@
 
 | 编号 | 功能 | 简述 |
 |------|------|------|
+| D0 | 公共后端调用基础设施 | backend.sh 共享模块、后端调用函数、label 同步函数 |
 | D1 | issue-claim 脚本改造 | 获取 issue 列表后调用后端 B2 去重，确认后调用 B3 领取 |
-| D2 | issue-fix → worktree | 升级为创建 worktree，将 issue 信息注入 CLAUDE.md |
+| D2 | issue-fix 标记状态 | 创建分支后标记 fixing 状态（worktree 方案留作未来迭代） |
 | D3 | 后续技能适配 | issue-done / issue-pr / issue-test / issue-review 调用后端 B4 更新状态 |

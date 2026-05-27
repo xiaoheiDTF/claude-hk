@@ -101,11 +101,11 @@ gh repo view --json url,nameWithOwner
 |------|------|-----------------|
 | `idle` | 空闲，无人领取 | — |
 | `claimed` | 已被某 session 领取 | gh issue edit --add-label "in-progress" |
-| `fixing` | 正在开发中 | —（由 issue-fix 技能触发） |
+| `fixing` | 正在开发中 | gh issue edit --add-label "fixing" |
 | `ready-for-pr` | 开发完成，等待提 PR | gh issue edit --add-label "ready-for-pr" --remove-label "in-progress" |
-| `pr-created` | PR 已创建 | — |
-| `testing` | 测试中 | — |
-| `reviewing` | 审核中 | — |
+| `pr-created` | PR 已创建 | gh issue edit --add-label "pr-created" |
+| `testing` | 测试中 | gh issue edit --add-label "testing" |
+| `reviewing` | 审核中 | gh issue edit --add-label "reviewing" |
 | `merged` | 已合并 | gh issue close |
 | `rejected` | 被打回 | gh issue edit --add-label "rejected" |
 
@@ -113,45 +113,45 @@ gh repo view --json url,nameWithOwner
 
 ```
                     ┌─────────┐
-         ┌─────────►│  idle   │◄────────┐
-         │          └────┬────┘         │
-         │               │ claim        │ release / session close
-         │               ▼              │
-         │          ┌─────────┐         │
-         │    ┌────►│ claimed │◄───┐    │
-         │    │     └────┬────┘    │    │
-         │    │          │ fix     │    │
-         │    │          ▼         │    │
-         │    │     ┌─────────┐    │    │
-         │    │     │ fixing  │────┘    │
-         │    │     └────┬────┘  reject │
-         │    │          │ done         │
-         │    │          ▼              │
-         │    │    ┌─────────────┐      │
-         │    └────│ ready-for-pr│      │
-         │         └──────┬──────┘      │
-         │                │ pr          │
-         │                ▼             │
-         │           ┌──────────┐       │
-         │           │pr-created│       │
-         │           └─────┬────┘       │
-         │                 │ test       │
-         │                 ▼            │
-         │            ┌─────────┐       │
-         │            │ testing │       │
-         │            └────┬────┘       │
-         │                 │ review     │
-         │                 ▼            │
-         │           ┌───────────┐      │
-         └───────────│ reviewing │      │
-            reject   └─────┬─────┘      │
-                          │ merge       │
-                          ▼             │
-                     ┌─────────┐        │
-                     │ merged  │────────┘
-                     └─────────┘
-```
-
+         ┌─────────►│  idle   │◄──────────────────┐
+         │          └────┬────┘                    │
+         │               │ claim                   │ release / session close
+         │               ▼                         │
+         │          ┌─────────┐                     │
+         │    ┌────►│ claimed │◄──┐                 │
+         │    │     └────┬────┘   │                 │
+         │    │          │ fix    │                 │
+         │    │          ▼        │                 │
+         │    │     ┌─────────┐◄──┤ reject          │
+         │    │     │ fixing  │   │ (from reviewing)│
+         │    │     └────┬────┘   │                 │
+         │    │          │ done   │                 │
+         │    │          ▼        │                 │
+         │    │    ┌─────────────┐│                 │
+         │    └────│ ready-for-pr││                 │
+         │         └──────┬──────┘│                 │
+         │                │ pr    │                 │
+         │                ▼       │                 │
+         │           ┌──────────┐ │                 │
+         │           │pr-created│ │                 │
+         │           └─────┬────┘ │                 │
+         │                 │ test │                 │
+         │                 ▼      │                 │
+         │            ┌─────────┐ │                 │
+         │            │ testing │ │                 │
+         │            └────┬────┘ │                 │
+         │                 │ review                  │
+         │                 ▼      │                 │
+         │           ┌───────────┐│                 │
+         │           │ reviewing ├┘                 │
+         │           └─────┬─────┘                  │
+         │                 │ merge                   │
+         │                 ▼                         │
+         │            ┌─────────┐                    │
+         │            │ merged  │────────────────────┘
+         │            └─────────┘
+         │
+         └─ 注：rejected 状态在 SessionEnd 时自动释放为 idle（可重新领取）
 ---
 
 ## 五、实现方案
@@ -301,6 +301,8 @@ echo "$gh_issues" | jq --argjson idle "$idle_numbers" '[.[] | select(.number | I
 {"success": false, "error": "already_claimed", "claimed_by": "session_abc", "claimed_at": "2026-05-26T10:00:00Z"}
 ```
 
+> **注**：`merged` 和 `rejected` 状态的 issue 也返回 `already_claimed` 错误；`rejected` 状态的 issue 被 SessionEnd 释放后可重新领取；`issue_title` 为非必填字段。
+
 **003-4-issue-claim 脚本中的使用**：
 
 ```bash
@@ -345,16 +347,32 @@ fi
 }
 ```
 
+**响应（成功）**：
+```json
+{"success": true, "previous_status": "claimed", "status": "fixing", "updated_at": "2026-05-26T10:30:00Z"}
+```
+
+**响应（失败，非 owner）**：
+```json
+{"success": false, "error": "not_owner", "message": "Only the claimant can update status"}
+```
+
+**响应（失败，非法状态流转）**：
+```json
+{"success": false, "error": "invalid_transition", "message": "Cannot transition from merged to fixing"}
+```
+
 **各技能调用时机**：
 
-| 技能 | 调用时机 | status 值 | GitHub 操作 |
-|------|----------|-----------|------------|
-| 003-5-issue-fix | 创建分支后 | `fixing` | gh issue comment |
-| 003-6-issue-done | 开发完成后 | `ready-for-pr` | gh issue edit --remove-label "in-progress" --add-label "ready-for-pr" |
-| 003-7-issue-pr | PR 创建后 | `pr-created` | — |
-| 003-8-issue-test | 开始测试 | `testing` | — |
-| 003-9-issue-review merge | 合并后 | `merged` | gh issue close |
-| 003-9-issue-review reject | 打回后 | `rejected` | gh issue edit --add-label "rejected" |
+| 技能 | 调用时机 | status 值 | GitHub 操作 | 自动同步 label |
+|------|----------|-----------|------------|----------------|
+| 003-5-issue-fix | 创建分支后 | `fixing` | gh issue comment | gh issue edit --add-label "fixing" |
+| 003-6-issue-done | 开发完成后 | `ready-for-pr` | gh issue edit --remove-label "in-progress" --add-label "ready-for-pr" | —（已有手动操作） |
+| 003-7-issue-pr | PR 创建后 | `pr-created` | — | gh issue edit --add-label "pr-created" |
+| 003-8-issue-test | 开始测试 | `testing` | — | gh issue edit --add-label "testing" |
+| 003-9-issue-review（开始审核时） | 审核开始 | `reviewing` | — | gh issue edit --add-label "reviewing" |
+| 003-9-issue-review merge | 合并后 | `merged` | gh issue close | —（终态） |
+| 003-9-issue-review reject | 打回后 | `rejected` | gh issue edit --add-label "rejected" | —（已有手动操作）；状态回到 `fixing` |
 
 **003-5-issue-fix 脚本示例**：
 
@@ -401,7 +419,7 @@ release_session_issues() {
   [ -z "$backend_url" ] && return 0
 
   local result
-  result=$(curl -s -X POST "$backend_url/api/issue/release-session" \
+  result=$(curl -s --max-time 5 -X POST "$backend_url/api/issue/release-session" \
     -H "Content-Type: application/json" \
     -d "{\"session_id\":\"$session_id\"}")
 
@@ -437,6 +455,7 @@ release_session_issues
 | `/api/issue/status` | POST | 更新 issue 状态（fixing/pr-created/testing 等） | 003-5 至 003-9 |
 | `/api/issue/release` | POST | 手动释放单个 issue | 异常放弃时 |
 | `/api/issue/release-session` | POST | SessionEnd 时释放该 session 所有 issue | SessionEnd hook |
+| `/health` | GET | 健康检查，返回 `{"status":"ok"}` | `_backend_available()` |
 
 ---
 
@@ -609,7 +628,7 @@ WHERE repo_full_name = 'xiaoheiDTF/claude-hk'
 UPDATE issue_claims
 SET status = 'idle', session_id = NULL, claimed_at = NULL
 WHERE session_id = 'bf15cac4-7235-48ce-8853-5d4598547f31'
-  AND status NOT IN ('merged', 'rejected');
+  AND status NOT IN ('merged');
 
 -- 5. 原子领取（/api/issue/claim 的实现）
 -- 先检查：

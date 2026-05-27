@@ -145,23 +145,25 @@ backend_url=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null | grep 
 
 ```bash
 # ---- 后端调用公共函数 ----
-# 建议放在 .claude/skills/backend.sh，各技能 source
+# 位置：.claude/skills/backend.sh，各技能 source
 
 BACKEND_URL=""
 
+# 读取后端 URL（带缓存，只读一次）
 _load_backend_url() {
   if [ -z "$BACKEND_URL" ]; then
-    BACKEND_URL=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null | grep '^BACKEND_URL=' | cut -d= -f2)
+    BACKEND_URL=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null \
+      | grep '^BACKEND_URL=' | cut -d= -f2)
   fi
 }
 
-# 检查后端是否可用
+# 检查后端是否可用（2 秒超时）
 _backend_available() {
   _load_backend_url
   [ -n "$BACKEND_URL" ] && curl -s --max-time 2 "$BACKEND_URL/health" > /dev/null 2>&1
 }
 
-# 调用后端 API，失败时静默返回空
+# 通用后端调用（5 秒超时，失败静默返回空）
 _call_backend() {
   local endpoint="$1"
   local data="$2"
@@ -175,21 +177,83 @@ _call_backend() {
   [ -n "$resp" ] && echo "$resp"
 }
 
-# 获取当前 session_id
+# 获取当前 session_id（json_get 为当前推荐方案）
 _get_session_id() {
-  # 优先从环境变量获取
-  if [ -n "$CLAUDE_SESSION_ID" ]; then
-    echo "$CLAUDE_SESSION_ID"
-    return
-  fi
-  # 从 SessionStart hook 的输入 JSON 提取（如果在 hook 中）
   if command -v json_get >/dev/null 2>&1; then
     json_get '.session_id' 2>/dev/null
+    return
   fi
+  # 未来可选：代理注入环境变量
+  if [ -n "$CLAUDE_SESSION_ID" ]; then
+    echo "$CLAUDE_SESSION_ID"
+  fi
+}
+
+# 状态→GitHub Label 映射
+_status_to_label() {
+  case "$1" in
+    claimed)       echo "in-progress" ;;
+    fixing)        echo "fixing" ;;
+    ready-for-pr)  echo "ready-for-pr" ;;
+    pr-created)    echo "pr-created" ;;
+    testing)       echo "testing" ;;
+    reviewing)     echo "reviewing" ;;
+    rejected)      echo "rejected" ;;
+    merged|idle)   echo "" ;;
+    *)             echo "" ;;
+  esac
+}
+
+# 同步 GitHub label（后端状态变更后调用）
+_sync_github_label() {
+  local issue_num="$1"
+  local old_status="$2"
+  local new_status="$3"
+
+  local old_label=$(_status_to_label "$old_status")
+  local new_label=$(_status_to_label "$new_status")
+
+  # 移除旧 label
+  [ -n "$old_label" ] && [ "$old_label" != "$new_label" ] && \
+    gh issue edit "$issue_num" --remove-label "$old_label" 2>/dev/null
+
+  # 添加新 label
+  [ -n "$new_label" ] && \
+    gh issue edit "$issue_num" --add-label "$new_label" 2>/dev/null
+
+  # merged 特殊处理：关闭 issue
+  [ "$new_status" = "merged" ] && gh issue close "$issue_num" 2>/dev/null
+}
+
+# 更新后端状态 + 同步 GitHub label（双写）
+update_issue_status() {
+  local issue_number="$1"
+  local new_status="$2"
+  _load_backend_url
+  [ -z "$BACKEND_URL" ] && return 0
+
+  local session_id
+  session_id=$(_get_session_id)
+  local repo
+  repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)
+
+  # 1. 调后端更新状态
+  local result
+  result=$(_call_backend "/api/issue/status" "{
+    \"repo_full_name\":\"$repo\",
+    \"issue_number\":$issue_number,
+    \"session_id\":\"$session_id\",
+    \"status\":\"$new_status\"
+  }")
+
+  # 2. 从响应中获取 previous_status，同步 GitHub label
+  local old_status
+  old_status=$(echo "$result" | jq -r '.previous_status // empty' 2>/dev/null)
+  [ -n "$old_status" ] && _sync_github_label "$issue_number" "$old_status" "$new_status"
 }
 ```
 
-> **注**：`CLAUDE_SESSION_ID` 环境变量需要在代理启动时注入，见模块 C 改造。
+> **注**：`json_get '.session_id'` 是当前推荐的 session_id 获取方式（hook 环境中已可用）。`CLAUDE_SESSION_ID` 环境变量作为未来可选方案，需要代理注入环境变量。
 
 ### 5.3 D1: 003-4-issue-claim 改造
 
@@ -293,8 +357,9 @@ filtered=$(filter_claimed_issues "$issues")
 
 # 4. 用户确认领取 #N 后
 if claim_issue_backend "$ISSUE_NUM" "$ISSUE_TITLE"; then
-  # 后端领取成功，再操作 GitHub
-  gh issue edit "$ISSUE_NUM" --add-assignee @me --add-label "in-progress"
+  # 后端领取成功，再操作 GitHub（label 由 _sync_github_label 自动同步）
+  gh issue edit "$ISSUE_NUM" --add-assignee @me
+  _sync_github_label "$ISSUE_NUM" "" "claimed"
   log "INFO" "Issue #$ISSUE_NUM claimed"
 else
   # 后端领取失败，提示用户
@@ -310,31 +375,7 @@ fi
 
 ```bash
 # 在创建分支后、comment 前
-
-update_issue_status() {
-  local issue_num="$1"
-  local new_status="$2"
-  
-  _load_backend_url
-  [ -z "$BACKEND_URL" ] && return 0
-  
-  local session_id
-  session_id=$(_get_session_id)
-  [ -z "$session_id" ] && return 0
-  
-  local repo
-  repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)
-  [ -z "$repo" ] && return 0
-  
-  _call_backend "/api/issue/status" "{
-    \"repo_full_name\":\"$repo\",
-    \"issue_number\":$issue_num,
-    \"session_id\":\"$session_id\",
-    \"status\":\"$new_status\"
-  }" > /dev/null 2>&1
-}
-
-# 创建分支后
+# update_issue_status 来自 backend.sh（见 5.2 节），已包含 GitHub label 自动同步
 update_issue_status "$ISSUE_NUM" "fixing"
 
 # 然后继续原有逻辑：gh issue comment ...
@@ -422,6 +463,8 @@ release_session_issues() {
 release_session_issues
 ```
 
+> **SessionEnd hook 双重职责**：除了释放 issue，SessionEnd hook 还需调用 `/api/session/close` 注销会话（见 session-design.md 5.4 节）。建议执行顺序：先释放 issue，再注销 session。
+
 ---
 
 ## 六、改造清单汇总
@@ -433,31 +476,46 @@ release_session_issues
 | 003-6-issue-done | `scripts/03UserPromptSubmit.sh` | 标记完成后更新 ready-for-pr | `/api/issue/status` |
 | 003-7-issue-pr | `scripts/03UserPromptSubmit.sh` | PR 创建后标记 pr-created | `/api/issue/status` |
 | 003-8-issue-test | `scripts/03UserPromptSubmit.sh` | 开始测试时标记 testing | `/api/issue/status` |
-| 003-9-issue-review | `scripts/03UserPromptSubmit.sh` | merge/reject 后更新状态 | `/api/issue/status` |
+| 003-9-issue-review | `scripts/03UserPromptSubmit.sh` | 审核开始时标记 `reviewing`，再根据结果标记 `merged` 或 `rejected` | `/api/issue/status` |
 | SessionEnd hook | `hooks/29-session-end/base.sh` | 自动释放该 session 的 issue | `/api/issue/release-session` |
 
 ---
 
 ## 七、降级策略
 
-### 7.1 后端不可用时
+> 详细设计见 0527 `issue-management-reqs/degradation-strategy.md`。
 
-```bash
-# _backend_available 检查失败时，所有 update_issue_status 直接 return 0
-# _call_backend 返回空时，filter_claimed_issues 返回原始列表
-# claim_issue_backend 失败时，提示用户但允许继续（或阻止，取决于策略）
-```
+### 7.1 设计原则
 
-### 7.2 建议的降级行为
+1. **后端是辅助，GitHub 是主链路**：后端只负责状态追踪和冲突防护，不替代 GitHub 操作
+2. **失败静默**：后端调用失败不应阻塞或报错到用户层面（claim 除外）
+3. **配置开关**：`.claude/backend.conf` 不存在时，完全不调用后端
 
-| 场景 | 行为 |
-|------|------|
-| 未配置 backend.conf | 完全走原有逻辑，不调用后端 |
-| 后端 health 检查失败 | 完全走原有逻辑，不调用后端 |
-| `/api/issue/check` 失败 | 返回全部 issue 列表（不过滤） |
-| `/api/issue/claim` 失败 | 阻止领取，提示用户（避免冲突） |
-| `/api/issue/status` 失败 | 静默忽略，继续操作 GitHub |
-| `/api/issue/release-session` 失败 | 静默忽略 |
+### 7.2 降级行为表
+
+| 场景 | 触发条件 | 降级行为 | 影响范围 |
+|------|----------|----------|----------|
+| 未配置后端 | `backend.conf` 不存在或 `BACKEND_URL` 为空 | 所有后端调用跳过，走原有逻辑 | 全部技能 |
+| 后端不可用 | `GET /health` 超时或连接失败 | 所有后端调用跳过，走原有逻辑 | 全部技能 |
+| `/api/issue/check` 失败 | 请求超时或返回非 JSON | 返回完整 issue 列表（不过滤） | 003-4-issue-claim |
+| `/api/issue/claim` 失败 | 请求超时或返回失败 | **阻止领取**，提示用户 | 003-4-issue-claim |
+| `/api/issue/status` 失败 | 请求超时或返回失败 | 静默忽略，继续操作 GitHub | 003-5 ~ 003-9 |
+| `/api/issue/release-session` 失败 | 请求超时或返回失败 | 静默忽略 | SessionEnd hook |
+
+### 7.3 claim 失败阻塞策略
+
+claim 是唯一一个降级时**阻止**而非静默的操作。原因：没有后端锁的保护，多 Agent 可能同时领取同一 issue，造成冲突。
+
+可选策略：如果用户确认单 Agent 环境，可以提供 `--force` 参数跳过后端直接操作 GitHub。
+
+### 7.4 各 API 降级详细说明
+
+| API | 正常流程 | 降级流程 |
+|-----|----------|----------|
+| check | gh issue list → check API 过滤 → 展示空闲 issue | gh issue list → 跳过过滤 → 展示全部 open issue |
+| claim | 用户选择 → claim API 原子领取 → 成功 → gh issue edit | 用户选择 → claim API 超时 → 提示"后端不可用" → 阻止操作 |
+| status | update_issue_status() → 后端 API → 同步 GitHub label | update_issue_status() → 超时 → GitHub label 不变 → 继续主流程 |
+| release-session | SessionEnd → release-session API → 释放 issue | SessionEnd → release-session API 超时 → 静默跳过 |
 
 ---
 
@@ -472,7 +530,7 @@ release_session_issues
   ├─ 4. 用户选择 #10
   ├─ 5. POST /api/issue/claim → 后端原子领取
   ├─ 6. 后端返回 success
-  └─ 7. gh issue edit #10 --add-assignee @me --add-label "in-progress"
+  └─ 7. gh issue edit #10 --add-assignee @me（label 由 _sync_github_label 自动同步）
 
 用户执行 /003-5-issue-fix #10
   │
@@ -485,7 +543,8 @@ release_session_issues
 
 SessionEnd hook 触发
   │
-  └─ POST /api/issue/release-session → 自动释放该 session 的所有 issue
+  ├─ POST /api/issue/release-session → 自动释放该 session 的所有 issue
+  └─ POST /api/session/close → 注销会话
 ```
 
 ---
@@ -494,19 +553,16 @@ SessionEnd hook 触发
 
 ### 9.1 claude-tap-plus 代理侧改造（模块 C 补充）
 
-当前代理启动时会设置 `ANTHROPIC_BASE_URL` 环境变量。需要额外注入 `CLAUDE_SESSION_ID`：
+**当前方案**：hook 脚本直接从 `json_get '.session_id'` 获取，无需代理改造。`json_get` 在 hook 环境中已可用，不需要额外配置。
+
+**未来可选方案**：代理注入 `CLAUDE_SESSION_ID` 环境变量（需改造 `cmd/claude-tap/main.go`）：
 
 ```go
-// cmd/claude-tap/main.go 中，启动子进程前
-
-// 从请求中提取 session_id（首次 API 调用时）
-// 或从 hook 传入的环境变量获取
-
-// 在 BuildChildEnv 中增加：
+// 在 BuildChildEnv 中增加（未来可选）：
 childEnv = append(childEnv, fmt.Sprintf("CLAUDE_SESSION_ID=%s", sessionID))
 ```
 
-**但更简单的方式**：hook 脚本直接从 `json_get '.session_id'` 获取，不需要代理注入环境变量。
+> 此方案可减少 `json_get` 调用开销，但需要修改代理代码，当前阶段不采用。
 
 ### 9.2 后端服务启动
 
@@ -563,7 +619,7 @@ CREATE TABLE issue_claims (
 | test 时 | UPDATE status='testing' | 003-8-issue-test |
 | merge 时 | UPDATE status='merged' | 003-9-issue-review |
 | reject 时 | UPDATE status='rejected' | 003-9-issue-review |
-| SessionEnd | UPDATE status='idle', session_id=NULL (排除 merged/rejected) | SessionEnd hook |
+| SessionEnd | UPDATE status='idle', session_id=NULL (排除 merged，rejected 会被释放为 idle) | SessionEnd hook |
 
 ---
 
