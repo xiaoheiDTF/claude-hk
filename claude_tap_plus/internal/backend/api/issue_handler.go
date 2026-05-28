@@ -59,6 +59,46 @@ func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, CheckIssuesResponse{Issues: items})
 }
 
+func (h *IssueHandler) ClaimIssue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		return
+	}
+
+	var req ClaimIssueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return
+	}
+
+	if req.RepoFullName == "" || req.IssueNumber == 0 || req.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "repo_full_name, issue_number and session_id are required")
+		return
+	}
+
+	result, err := h.svc.Claim(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID, req.IssueTitle)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to claim issue")
+		return
+	}
+
+	if result.Success {
+		writeJSON(w, http.StatusOK, ClaimIssueResponse{
+			Success:   true,
+			Status:    result.Status,
+			ClaimedAt: result.ClaimedAt,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusConflict, ClaimIssueResponse{
+		Success:   false,
+		Error:     "already_claimed",
+		ClaimedBy: result.ClaimedBy,
+		ClaimedAt: result.ClaimedAt,
+	})
+}
+
 func (h *IssueHandler) ReleaseIssue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")

@@ -71,6 +71,65 @@ func (s *sqliteIssueStore) CheckIssues(ctx context.Context, repo string, numbers
 	return results, rows.Err()
 }
 
+func (s *sqliteIssueStore) ClaimIssue(ctx context.Context, repo string, number int, sessionID string, issueTitle string) (*ClaimResult, error) {
+	// Ensure the record exists.
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO issue_claims (repo_full_name, issue_number, status, updated_at)
+		 VALUES (?, ?, 'idle', CURRENT_TIMESTAMP)`,
+		repo, number)
+	if err != nil {
+		return nil, fmt.Errorf("ensure issue: %w", err)
+	}
+
+	// Optimistic lock: try to claim only if status = 'idle'.
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE issue_claims
+		    SET status = 'claimed', session_id = ?, claimed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		  WHERE repo_full_name = ? AND issue_number = ? AND status = 'idle'`,
+		sessionID, repo, number)
+	if err != nil {
+		return nil, fmt.Errorf("claim update: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		var claimedAt string
+		s.db.QueryRowContext(ctx,
+			`SELECT claimed_at FROM issue_claims WHERE repo_full_name = ? AND issue_number = ?`,
+			repo, number).Scan(&claimedAt)
+		return &ClaimResult{Success: true, Status: "claimed", ClaimedAt: &claimedAt}, nil
+	}
+
+	// Claim failed — check current state.
+	var curStatus string
+	var curSession sql.NullString
+	var curClaimedAt sql.NullString
+	err = s.db.QueryRowContext(ctx,
+		`SELECT status, session_id, claimed_at FROM issue_claims WHERE repo_full_name = ? AND issue_number = ?`,
+		repo, number).Scan(&curStatus, &curSession, &curClaimedAt)
+	if err != nil {
+		return nil, fmt.Errorf("query state: %w", err)
+	}
+
+	// Idempotent: same session already claimed it.
+	if curSession.Valid && curSession.String == sessionID {
+		result := &ClaimResult{Success: true, Status: curStatus}
+		if curClaimedAt.Valid {
+			result.ClaimedAt = &curClaimedAt.String
+		}
+		return result, nil
+	}
+
+	// Already claimed by another session or in terminal state.
+	result := &ClaimResult{Success: false, Status: curStatus}
+	if curSession.Valid {
+		result.ClaimedBy = &curSession.String
+	}
+	if curClaimedAt.Valid {
+		result.ClaimedAt = &curClaimedAt.String
+	}
+	return result, nil
+}
+
 func (s *sqliteIssueStore) ReleaseIssue(ctx context.Context, repo string, number int, sessionID string) (bool, error) {
 	// Check current owner.
 	var owner sql.NullString

@@ -22,6 +22,15 @@ type ReleaseIssueResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
+type ClaimIssueResponse struct {
+	Success   bool    `json:"success"`
+	Status    string  `json:"status,omitempty"`
+	ClaimedAt *string `json:"claimed_at,omitempty"`
+	Error     string  `json:"error,omitempty"`
+	ClaimedBy *string `json:"claimed_by,omitempty"`
+	Message   string  `json:"message,omitempty"`
+}
+
 type ReleaseSessionResponse struct {
 	Released []int `json:"released"`
 	Count    int   `json:"count"`
