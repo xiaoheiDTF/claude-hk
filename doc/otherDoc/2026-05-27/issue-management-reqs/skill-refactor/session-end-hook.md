@@ -56,8 +56,8 @@ release_session_issues
 
 ## 验收标准
 
-- [ ] session 正常结束时，领取的 issue 被自动释放
-- [ ] 已合并/打回的 issue 不被释放
-- [ ] 后端不可用时，hook 不报错、不卡住（5 秒超时）
-- [ ] 未配置 backend.conf 时，静默跳过
-- [ ] 无领取记录的 session 不报错
+- [x] session 正常结束时，领取的 issue 被自动释放
+- [x] 已合并/打回的 issue 不被释放
+- [x] 后端不可用时，hook 不报错、不卡住（5 秒超时）
+- [x] 未配置 backend.conf 时，静默跳过
+- [x] 无领取记录的 session 不报错
