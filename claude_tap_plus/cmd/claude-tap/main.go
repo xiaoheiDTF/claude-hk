@@ -30,6 +30,9 @@ func main() {
 		case "session-status":
 			runSessionStatus(os.Args[2:])
 			return
+		case "backend":
+			runBackend(os.Args[2:])
+			return
 		case "help", "--help", "-h":
 			printUsage()
 			return
