@@ -46,7 +46,7 @@ register_session() {
       \"os\":\"$os_type\",
       \"project_slug\":\"$project_slug\",
       \"project_cwd\":\"$cwd\",
-      \"trace_path\":\"$transcript_path\",
+      \"transcript_path\":\"$transcript_path\",
       \"model\":\"$model\",
       \"source\":\"$source\"
     }" > /dev/null 2>&1
@@ -77,7 +77,7 @@ Hook 通过 `check_proxy_active()` 检测 claude-tap-plus 代理是否在运行�
 | os | `platform.sh` 的 `$OS_TYPE` | `windows` |
 | project_slug | 从 transcript_path 解析 | `D--CodeDevelopment-CodeProject-claude-hk` |
 | project_cwd | `json_get '.cwd'` | `D:\CodeDevelopment\CodeProject\claude-hk` |
-| trace_path | `json_get '.transcript_path'` | 完整的 JSONL 文件路径 |
+| transcript_path | `json_get '.transcript_path'` | Claude Code 原始 JSONL 文件路径 |
 | model | `json_get '.model'` | `GLM-5.1` |
 | source | `json_get '.source'` | `startup` / `resume` |
 

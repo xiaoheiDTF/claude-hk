@@ -33,7 +33,8 @@
   "os": "windows",
   "project_slug": "D--CodeDevelopment-CodeProject-claude-hk",
   "project_cwd": "D:\\CodeDevelopment\\CodeProject\\claude-hk",
-  "trace_path": "C:\\Users\\Administrator\\.claude\\projects\\...",
+  "transcript_path": "C:\\Users\\Administrator\\.claude\\projects\\...",
+  "local_trace_path": ".claude-tap-plus/.traces/Administrator@DESKTOP-ABC123/D--CodeDevelopment-CodeProject-claude-hk/bf15cac4-...jsonl",
   "model": "GLM-5.1",
   "source": "startup"
 }
@@ -95,7 +96,8 @@ CREATE TABLE sessions (
     os              TEXT NOT NULL,
     project_slug    TEXT NOT NULL,
     project_cwd     TEXT NOT NULL,
-    trace_path      TEXT NOT NULL,
+    transcript_path  TEXT NOT NULL,
+    local_trace_path TEXT,
     model           TEXT,
     source          TEXT,
     status          TEXT NOT NULL DEFAULT 'active',
@@ -154,7 +156,8 @@ machines (1:N) ──→ sessions (N:1) ←── projects
 |------|-----|------|
 | POST /register | machines | INSERT OR IGNORE / UPDATE last_seen_at |
 | POST /register | projects | INSERT OR IGNORE / UPDATE last_seen_at |
-| POST /register | sessions | INSERT |
+| POST /register | sessions | INSERT（含 transcript_path） |
+| proxy 首次拦截 | sessions | UPDATE local_trace_path（构造路径） |
 | POST /close | sessions | UPDATE status, closed_at, close_reason |
 
 ## 项目结构建议

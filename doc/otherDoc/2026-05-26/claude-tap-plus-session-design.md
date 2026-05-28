@@ -148,7 +148,8 @@ project_id = "{hostname}/{project_slug}"
     "os": "windows",
     "project_slug": "D--CodeDevelopment-CodeProject-claude-hk",
     "project_cwd": "D:\\CodeDevelopment\\CodeProject\\claude-hk",
-    "trace_path": "C:\\Users\\Administrator\\.claude\\projects\\D--CodeDevelopment-CodeProject-claude-hk\\bf15cac4-7235-48ce-8853-5d4598547f31.jsonl",
+    "transcript_path": "C:\\Users\\Administrator\\.claude\\projects\\D--CodeDevelopment-CodeProject-claude-hk\\bf15cac4-7235-48ce-8853-5d4598547f31.jsonl",
+    "local_trace_path": ".claude-tap-plus/.traces/Administrator@DESKTOP-ABC123/D--CodeDevelopment-CodeProject-claude-hk/bf15cac4-7235-48ce-8853-5d4598547f31.jsonl",
     "model": "GLM-5.1",
     "registered_at": "2026-05-26T21:06:16Z",
     "closed_at": null,
@@ -157,13 +158,14 @@ project_id = "{hostname}/{project_slug}"
 }
 ```
 
-> **注**：`trace_path` 字段存储 Claude Code 原始 `transcript_path`，便于溯源；本地重组后的 trace 路径由代理内部管理，不发送到后端。
+> **注**：`transcript_path` 字段存储 Claude Code hook 提供的原始 `transcript_path`；`local_trace_path` 存储 proxy 本地 trace 文件路径，由代理首次拦截该 session 的 API 调用时构造写入。
 
 ### 写入时机
 
 | 时机 | 动作 | 写什么 |
 |------|------|--------|
-| SessionStart | 注册 | session_id、machine_id、os、project_slug、project_cwd、trace_path、model |
+| SessionStart | 注册 | session_id、machine_id、os、project_slug、project_cwd、transcript_path、model |
+| proxy 首次拦截 | 更新 local_trace_path | 构造 `.claude-tap-plus/.traces/{machine_id}/{project_slug}/{session_id}.jsonl` |
 | SessionEnd | 注销 | 关闭时间、退出原因 |
 
 ---
@@ -285,7 +287,7 @@ register_session() {
       \"os\":\"$os_type\",
       \"project_slug\":\"$project_slug\",
       \"project_cwd\":\"$cwd\",
-      \"trace_path\":\"$transcript_path\",
+      \"transcript_path\":\"$transcript_path\",
       \"model\":\"$model\",
       \"source\":\"$source\"
     }" > /dev/null 2>&1
@@ -467,7 +469,8 @@ CREATE TABLE sessions (
     os              TEXT NOT NULL,                  -- windows/linux/macos，platform.sh
     project_slug    TEXT NOT NULL,                  -- 从 transcript_path 解析
     project_cwd     TEXT NOT NULL,                  -- SessionStart 的 cwd 字段
-    trace_path      TEXT NOT NULL,                  -- transcript_path（Claude Code 的原始路径）
+    transcript_path  TEXT NOT NULL,                  -- Claude Code hook 提供的 transcript_path
+    local_trace_path TEXT,                           -- proxy 本地 trace 文件路径（代理写入时构造）
     model           TEXT,                           -- SessionStart 的 model 字段
     source          TEXT,                           -- startup/resume，SessionStart 的 source
     status          TEXT NOT NULL DEFAULT 'active', -- active / closed
@@ -492,7 +495,8 @@ CREATE INDEX idx_sessions_registered ON sessions(registered_at);
 | os | platform.sh | `uname -s` 已解析为 OS_TYPE |
 | project_slug | transcript_path | `sed` 从路径中提取 |
 | project_cwd | SessionStart | `json_get '.cwd'` |
-| trace_path | SessionStart | `json_get '.transcript_path'`（直接用 Claude Code 的路径） |
+| transcript_path | SessionStart | `json_get '.transcript_path'`（Claude Code hook 原始字段） |
+| local_trace_path | proxy 写入时构造 | `.claude-tap-plus/.traces/{machine_id}/{project_slug}/{session_id}.jsonl` |
 | model | SessionStart | `json_get '.model'` |
 | source | SessionStart | `json_get '.source'` |
 | close_reason | SessionEnd | `json_get '.reason'` |
@@ -540,7 +544,10 @@ CREATE INDEX idx_projects_slug ON projects(project_slug);
 │ machine_id  │◄──────│ machine_id  │       │ project_slug│◄──┐
 │ os          │  1:N  │ project_slug│──────►│ project_cwd │   │
 │ hostname    │       │ session_id  │  N:1  │ first_seen  │   │
-│ username    │       │ trace_path  │       │ last_seen   │   │
+│ username    │       │transcript_  │       │ last_seen   │   │
+│             │       │  path       │       │             │   │
+│             │       │local_trace_ │       │             │   │
+│             │       │  path       │       │             │   │
 │ first_seen  │       │ status      │       └─────────────┘   │
 │ last_seen   │       │ registered  │                         │
 └─────────────┘       │ closed_at   │                         │
@@ -643,7 +650,7 @@ WHERE s.session_id = ?;
 - [ ] 代理未运行时（`.proxy.json` 不存在或 PID 已死），启动无报错，不发送请求
 - [ ] backend.conf 未配置时，启动无报错，不发送请求
 - [ ] 后端不可达时，启动无报错，curl 静默失败
-- [ ] 注册请求包含全部 8 个字段（session_id / machine_id / os / project_slug / project_cwd / trace_path / model / source）
+- [ ] 注册请求包含全部 8 个字段（session_id / machine_id / os / project_slug / project_cwd / transcript_path / model / source）
 - [ ] `source` 正确区分 `startup` 和 `resume`
 - [ ] machines 表和 projects 表自动 INSERT OR IGNORE，`last_seen_at` 更新
 

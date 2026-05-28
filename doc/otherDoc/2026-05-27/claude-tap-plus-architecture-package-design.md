@@ -47,7 +47,7 @@ internal/proxy -> internal/trace -> local JSONL trace files
 1. `proxy` 链路：继续负责 Claude API 代理、SSE 重组、usage 统计、trace JSONL 写入。
 2. `backend` 链路：新增 HTTP 服务，负责 Session 元数据和 Issue 协作状态。
 
-两条链路共享配置、路径解析、领域模型中的少量通用能力，但不互相耦合。后端不读取或写入完整 trace 内容，只保存 `trace_path`。
+两条链路共享配置、路径解析、领域模型中的少量通用能力，但不互相耦合。后端不读取或写入完整 trace 内容，只保存 `transcript_path`（Claude Code 原生路径）和 `local_trace_path`（proxy 本地 trace 路径）。
 
 ## CLI 入口设计
 
@@ -310,7 +310,7 @@ idx_issue_claims_status
 
 保持当前职责：trace 路径生成和 JSONL 写入。
 
-需要为 SR-1 调整路径时，优先在 `trace` 包内部完成。后端只接收最终 `trace_path` 字符串。
+需要为 SR-1 调整路径时，优先在 `trace` 包内部完成。后端只接收最终 `transcript_path` 和 `local_trace_path` 字符串。
 
 ### `internal/session`
 
