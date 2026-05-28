@@ -130,10 +130,10 @@ release_session_issues
 
 ## 验收标准
 
-- [ ] 单个释放：领取者可释放自己的 issue
-- [ ] 单个释放：非领取者无法释放（返回 not_owner）
-- [ ] 单个释放：merged/rejected 状态的 issue 不被释放
-- [ ] 批量释放：释放该 session 所有未终态的 issue
-- [ ] 批量释放：已合并/打回的 issue 不受影响
-- [ ] 批量释放：无领取记录的 session 返回空列表
+- [x] 单个释放：领取者可释放自己的 issue
+- [x] 单个释放：非领取者无法释放（返回 not_owner）
+- [x] 单个释放：merged/rejected 状态的 issue 不被释放
+- [x] 批量释放：释放该 session 所有未终态的 issue
+- [x] 批量释放：已合并/打回的 issue 不受影响
+- [x] 批量释放：无领取记录的 session 返回空列表
 - [ ] （可选）claim 超时自动释放机制
