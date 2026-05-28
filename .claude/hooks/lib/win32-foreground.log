@@ -1292,3 +1292,67 @@
 [2026-05-27 23:24:17] SUCCESS: Window is now foreground!
 [2026-05-27 23:24:19] Foreground lock timeout restored to 0
 [2026-05-27 23:24:19] === done ===
+[2026-05-27 23:26:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-27 23:26:56] Target: WindowsTerminal.exe PID=9848 hwnd=263172 title='? Design Go package structure with hooks'
+[2026-05-27 23:26:56] Current foreground lock timeout: 0
+[2026-05-27 23:26:56] Disable foreground lock: True
+[2026-05-27 23:26:56] COM AppActivate(title)=True
+[2026-05-27 23:26:56] SetForeground=True BringToTop=True
+[2026-05-27 23:26:56] SUCCESS: Window is now foreground!
+[2026-05-27 23:26:58] Foreground lock timeout restored to 0
+[2026-05-27 23:26:59] === done ===
+[2026-05-28 21:14:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:14:15] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:14:15] Current foreground lock timeout: 0
+[2026-05-28 21:14:15] Disable foreground lock: True
+[2026-05-28 21:14:15] COM AppActivate(title)=False
+[2026-05-28 21:14:15] COM AppActivate(name)=False
+[2026-05-28 21:14:15] SetForeground=True BringToTop=True
+[2026-05-28 21:14:15] SUCCESS: Window is now foreground!
+[2026-05-28 21:14:17] Foreground lock timeout restored to 0
+[2026-05-28 21:14:17] === done ===
+[2026-05-28 21:28:49] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:28:50] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:28:50] Current foreground lock timeout: 0
+[2026-05-28 21:28:50] Disable foreground lock: True
+[2026-05-28 21:28:50] COM AppActivate(title)=True
+[2026-05-28 21:28:50] SetForeground=True BringToTop=True
+[2026-05-28 21:28:50] SUCCESS: Window is now foreground!
+[2026-05-28 21:28:52] Foreground lock timeout restored to 0
+[2026-05-28 21:28:52] === done ===
+[2026-05-28 21:36:20] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:36:21] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:36:21] Current foreground lock timeout: 0
+[2026-05-28 21:36:21] Disable foreground lock: True
+[2026-05-28 21:36:21] COM AppActivate(title)=True
+[2026-05-28 21:36:21] SetForeground=True BringToTop=True
+[2026-05-28 21:36:21] SUCCESS: Window is now foreground!
+[2026-05-28 21:36:24] Foreground lock timeout restored to 0
+[2026-05-28 21:36:24] === done ===
+[2026-05-28 21:43:57] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:43:57] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:43:57] Current foreground lock timeout: 0
+[2026-05-28 21:43:57] Disable foreground lock: True
+[2026-05-28 21:43:57] COM AppActivate(title)=True
+[2026-05-28 21:43:57] SetForeground=True BringToTop=True
+[2026-05-28 21:43:57] SUCCESS: Window is now foreground!
+[2026-05-28 21:44:00] Foreground lock timeout restored to 0
+[2026-05-28 21:44:00] === done ===
+[2026-05-28 21:50:51] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:50:52] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:50:52] Current foreground lock timeout: 0
+[2026-05-28 21:50:52] Disable foreground lock: True
+[2026-05-28 21:50:52] COM AppActivate(title)=True
+[2026-05-28 21:50:52] SetForeground=True BringToTop=True
+[2026-05-28 21:50:52] SUCCESS: Window is now foreground!
+[2026-05-28 21:50:54] Foreground lock timeout restored to 0
+[2026-05-28 21:50:54] === done ===
+[2026-05-28 21:52:21] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 21:52:22] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Generate database tables document'
+[2026-05-28 21:52:22] Current foreground lock timeout: 0
+[2026-05-28 21:52:22] Disable foreground lock: True
+[2026-05-28 21:52:22] COM AppActivate(title)=True
+[2026-05-28 21:52:22] SetForeground=True BringToTop=True
+[2026-05-28 21:52:22] SUCCESS: Window is now foreground!
+[2026-05-28 21:52:24] Foreground lock timeout restored to 0
+[2026-05-28 21:52:24] === done ===
