@@ -87,9 +87,9 @@ echo "$gh_issues" | jq --argjson idle "$idle_numbers" '[.[] | select(.number | I
 
 ## 验收标准
 
-- [ ] 传入多个 issue 编号，返回每个的状态
-- [ ] 首次出现的 issue 自动创建记录，状态为 idle
-- [ ] 已被领取的 issue 返回 claimed 及 session_id
-- [ ] 已合并的 issue 返回 merged
-- [ ] 参数缺失时返回错误响应
-- [ ] 空 issue_numbers 数组返回空列表
+- [x] 传入多个 issue 编号，返回每个的状态
+- [x] 首次出现的 issue 自动创建记录，状态为 idle
+- [x] 已被领取的 issue 返回 claimed 及 session_id
+- [x] 已合并的 issue 返回 merged
+- [x] 参数缺失时返回错误响应
+- [x] 空 issue_numbers 数组返回空列表
