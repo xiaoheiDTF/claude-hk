@@ -58,3 +58,66 @@ func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, CheckIssuesResponse{Issues: items})
 }
+
+func (h *IssueHandler) ReleaseIssue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		return
+	}
+
+	var req ReleaseIssueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return
+	}
+
+	if req.RepoFullName == "" || req.IssueNumber == 0 || req.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "repo_full_name, issue_number and session_id are required")
+		return
+	}
+
+	released, err := h.svc.Release(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to release issue")
+		return
+	}
+
+	if !released {
+		writeJSON(w, http.StatusOK, ReleaseIssueResponse{Success: false, Error: "not_owner"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ReleaseIssueResponse{Success: true, Released: boolPtr(true)})
+}
+
+func (h *IssueHandler) ReleaseSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		return
+	}
+
+	var req ReleaseSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return
+	}
+
+	if req.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "session_id is required")
+		return
+	}
+
+	numbers, err := h.svc.ReleaseSession(r.Context(), req.SessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to release session issues")
+		return
+	}
+
+	if numbers == nil {
+		numbers = []int{}
+	}
+
+	writeJSON(w, http.StatusOK, ReleaseSessionResponse{Released: numbers, Count: len(numbers)})
+}
+
+func boolPtr(b bool) *bool { return &b }

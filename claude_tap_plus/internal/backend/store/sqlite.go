@@ -35,4 +35,5 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 }
 
 func (s *SQLiteStore) Issues() IssueStore  { return s.issueStore }
+func (s *SQLiteStore) DB() *sql.DB         { return s.db }
 func (s *SQLiteStore) Close() error        { return s.db.Close() }

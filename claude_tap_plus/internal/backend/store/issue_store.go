@@ -70,3 +70,75 @@ func (s *sqliteIssueStore) CheckIssues(ctx context.Context, repo string, numbers
 	}
 	return results, rows.Err()
 }
+
+func (s *sqliteIssueStore) ReleaseIssue(ctx context.Context, repo string, number int, sessionID string) (bool, error) {
+	// Check current owner.
+	var owner sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		`SELECT session_id FROM issue_claims WHERE repo_full_name = ? AND issue_number = ?`,
+		repo, number,
+	).Scan(&owner)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("query owner: %w", err)
+	}
+	if !owner.Valid || owner.String != sessionID {
+		return false, nil
+	}
+
+	// Release: only non-terminal statuses.
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE issue_claims
+		    SET status = 'idle', session_id = NULL, claimed_at = NULL, updated_at = CURRENT_TIMESTAMP
+		  WHERE repo_full_name = ? AND issue_number = ? AND session_id = ?
+		    AND status NOT IN ('merged', 'rejected')`,
+		repo, number, sessionID,
+	)
+	if err != nil {
+		return false, fmt.Errorf("update: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+func (s *sqliteIssueStore) ReleaseSessionIssues(ctx context.Context, sessionID string) ([]int, error) {
+	// Collect issue numbers that will be released.
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT issue_number FROM issue_claims
+		  WHERE session_id = ? AND status NOT IN ('merged', 'rejected')`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query session issues: %w", err)
+	}
+
+	var numbers []int
+	for rows.Next() {
+		var n int
+		if err := rows.Scan(&n); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		numbers = append(numbers, n)
+	}
+	rows.Close()
+
+	if len(numbers) == 0 {
+		return nil, nil
+	}
+
+	// Batch update.
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE issue_claims
+		    SET status = 'idle', session_id = NULL, claimed_at = NULL, updated_at = CURRENT_TIMESTAMP
+		  WHERE session_id = ? AND status NOT IN ('merged', 'rejected')`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch release: %w", err)
+	}
+
+	return numbers, nil
+}

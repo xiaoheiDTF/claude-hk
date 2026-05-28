@@ -16,6 +16,17 @@ type IssueStatusItem struct {
 	ClaimedAt *string `json:"claimed_at"`
 }
 
+type ReleaseIssueResponse struct {
+	Success  bool   `json:"success"`
+	Released *bool  `json:"released,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+type ReleaseSessionResponse struct {
+	Released []int `json:"released"`
+	Count    int   `json:"count"`
+}
+
 type APIError struct {
 	Code    string `json:"error"`
 	Message string `json:"message"`

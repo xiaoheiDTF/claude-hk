@@ -17,3 +17,11 @@ func NewIssueService(s store.IssueStore) *IssueService {
 func (svc *IssueService) Check(ctx context.Context, repo string, numbers []int) ([]store.IssueCheckResult, error) {
 	return svc.store.CheckIssues(ctx, repo, numbers)
 }
+
+func (svc *IssueService) Release(ctx context.Context, repo string, number int, sessionID string) (bool, error) {
+	return svc.store.ReleaseIssue(ctx, repo, number, sessionID)
+}
+
+func (svc *IssueService) ReleaseSession(ctx context.Context, sessionID string) ([]int, error) {
+	return svc.store.ReleaseSessionIssues(ctx, sessionID)
+}
