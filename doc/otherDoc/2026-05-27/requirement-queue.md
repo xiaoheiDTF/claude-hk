@@ -11,7 +11,7 @@
 1. B2: 批量状态查询 API ✅
 2. B5: 释放机制 API ✅
 3. B6-3: SessionEnd Hook 改造 ✅
-4. claude-tap-plus 会话管理 — 子需求拆分总览
+4. claude-tap-plus 会话管理 — 子需求拆分总览 ✅
 5. D1: 003-4-issue-claim 改造
 6. D2: 003-5-issue-fix 改造
 7. D3: 003-6-issue-done 改造
