@@ -1446,3 +1446,30 @@
 [2026-05-28 22:56:42] SUCCESS: Window is now foreground!
 [2026-05-28 22:56:44] Foreground lock timeout restored to 0
 [2026-05-28 22:56:44] === done ===
+[2026-05-28 23:03:09] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 23:03:10] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Implement batch status query API'
+[2026-05-28 23:03:10] Current foreground lock timeout: 0
+[2026-05-28 23:03:10] Disable foreground lock: True
+[2026-05-28 23:03:10] COM AppActivate(title)=True
+[2026-05-28 23:03:10] SetForeground=True BringToTop=True
+[2026-05-28 23:03:10] SUCCESS: Window is now foreground!
+[2026-05-28 23:03:13] Foreground lock timeout restored to 0
+[2026-05-28 23:03:13] === done ===
+[2026-05-28 23:15:47] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 23:15:47] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Implement batch status query API'
+[2026-05-28 23:15:47] Current foreground lock timeout: 0
+[2026-05-28 23:15:47] Disable foreground lock: True
+[2026-05-28 23:15:47] COM AppActivate(title)=True
+[2026-05-28 23:15:47] SetForeground=True BringToTop=True
+[2026-05-28 23:15:48] SUCCESS: Window is now foreground!
+[2026-05-28 23:15:50] Foreground lock timeout restored to 0
+[2026-05-28 23:15:50] === done ===
+[2026-05-28 23:24:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-28 23:24:29] Target: WindowsTerminal.exe PID=7012 hwnd=66758 title='? Implement batch status query API'
+[2026-05-28 23:24:29] Current foreground lock timeout: 0
+[2026-05-28 23:24:29] Disable foreground lock: True
+[2026-05-28 23:24:29] COM AppActivate(title)=True
+[2026-05-28 23:24:29] SetForeground=True BringToTop=True
+[2026-05-28 23:24:29] SUCCESS: Window is now foreground!
+[2026-05-28 23:24:32] Foreground lock timeout restored to 0
+[2026-05-28 23:24:32] === done ===
