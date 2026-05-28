@@ -84,6 +84,30 @@ func seedIssue(db *sql.DB, repo string, number int, status, sessionID, claimedAt
 	)
 }
 
+// claimIssue calls the claim API and returns (statusCode, success, claimed_by).
+func claimIssue(t *testing.T, e *env, repo string, number int, sessionID string) (int, bool, string) {
+	t.Helper()
+
+	body := fmt.Sprintf(
+		`{"repo_full_name":"%s","issue_number":%d,"session_id":"%s"}`,
+		repo, number, sessionID)
+	resp := e.post(t, "/api/issue/claim", body)
+
+	var result struct {
+		Success   bool    `json:"success"`
+		Error     string  `json:"error"`
+		ClaimedBy *string `json:"claimed_by"`
+		Status    string  `json:"status"`
+	}
+	readJSON(t, resp, &result)
+
+	claimedBy := ""
+	if result.ClaimedBy != nil {
+		claimedBy = *result.ClaimedBy
+	}
+	return resp.StatusCode, result.Success, claimedBy
+}
+
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil
@@ -305,6 +329,137 @@ func TestSessionEndHook(t *testing.T) {
 		statuses = checkStatuses(t, e, "test/repo", []int{20})
 		if statuses[20] != "idle" {
 			t.Fatalf("step 4: expected idle after release, got %s", statuses[20])
+		}
+	})
+}
+
+// --- B3: Claim API 集成测试 ---
+// 验收标准：
+//   - 空闲 issue 可被成功领取
+//   - 已被其他 session 领取的 issue 返回 already_claimed
+//   - 同一 session 重复领取同一 issue 返回成功（幂等）
+//   - 已合并/打回的 issue 不可领取
+//   - 首次出现的 issue 自动创建记录后领取
+//   - 并发领取时只有一个成功（原子性）
+
+func TestClaimAPI(t *testing.T) {
+	t.Run("claim_idle_issue_success", func(t *testing.T) {
+		// 验收：空闲 issue 可被成功领取
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "test/repo", 10, "idle", "", "")
+
+		code, success, _ := claimIssue(t, e, "test/repo", 10, "sess_a")
+		if code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", code)
+		}
+		if !success {
+			t.Fatal("expected success=true")
+		}
+
+		statuses := checkStatuses(t, e, "test/repo", []int{10})
+		if statuses[10] != "claimed" {
+			t.Errorf("expected claimed, got %s", statuses[10])
+		}
+	})
+
+	t.Run("claim_already_claimed_by_other", func(t *testing.T) {
+		// 验收：已被其他 session 领取的 issue 返回 already_claimed
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "test/repo", 10, "claimed", "sess_a", "2026-05-26T10:00:00Z")
+
+		code, success, claimedBy := claimIssue(t, e, "test/repo", 10, "sess_b")
+		if code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d", code)
+		}
+		if success {
+			t.Fatal("expected success=false")
+		}
+		if claimedBy != "sess_a" {
+			t.Errorf("expected claimed_by=sess_a, got %s", claimedBy)
+		}
+	})
+
+	t.Run("claim_idempotent_same_session", func(t *testing.T) {
+		// 验收：同一 session 重复领取同一 issue 返回成功（幂等）
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "test/repo", 10, "idle", "", "")
+
+		code1, ok1, _ := claimIssue(t, e, "test/repo", 10, "sess_a")
+		if code1 != http.StatusOK || !ok1 {
+			t.Fatalf("first claim should succeed: code=%d ok=%v", code1, ok1)
+		}
+
+		code2, ok2, _ := claimIssue(t, e, "test/repo", 10, "sess_a")
+		if code2 != http.StatusOK || !ok2 {
+			t.Fatalf("idempotent claim should succeed: code=%d ok=%v", code2, ok2)
+		}
+	})
+
+	t.Run("claim_merged_rejected_blocked", func(t *testing.T) {
+		// 验收：已合并/打回的 issue 不可领取
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "test/repo", 10, "merged", "sess_old", "2026-05-26T10:00:00Z")
+		seedIssue(db, "test/repo", 11, "rejected", "sess_old", "2026-05-26T10:00:00Z")
+
+		code10, ok10, _ := claimIssue(t, e, "test/repo", 10, "sess_new")
+		if code10 != http.StatusConflict || ok10 {
+			t.Errorf("merged issue should not be claimable: code=%d ok=%v", code10, ok10)
+		}
+
+		code11, ok11, _ := claimIssue(t, e, "test/repo", 11, "sess_new")
+		if code11 != http.StatusConflict || ok11 {
+			t.Errorf("rejected issue should not be claimable: code=%d ok=%v", code11, ok11)
+		}
+	})
+
+	t.Run("claim_new_issue_auto_create", func(t *testing.T) {
+		// 验收：首次出现的 issue 自动创建记录后领取
+		e := setup(t)
+
+		code, success, _ := claimIssue(t, e, "test/repo", 99, "sess_new")
+		if code != http.StatusOK || !success {
+			t.Fatalf("first-time claim should succeed: code=%d ok=%v", code, success)
+		}
+
+		statuses := checkStatuses(t, e, "test/repo", []int{99})
+		if statuses[99] != "claimed" {
+			t.Errorf("expected claimed, got %s", statuses[99])
+		}
+	})
+
+	t.Run("claim_missing_params_returns_error", func(t *testing.T) {
+		// 补充：缺少必填参数时返回 400
+		e := setup(t)
+
+		resp := e.post(t, "/api/issue/claim", `{"repo_full_name":"test/repo","issue_number":10}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("claim_after_release_succeeds", func(t *testing.T) {
+		// 补充：issue 被释放后可被重新领取
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "test/repo", 10, "claimed", "sess_a", "2026-05-26T10:00:00Z")
+
+		// 释放
+		e.post(t, "/api/issue/release",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_a"}`)
+
+		// 新 session 领取
+		code, success, _ := claimIssue(t, e, "test/repo", 10, "sess_b")
+		if code != http.StatusOK || !success {
+			t.Fatalf("claim after release should succeed: code=%d ok=%v", code, success)
 		}
 	})
 }
