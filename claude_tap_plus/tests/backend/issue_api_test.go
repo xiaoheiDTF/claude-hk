@@ -2,6 +2,7 @@ package backend_test
 
 import (
 	"database/sql"
+	"fmt"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -699,6 +700,372 @@ func TestReleaseSession(t *testing.T) {
 
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// --- D2: Issue Status Update tests ---
+// POST /api/issue/status — 更新 issue 状态（D2-D6 使用）
+// 验收标准：
+//   - 领取者可将 issue 状态从 claimed 更新为 fixing
+//   - 非 owner session 无法更新状态
+//   - 不存在的 issue 返回 not_found
+//   - 参数缺失时返回 400
+//   - 同一状态幂等更新返回成功
+//   - 完整流程：claim → fixing 验证状态正确流转
+
+func TestUpdateStatus(t *testing.T) {
+	t.Run("owner_can_update_to_fixing", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "claimed", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"fixing"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+			Error          string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if !result.Success {
+			t.Fatalf("expected success=true, got false (error: %s)", result.Error)
+		}
+		if result.PreviousStatus != "claimed" {
+			t.Errorf("expected previous_status=claimed, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "fixing" {
+			t.Errorf("expected new_status=fixing, got %s", result.NewStatus)
+		}
+
+		statuses := checkStatuses(t, env, "test/repo", []int{10})
+		if statuses[10] != "fixing" {
+			t.Errorf("expected fixing after update, got %s", statuses[10])
+		}
+	})
+
+	t.Run("non_owner_cannot_update", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "claimed", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_other","status":"fixing"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			Error          string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for non-owner")
+		}
+		if result.Error != "not_owner" {
+			t.Errorf("expected error=not_owner, got %s", result.Error)
+		}
+
+		statuses := checkStatuses(t, env, "test/repo", []int{10})
+		if statuses[10] != "claimed" {
+			t.Errorf("expected status unchanged (claimed), got %s", statuses[10])
+		}
+	})
+
+	t.Run("nonexistent_issue_returns_not_found", func(t *testing.T) {
+		env := setupTest(t)
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":999,"session_id":"sess_abc","status":"fixing"}`)
+
+		var result struct {
+			Success bool   `json:"success"`
+			Error   string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for nonexistent issue")
+		}
+		if result.Error != "not_found" {
+			t.Errorf("expected error=not_found, got %s", result.Error)
+		}
+	})
+
+	t.Run("missing_params_returns_400", func(t *testing.T) {
+		env := setupTest(t)
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc"}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400 missing status, got %d", resp.StatusCode)
+		}
+
+		resp = env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"status":"fixing"}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400 missing session_id, got %d", resp.StatusCode)
+		}
+
+		resp = env.post(t, "/api/issue/status",
+			`{"issue_number":10,"session_id":"sess_abc","status":"fixing"}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400 missing repo, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("idempotent_same_status", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "claimed", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"fixing"}`)
+		var r1 struct{ Success bool `json:"success"` }
+		readJSON(t, resp, &r1)
+		if !r1.Success {
+			t.Fatal("first update should succeed")
+		}
+
+		resp = env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"fixing"}`)
+		var r2 struct {
+			Success   bool   `json:"success"`
+			NewStatus string `json:"new_status"`
+		}
+		readJSON(t, resp, &r2)
+		if !r2.Success {
+			t.Fatal("idempotent update should succeed")
+		}
+		if r2.NewStatus != "fixing" {
+			t.Errorf("expected new_status=fixing, got %s", r2.NewStatus)
+		}
+	})
+
+	t.Run("full_claim_to_fix_flow", func(t *testing.T) {
+		env := setupTest(t)
+
+		// 1. check 创建 idle
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[20]}`)
+		s := checkStatuses(t, env, "test/repo", []int{20})
+		if s[20] != "idle" {
+			t.Fatalf("step 1: expected idle, got %s", s[20])
+		}
+
+		// 2. claim
+		code, ok, _ := claimIssue(t, env, "test/repo", 20, "sess_fix")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("step 2: claim failed")
+		}
+		s = checkStatuses(t, env, "test/repo", []int{20})
+		if s[20] != "claimed" {
+			t.Fatalf("step 2: expected claimed, got %s", s[20])
+		}
+
+		// 3. 标记 fixing
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":20,"session_id":"sess_fix","status":"fixing"}`)
+		var r struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &r)
+		if !r.Success {
+			t.Fatal("step 3: update to fixing failed")
+		}
+		if r.PreviousStatus != "claimed" {
+			t.Errorf("step 3: expected previous=claimed, got %s", r.PreviousStatus)
+		}
+
+		// 4. 验证最终状态
+		s = checkStatuses(t, env, "test/repo", []int{20})
+		if s[20] != "fixing" {
+			t.Fatalf("step 4: expected fixing, got %s", s[20])
+		}
+	})
+
+	t.Run("method_not_allowed", func(t *testing.T) {
+		env := setupTest(t)
+
+		resp, err := http.Get(env.srv.URL + "/api/issue/status")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Fatalf("expected 405, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// claimIssue calls the claim API and returns (statusCode, success, claimed_by).
+func claimIssue(t *testing.T, env *testEnv, repo string, number int, sessionID string) (int, bool, string) {
+	t.Helper()
+
+	body := fmt.Sprintf(
+		`{"repo_full_name":"%s","issue_number":%d,"session_id":"%s"}`,
+		repo, number, sessionID)
+	resp := env.post(t, "/api/issue/claim", body)
+
+	var result struct {
+		Success   bool    `json:"success"`
+		Error     string  `json:"error"`
+		ClaimedBy *string `json:"claimed_by"`
+		Status    string  `json:"status"`
+	}
+	readJSON(t, resp, &result)
+
+	claimedBy := ""
+	if result.ClaimedBy != nil {
+		claimedBy = *result.ClaimedBy
+	}
+	return resp.StatusCode, result.Success, claimedBy
+}
+
+// checkStatuses queries the check API and returns a map of issue_number → status.
+func checkStatuses(t *testing.T, env *testEnv, repo string, numbers []int) map[int]string {
+	t.Helper()
+
+	nums := make([]string, len(numbers))
+	for i, n := range numbers {
+		nums[i] = fmt.Sprintf("%d", n)
+	}
+
+	body := `{"repo_full_name":"` + repo + `","issue_numbers":[` + strings.Join(nums, ",") + `]}`
+	resp := env.post(t, "/api/issue/check", body)
+
+	var result struct {
+		Issues []struct {
+			Number int    `json:"number"`
+			Status string `json:"status"`
+		} `json:"issues"`
+	}
+	readJSON(t, resp, &result)
+
+	m := map[int]string{}
+	for _, iss := range result.Issues {
+		m[iss.Number] = iss.Status
+	}
+	return m
+}
+
+// --- D3: Issue Status Update → ready-for-pr tests ---
+// 验收标准：
+//   - fixing → ready-for-pr 状态更新成功
+//   - 非 owner 无法更新
+//   - 完整流程：claimed → fixing → ready-for-pr
+
+func TestUpdateStatus_ReadyForPR(t *testing.T) {
+	t.Run("fixing_to_ready_for_pr", func(t *testing.T) {
+		// D3 验收：fixing 状态可更新为 ready-for-pr
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "fixing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"ready-for-pr"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if !result.Success {
+			t.Fatal("expected success=true")
+		}
+		if result.PreviousStatus != "fixing" {
+			t.Errorf("expected previous=fixing, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "ready-for-pr" {
+			t.Errorf("expected new=ready-for-pr, got %s", result.NewStatus)
+		}
+
+		statuses := checkStatuses(t, env, "test/repo", []int{10})
+		if statuses[10] != "ready-for-pr" {
+			t.Errorf("expected ready-for-pr, got %s", statuses[10])
+		}
+	})
+
+	t.Run("non_owner_cannot_mark_ready", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "fixing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_other","status":"ready-for-pr"}`)
+
+		var result struct {
+			Success bool   `json:"success"`
+			Error   string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for non-owner")
+		}
+		if result.Error != "not_owner" {
+			t.Errorf("expected not_owner, got %s", result.Error)
+		}
+	})
+
+	t.Run("full_claim_fix_done_flow", func(t *testing.T) {
+		// 端到端：idle → claimed → fixing → ready-for-pr
+		env := setupTest(t)
+
+		// 1. idle
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[30]}`)
+		s := checkStatuses(t, env, "test/repo", []int{30})
+		if s[30] != "idle" {
+			t.Fatalf("step 1: expected idle, got %s", s[30])
+		}
+
+		// 2. claim
+		code, ok, _ := claimIssue(t, env, "test/repo", 30, "sess_done")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("step 2: claim failed")
+		}
+
+		// 3. fixing
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":30,"session_id":"sess_done","status":"fixing"}`)
+		s = checkStatuses(t, env, "test/repo", []int{30})
+		if s[30] != "fixing" {
+			t.Fatalf("step 3: expected fixing, got %s", s[30])
+		}
+
+		// 4. ready-for-pr
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":30,"session_id":"sess_done","status":"ready-for-pr"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("step 4: ready-for-pr update failed")
+		}
+		if result.PreviousStatus != "fixing" {
+			t.Errorf("step 4: expected previous=fixing, got %s", result.PreviousStatus)
+		}
+
+		// 5. 验证最终状态
+		s = checkStatuses(t, env, "test/repo", []int{30})
+		if s[30] != "ready-for-pr" {
+			t.Fatalf("step 5: expected ready-for-pr, got %s", s[30])
 		}
 	})
 }
