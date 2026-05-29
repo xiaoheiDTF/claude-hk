@@ -733,3 +733,97 @@ func TestIssueDoneFlow(t *testing.T) {
 		}
 	})
 }
+
+// --- D4: 003-7-issue-pr 技能集成测试 ---
+// 验收标准：
+//   - ready-for-pr → pr-created 状态更新
+//   - pr-created 状态在 session end 时被释放
+//   - 完整技能流程：claim → fixing → ready-for-pr → pr-created
+
+func TestIssuePRFlow(t *testing.T) {
+	t.Run("ready_for_pr_to_pr_created", func(t *testing.T) {
+		e := setup(t)
+
+		// claim → fixing → ready-for-pr → pr-created
+		claimIssue(t, e, "xiaoheiDTF/claude-hk", 30, "sess_pr_001")
+		e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":30,"session_id":"sess_pr_001","status":"fixing"}`)
+		e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":30,"session_id":"sess_pr_001","status":"ready-for-pr"}`)
+
+		resp := e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":30,"session_id":"sess_pr_001","status":"pr-created"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("pr-created update failed")
+		}
+		if result.PreviousStatus != "ready-for-pr" {
+			t.Errorf("expected previous=ready-for-pr, got %s", result.PreviousStatus)
+		}
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{30})
+		if s[30] != "pr-created" {
+			t.Fatalf("expected pr-created, got %s", s[30])
+		}
+	})
+
+	t.Run("pr_created_released_on_session_end", func(t *testing.T) {
+		e := setup(t)
+		db := e.store.DB()
+		seedIssue(db, "xiaoheiDTF/claude-hk", 10, "pr-created", "sess_pr_end", "2026-05-27T10:00:00Z")
+
+		resp := e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_pr_end"}`)
+		var rel struct{ Count int `json:"count"` }
+		readJSON(t, resp, &rel)
+		if rel.Count != 1 {
+			t.Fatalf("expected 1 released, got %d", rel.Count)
+		}
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{10})
+		if s[10] != "idle" {
+			t.Errorf("expected idle after session end, got %s", s[10])
+		}
+	})
+
+	t.Run("full_lifecycle_to_pr_created", func(t *testing.T) {
+		e := setup(t)
+
+		// idle
+		e.post(t, "/api/issue/check",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_numbers":[35]}`)
+
+		// claim → fixing → ready-for-pr → pr-created
+		claimIssue(t, e, "xiaoheiDTF/claude-hk", 35, "sess_pr_lc")
+		e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":35,"session_id":"sess_pr_lc","status":"fixing"}`)
+		e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":35,"session_id":"sess_pr_lc","status":"ready-for-pr"}`)
+		e.post(t, "/api/issue/status",
+			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":35,"session_id":"sess_pr_lc","status":"pr-created"}`)
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{35})
+		if s[35] != "pr-created" {
+			t.Fatalf("expected pr-created, got %s", s[35])
+		}
+
+		// session end 释放 pr-created
+		e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_pr_lc"}`)
+		s = checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{35})
+		if s[35] != "idle" {
+			t.Fatalf("expected idle after session end, got %s", s[35])
+		}
+
+		// re-claim
+		code, ok, _ := claimIssue(t, e, "xiaoheiDTF/claude-hk", 35, "sess_new")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("re-claim failed")
+		}
+	})
+}

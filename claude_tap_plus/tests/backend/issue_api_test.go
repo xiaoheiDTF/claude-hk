@@ -1069,3 +1069,113 @@ func TestUpdateStatus_ReadyForPR(t *testing.T) {
 		}
 	})
 }
+
+// --- D4: Issue Status Update → pr-created tests ---
+// 验收标准：
+//   - ready-for-pr → pr-created 状态更新成功
+//   - 非 owner 无法更新
+//   - 完整流程：claimed → fixing → ready-for-pr → pr-created
+
+func TestUpdateStatus_PRCreated(t *testing.T) {
+	t.Run("ready_for_pr_to_pr_created", func(t *testing.T) {
+		// D4 验收：ready-for-pr 状态可更新为 pr-created
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "ready-for-pr", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"pr-created"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if !result.Success {
+			t.Fatal("expected success=true")
+		}
+		if result.PreviousStatus != "ready-for-pr" {
+			t.Errorf("expected previous=ready-for-pr, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "pr-created" {
+			t.Errorf("expected new=pr-created, got %s", result.NewStatus)
+		}
+
+		statuses := checkStatuses(t, env, "test/repo", []int{10})
+		if statuses[10] != "pr-created" {
+			t.Errorf("expected pr-created, got %s", statuses[10])
+		}
+	})
+
+	t.Run("non_owner_cannot_create_pr_status", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "ready-for-pr", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_other","status":"pr-created"}`)
+
+		var result struct {
+			Success bool   `json:"success"`
+			Error   string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for non-owner")
+		}
+		if result.Error != "not_owner" {
+			t.Errorf("expected not_owner, got %s", result.Error)
+		}
+	})
+
+	t.Run("full_claim_fix_done_pr_flow", func(t *testing.T) {
+		// 端到端：idle → claimed → fixing → ready-for-pr → pr-created
+		env := setupTest(t)
+
+		// 1. idle
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[40]}`)
+
+		// 2. claim
+		code, ok, _ := claimIssue(t, env, "test/repo", 40, "sess_pr")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("step 2: claim failed")
+		}
+
+		// 3. fixing
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":40,"session_id":"sess_pr","status":"fixing"}`)
+
+		// 4. ready-for-pr
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":40,"session_id":"sess_pr","status":"ready-for-pr"}`)
+
+		// 5. pr-created
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":40,"session_id":"sess_pr","status":"pr-created"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("step 5: pr-created update failed")
+		}
+		if result.PreviousStatus != "ready-for-pr" {
+			t.Errorf("step 5: expected previous=ready-for-pr, got %s", result.PreviousStatus)
+		}
+
+		// 6. 验证最终状态
+		s := checkStatuses(t, env, "test/repo", []int{40})
+		if s[40] != "pr-created" {
+			t.Fatalf("step 6: expected pr-created, got %s", s[40])
+		}
+	})
+}

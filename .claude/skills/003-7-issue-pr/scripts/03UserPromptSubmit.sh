@@ -3,6 +3,7 @@
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 SKILL_TAG="003-7-issue-pr"
 source "$PROJECT_DIR/.claude/skills/log.sh"
+source "$PROJECT_DIR/.claude/skills/backend.sh"
 
 # gh 路径检测
 _gh() { command -v gh &>/dev/null && gh "$@" || "C:/Program Files/GitHub CLI/gh.exe" "$@"; }
@@ -30,6 +31,9 @@ if [ -n "$ISSUE_NUM" ]; then
       echo "$existing_pr" | jq -r '.[] | "  PR #\(.number): \(.title) (\(.state))"'
     fi
   fi
+
+  # 向后端标记 pr-created 状态（降级静默）
+  update_issue_status "$ISSUE_NUM" "pr-created"
 else
   # 无参数时列出 open PRs 和 ready-for-pr 的 issues
   if _gh --version &>/dev/null; then
