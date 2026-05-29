@@ -1105,3 +1105,138 @@ func TestIssueReviewFlow(t *testing.T) {
 		}
 	})
 }
+
+// --- D7: SessionEnd Hook 自动释放集成测试 ---
+// 验收标准：
+//   - 会话结束时释放该 session 所有非终态 issue
+//   - merged 不被释放
+//   - rejected 不被释放
+//   - 无领取记录的 session 不报错
+//   - 释放后 issue 可被重新 claim
+
+func TestSessionEndRelease(t *testing.T) {
+	t.Run("releases_fixing_ready_for_pr_pr_created_testing_reviewing", func(t *testing.T) {
+		// 验收：所有非终态（fixing/ready-for-pr/pr-created/testing/reviewing）都被释放
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "xiaoheiDTF/claude-hk", 10, "fixing", "sess_d7", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 11, "ready-for-pr", "sess_d7", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 12, "pr-created", "sess_d7", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 13, "testing", "sess_d7", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 14, "reviewing", "sess_d7", "2026-05-27T10:00:00Z")
+
+		resp := e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_d7"}`)
+		var result struct {
+			Released []int `json:"released"`
+			Count    int   `json:"count"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Count != 5 {
+			t.Fatalf("expected 5 released, got %d", result.Count)
+		}
+
+		// 验证所有 issue 都回到 idle
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{10, 11, 12, 13, 14})
+		for _, n := range []int{10, 11, 12, 13, 14} {
+			if s[n] != "idle" {
+				t.Errorf("issue %d: expected idle, got %s", n, s[n])
+			}
+		}
+	})
+
+	t.Run("merged_not_released", func(t *testing.T) {
+		// 验收：merged 终态不被释放
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "xiaoheiDTF/claude-hk", 10, "merged", "sess_d7_m", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 11, "fixing", "sess_d7_m", "2026-05-27T10:00:00Z")
+
+		resp := e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_d7_m"}`)
+		var result struct {
+			Released []int `json:"released"`
+			Count    int   `json:"count"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Count != 1 {
+			t.Fatalf("expected 1 released (fixing only), got %d", result.Count)
+		}
+		if len(result.Released) != 1 || result.Released[0] != 11 {
+			t.Fatalf("expected [11], got %v", result.Released)
+		}
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{10, 11})
+		if s[10] != "merged" {
+			t.Errorf("merged should stay, got %s", s[10])
+		}
+		if s[11] != "idle" {
+			t.Errorf("fixing should be idle, got %s", s[11])
+		}
+	})
+
+	t.Run("rejected_not_released", func(t *testing.T) {
+		// 验收：rejected 终态不被释放
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "xiaoheiDTF/claude-hk", 10, "rejected", "sess_d7_r", "2026-05-27T10:00:00Z")
+		seedIssue(db, "xiaoheiDTF/claude-hk", 11, "claimed", "sess_d7_r", "2026-05-27T10:00:00Z")
+
+		resp := e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_d7_r"}`)
+		var result struct{ Count int `json:"count"` }
+		readJSON(t, resp, &result)
+
+		if result.Count != 1 {
+			t.Fatalf("expected 1 released (claimed only), got %d", result.Count)
+		}
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{10, 11})
+		if s[10] != "rejected" {
+			t.Errorf("rejected should stay, got %s", s[10])
+		}
+		if s[11] != "idle" {
+			t.Errorf("claimed should be idle, got %s", s[11])
+		}
+	})
+
+	t.Run("released_issue_can_be_reclaimed", func(t *testing.T) {
+		// 验收：释放后 issue 可被重新 claim
+		e := setup(t)
+		db := e.store.DB()
+
+		seedIssue(db, "xiaoheiDTF/claude-hk", 10, "fixing", "sess_old", "2026-05-27T10:00:00Z")
+
+		// 释放
+		e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_old"}`)
+
+		// 新 session claim
+		code, ok, _ := claimIssue(t, e, "xiaoheiDTF/claude-hk", 10, "sess_new")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("re-claim should succeed: code=%d ok=%v", code, ok)
+		}
+
+		s := checkStatuses(t, e, "xiaoheiDTF/claude-hk", []int{10})
+		if s[10] != "claimed" {
+			t.Fatalf("expected claimed after re-claim, got %s", s[10])
+		}
+	})
+
+	t.Run("no_backend_issues_returns_ok", func(t *testing.T) {
+		// 验收：无领取记录的 session 返回成功
+		e := setup(t)
+
+		resp := e.post(t, "/api/issue/release-session",
+			`{"session_id":"sess_empty_d7"}`)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+}
