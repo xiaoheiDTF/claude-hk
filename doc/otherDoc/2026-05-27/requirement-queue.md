@@ -15,7 +15,7 @@
 5. D1: 003-4-issue-claim 改造 ✅
 6. D2: 003-5-issue-fix 改造 ✅
 7. D3: 003-6-issue-done 改造 ✅
-8. D4: 003-7-issue-pr 改造
+8. D4: 003-7-issue-pr 改造 ✅
 9. D5: 003-8-issue-test 改造
 10. D6: 003-9-issue-review 改造
 11. D7: SessionEnd hook 自动释放
