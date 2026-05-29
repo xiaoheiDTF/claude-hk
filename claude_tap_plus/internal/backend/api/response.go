@@ -36,6 +36,13 @@ type ReleaseSessionResponse struct {
 	Count    int   `json:"count"`
 }
 
+type UpdateStatusResponse struct {
+	Success       bool   `json:"success"`
+	PreviousStatus string `json:"previous_status,omitempty"`
+	NewStatus     string `json:"new_status,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
 type APIError struct {
 	Code    string `json:"error"`
 	Message string `json:"message"`

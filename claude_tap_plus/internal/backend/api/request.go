@@ -21,3 +21,10 @@ type ReleaseIssueRequest struct {
 type ReleaseSessionRequest struct {
 	SessionID string `json:"session_id"`
 }
+
+type UpdateStatusRequest struct {
+	RepoFullName string `json:"repo_full_name"`
+	IssueNumber  int    `json:"issue_number"`
+	SessionID    string `json:"session_id"`
+	Status       string `json:"status"`
+}

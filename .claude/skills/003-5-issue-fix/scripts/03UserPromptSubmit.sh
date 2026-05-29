@@ -3,6 +3,7 @@
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 SKILL_TAG="003-5-issue-fix"
 source "$PROJECT_DIR/.claude/skills/log.sh"
+source "$PROJECT_DIR/.claude/skills/backend.sh"
 
 # gh 路径检测
 _gh() { command -v gh &>/dev/null && gh "$@" || "C:/Program Files/GitHub CLI/gh.exe" "$@"; }
@@ -25,6 +26,9 @@ if [ -n "$ISSUE_NUM" ]; then
       echo "  状态: $(echo "$issue_info" | jq -r '.state')"
     fi
   fi
+
+  # 向后端标记 fixing 状态（降级静默）
+  update_issue_status "$ISSUE_NUM" "fixing"
 else
   # 无参数时列出已领取（in-progress）的 issues
   if _gh --version &>/dev/null; then

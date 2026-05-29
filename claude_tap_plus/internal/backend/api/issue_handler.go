@@ -160,4 +160,50 @@ func (h *IssueHandler) ReleaseSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ReleaseSessionResponse{Released: numbers, Count: len(numbers)})
 }
 
+func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		return
+	}
+
+	var req UpdateStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return
+	}
+
+	if req.RepoFullName == "" || req.IssueNumber == 0 || req.SessionID == "" || req.Status == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "repo_full_name, issue_number, session_id and status are required")
+		return
+	}
+
+	result, err := h.svc.UpdateStatus(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID, req.Status)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to update status")
+		return
+	}
+
+	if !result.Updated {
+		status := http.StatusOK
+		errMsg := ""
+		if result.PreviousStatus == "" {
+			errMsg = "not_found"
+		} else {
+			errMsg = "not_owner"
+		}
+		writeJSON(w, status, UpdateStatusResponse{
+			Success:        false,
+			PreviousStatus: result.PreviousStatus,
+			Error:          errMsg,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, UpdateStatusResponse{
+		Success:        true,
+		PreviousStatus: result.PreviousStatus,
+		NewStatus:      result.NewStatus,
+	})
+}
+
 func boolPtr(b bool) *bool { return &b }

@@ -130,6 +130,39 @@ func (s *sqliteIssueStore) ClaimIssue(ctx context.Context, repo string, number i
 	return result, nil
 }
 
+func (s *sqliteIssueStore) UpdateIssueStatus(ctx context.Context, repo string, number int, sessionID string, newStatus string) (*UpdateStatusResult, error) {
+	// Check current state.
+	var curStatus string
+	var curOwner sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		`SELECT status, session_id FROM issue_claims WHERE repo_full_name = ? AND issue_number = ?`,
+		repo, number,
+	).Scan(&curStatus, &curOwner)
+	if err == sql.ErrNoRows {
+		return &UpdateStatusResult{Updated: false}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query status: %w", err)
+	}
+
+	// Only the owning session can update status.
+	if !curOwner.Valid || curOwner.String != sessionID {
+		return &UpdateStatusResult{PreviousStatus: curStatus, Updated: false}, nil
+	}
+
+	// Update.
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE issue_claims SET status = ?, updated_at = CURRENT_TIMESTAMP
+		  WHERE repo_full_name = ? AND issue_number = ? AND session_id = ?`,
+		newStatus, repo, number, sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("update status: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return &UpdateStatusResult{PreviousStatus: curStatus, NewStatus: newStatus, Updated: n > 0}, nil
+}
+
 func (s *sqliteIssueStore) ReleaseIssue(ctx context.Context, repo string, number int, sessionID string) (bool, error) {
 	// Check current owner.
 	var owner sql.NullString

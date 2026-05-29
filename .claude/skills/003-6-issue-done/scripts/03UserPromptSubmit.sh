@@ -3,6 +3,7 @@
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 SKILL_TAG="003-6-issue-done"
 source "$PROJECT_DIR/.claude/skills/log.sh"
+source "$PROJECT_DIR/.claude/skills/backend.sh"
 
 # 从 prompt 提取 issue 编号
 PROMPT="$1"
@@ -27,6 +28,9 @@ if [ -n "$ISSUE_NUM" ]; then
       echo "  标签: $(echo "$issue_info" | jq -r '.labels[].name' | tr '\n' ',' | sed 's/,$//')"
     fi
   fi
+
+  # 向后端标记 ready-for-pr 状态（降级静默）
+  update_issue_status "$ISSUE_NUM" "ready-for-pr"
 fi
 
 skill_log "INFO" "[inject] issue-done context injected for #$ISSUE_NUM"

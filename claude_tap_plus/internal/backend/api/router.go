@@ -13,5 +13,6 @@ func NewRouter(h Handlers) http.Handler {
 	mux.HandleFunc("/api/issue/claim", h.Issue.ClaimIssue)
 	mux.HandleFunc("/api/issue/release", h.Issue.ReleaseIssue)
 	mux.HandleFunc("/api/issue/release-session", h.Issue.ReleaseSession)
+	mux.HandleFunc("/api/issue/status", h.Issue.UpdateStatus)
 	return mux
 }

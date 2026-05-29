@@ -22,6 +22,10 @@ func (svc *IssueService) Claim(ctx context.Context, repo string, number int, ses
 	return svc.store.ClaimIssue(ctx, repo, number, sessionID, issueTitle)
 }
 
+func (svc *IssueService) UpdateStatus(ctx context.Context, repo string, number int, sessionID string, newStatus string) (*store.UpdateStatusResult, error) {
+	return svc.store.UpdateIssueStatus(ctx, repo, number, sessionID, newStatus)
+}
+
 func (svc *IssueService) Release(ctx context.Context, repo string, number int, sessionID string) (bool, error) {
 	return svc.store.ReleaseIssue(ctx, repo, number, sessionID)
 }
