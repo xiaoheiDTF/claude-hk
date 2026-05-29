@@ -18,7 +18,7 @@
 8. D4: 003-7-issue-pr 改造 ✅
 9. D5: 003-8-issue-test 改造 ✅
 10. D6: 003-9-issue-review 改造 ✅
-11. D7: SessionEnd hook 自动释放
+11. D7: SessionEnd hook 自动释放 ✅
 12. 降级策略与测试验证
 13. SR-1: Trace 存储路径重构
 14. SR-4: 后端会话管理服务
