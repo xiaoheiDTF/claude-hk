@@ -1179,3 +1179,296 @@ func TestUpdateStatus_PRCreated(t *testing.T) {
 		}
 	})
 }
+
+// --- D5: Issue Status Update → testing tests ---
+// 验收标准：
+//   - pr-created → testing 状态更新成功
+//   - 非 owner 无法更新
+//   - 完整流程：claimed → fixing → ready-for-pr → pr-created → testing
+
+func TestUpdateStatus_Testing(t *testing.T) {
+	t.Run("pr_created_to_testing", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "pr-created", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"testing"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if !result.Success {
+			t.Fatal("expected success=true")
+		}
+		if result.PreviousStatus != "pr-created" {
+			t.Errorf("expected previous=pr-created, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "testing" {
+			t.Errorf("expected new=testing, got %s", result.NewStatus)
+		}
+
+		statuses := checkStatuses(t, env, "test/repo", []int{10})
+		if statuses[10] != "testing" {
+			t.Errorf("expected testing, got %s", statuses[10])
+		}
+	})
+
+	t.Run("non_owner_cannot_mark_testing", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "pr-created", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_other","status":"testing"}`)
+
+		var result struct {
+			Success bool   `json:"success"`
+			Error   string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for non-owner")
+		}
+		if result.Error != "not_owner" {
+			t.Errorf("expected not_owner, got %s", result.Error)
+		}
+	})
+
+	t.Run("full_flow_to_testing", func(t *testing.T) {
+		// 端到端：idle → claimed → fixing → ready-for-pr → pr-created → testing
+		env := setupTest(t)
+
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[50]}`)
+
+		code, ok, _ := claimIssue(t, env, "test/repo", 50, "sess_test")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("claim failed")
+		}
+
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":50,"session_id":"sess_test","status":"fixing"}`)
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":50,"session_id":"sess_test","status":"ready-for-pr"}`)
+		env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":50,"session_id":"sess_test","status":"pr-created"}`)
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":50,"session_id":"sess_test","status":"testing"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("testing update failed")
+		}
+		if result.PreviousStatus != "pr-created" {
+			t.Errorf("expected previous=pr-created, got %s", result.PreviousStatus)
+		}
+
+		s := checkStatuses(t, env, "test/repo", []int{50})
+		if s[50] != "testing" {
+			t.Fatalf("expected testing, got %s", s[50])
+		}
+	})
+}
+
+// --- D6: Issue Status Update → reviewing/merged/rejected tests ---
+// 验收标准：
+//   - testing → reviewing 状态更新成功
+//   - reviewing → merged 终态更新成功
+//   - reviewing → rejected 状态更新成功
+//   - merged 不被 session end 释放
+//   - rejected 不被 session end 释放
+//   - 完整流程：idle → ... → testing → reviewing → merged/rejected
+
+func TestUpdateStatus_Review(t *testing.T) {
+	t.Run("testing_to_reviewing", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "testing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"reviewing"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if !result.Success {
+			t.Fatalf("expected success=true, got error: %s", result.NewStatus)
+		}
+		if result.PreviousStatus != "testing" {
+			t.Errorf("expected previous=testing, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "reviewing" {
+			t.Errorf("expected new=reviewing, got %s", result.NewStatus)
+		}
+	})
+
+	t.Run("reviewing_to_merged", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "reviewing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"merged"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if !result.Success {
+			t.Fatal("expected success=true")
+		}
+		if result.PreviousStatus != "reviewing" {
+			t.Errorf("expected previous=reviewing, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "merged" {
+			t.Errorf("expected new=merged, got %s", result.NewStatus)
+		}
+	})
+
+	t.Run("reviewing_to_rejected", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "reviewing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_abc","status":"rejected"}`)
+
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+
+		if !result.Success {
+			t.Fatal("expected success=true")
+		}
+		if result.PreviousStatus != "reviewing" {
+			t.Errorf("expected previous=reviewing, got %s", result.PreviousStatus)
+		}
+		if result.NewStatus != "rejected" {
+			t.Errorf("expected new=rejected, got %s", result.NewStatus)
+		}
+	})
+
+	t.Run("non_owner_cannot_review", func(t *testing.T) {
+		env := setupTest(t)
+		db := env.store.DB()
+		seedIssue(db, "test/repo", 10, "testing", "sess_abc", "2026-05-27T10:00:00Z")
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":10,"session_id":"sess_other","status":"reviewing"}`)
+
+		var result struct {
+			Success bool   `json:"success"`
+			Error   string `json:"error"`
+		}
+		readJSON(t, resp, &result)
+
+		if result.Success {
+			t.Fatal("expected success=false for non-owner")
+		}
+		if result.Error != "not_owner" {
+			t.Errorf("expected not_owner, got %s", result.Error)
+		}
+	})
+
+	t.Run("full_merge_flow", func(t *testing.T) {
+		// 端到端：idle → claimed → fixing → ready-for-pr → pr-created → testing → reviewing → merged
+		env := setupTest(t)
+
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[60]}`)
+
+		code, ok, _ := claimIssue(t, env, "test/repo", 60, "sess_merge")
+		if code != http.StatusOK || !ok {
+			t.Fatalf("claim failed")
+		}
+
+		for _, status := range []string{"fixing", "ready-for-pr", "pr-created", "testing", "reviewing"} {
+			resp := env.post(t, "/api/issue/status",
+				fmt.Sprintf(`{"repo_full_name":"test/repo","issue_number":60,"session_id":"sess_merge","status":"%s"}`, status))
+			var r struct{ Success bool `json:"success"` }
+			readJSON(t, resp, &r)
+			if !r.Success {
+				t.Fatalf("update to %s failed", status)
+			}
+		}
+
+		// merged
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":60,"session_id":"sess_merge","status":"merged"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("merged update failed")
+		}
+		if result.PreviousStatus != "reviewing" {
+			t.Errorf("expected previous=reviewing, got %s", result.PreviousStatus)
+		}
+
+		s := checkStatuses(t, env, "test/repo", []int{60})
+		if s[60] != "merged" {
+			t.Fatalf("expected merged, got %s", s[60])
+		}
+	})
+
+	t.Run("full_reject_flow", func(t *testing.T) {
+		// 端到端：idle → ... → testing → reviewing → rejected
+		env := setupTest(t)
+
+		env.post(t, "/api/issue/check",
+			`{"repo_full_name":"test/repo","issue_numbers":[70]}`)
+
+		claimIssue(t, env, "test/repo", 70, "sess_reject")
+		for _, status := range []string{"fixing", "ready-for-pr", "pr-created", "testing", "reviewing"} {
+			env.post(t, "/api/issue/status",
+				fmt.Sprintf(`{"repo_full_name":"test/repo","issue_number":70,"session_id":"sess_reject","status":"%s"}`, status))
+		}
+
+		resp := env.post(t, "/api/issue/status",
+			`{"repo_full_name":"test/repo","issue_number":70,"session_id":"sess_reject","status":"rejected"}`)
+		var result struct {
+			Success        bool   `json:"success"`
+			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
+		}
+		readJSON(t, resp, &result)
+		if !result.Success {
+			t.Fatal("rejected update failed")
+		}
+		if result.PreviousStatus != "reviewing" {
+			t.Errorf("expected previous=reviewing, got %s", result.PreviousStatus)
+		}
+
+		s := checkStatuses(t, env, "test/repo", []int{70})
+		if s[70] != "rejected" {
+			t.Fatalf("expected rejected, got %s", s[70])
+		}
+	})
+}
