@@ -28,10 +28,16 @@ func NewServer(cfg Config) (*Server, error) {
 }
 
 func (s *Server) Start() error {
+	// Startup cleanup: mark stale sessions as closed.
+	cleanupSvc := service.NewCleanupService(s.store.Sessions())
+	cleanupSvc.CleanupTimedOutSessions(context.Background())
+
 	issueSvc := service.NewIssueService(s.store.Issues())
+	sessionSvc := service.NewSessionService(s.store.Sessions())
 
 	router := api.NewRouter(api.Handlers{
-		Issue: api.NewIssueHandler(issueSvc),
+		Issue:   api.NewIssueHandler(issueSvc),
+		Session: api.NewSessionHandler(sessionSvc),
 	})
 
 	srv := &http.Server{

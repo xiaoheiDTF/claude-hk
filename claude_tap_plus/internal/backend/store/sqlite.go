@@ -8,8 +8,9 @@ import (
 )
 
 type SQLiteStore struct {
-	db         *sql.DB
-	issueStore *sqliteIssueStore
+	db            *sql.DB
+	issueStore    *sqliteIssueStore
+	sessionStore  *sqliteSessionStore
 }
 
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
@@ -29,11 +30,13 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	}
 
 	return &SQLiteStore{
-		db:         db,
-		issueStore: &sqliteIssueStore{db: db},
+		db:           db,
+		issueStore:   &sqliteIssueStore{db: db},
+		sessionStore: &sqliteSessionStore{db: db},
 	}, nil
 }
 
-func (s *SQLiteStore) Issues() IssueStore  { return s.issueStore }
-func (s *SQLiteStore) DB() *sql.DB         { return s.db }
-func (s *SQLiteStore) Close() error        { return s.db.Close() }
+func (s *SQLiteStore) Issues() IssueStore    { return s.issueStore }
+func (s *SQLiteStore) Sessions() SessionStore { return s.sessionStore }
+func (s *SQLiteStore) DB() *sql.DB            { return s.db }
+func (s *SQLiteStore) Close() error           { return s.db.Close() }

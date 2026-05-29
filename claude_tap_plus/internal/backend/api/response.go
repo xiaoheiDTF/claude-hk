@@ -3,7 +3,10 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
+
+// --- Issue response types ---
 
 type CheckIssuesResponse struct {
 	Issues []IssueStatusItem `json:"issues"`
@@ -42,6 +45,39 @@ type UpdateStatusResponse struct {
 	NewStatus     string `json:"new_status,omitempty"`
 	Error         string `json:"error,omitempty"`
 }
+
+// --- Session response types ---
+
+type SessionListResponse struct {
+	Sessions []SessionListItem `json:"sessions"`
+}
+
+type SessionListItem struct {
+	SessionID    string     `json:"session_id"`
+	MachineID    string     `json:"machine_id"`
+	ProjectSlug  string     `json:"project_slug"`
+	Status       string     `json:"status"`
+	RegisteredAt time.Time  `json:"registered_at"`
+	ClosedAt     *time.Time `json:"closed_at,omitempty"`
+}
+
+type SessionDetail struct {
+	SessionID      string     `json:"session_id"`
+	MachineID      string     `json:"machine_id"`
+	OS             string     `json:"os"`
+	ProjectSlug    string     `json:"project_slug"`
+	ProjectCwd     string     `json:"project_cwd"`
+	TranscriptPath string     `json:"transcript_path"`
+	LocalTracePath string     `json:"local_trace_path"`
+	Model          string     `json:"model"`
+	Source         string     `json:"source"`
+	Status         string     `json:"status"`
+	RegisteredAt   time.Time  `json:"registered_at"`
+	ClosedAt       *time.Time `json:"closed_at,omitempty"`
+	CloseReason    string     `json:"close_reason,omitempty"`
+}
+
+// --- Shared helpers ---
 
 type APIError struct {
 	Code    string `json:"error"`

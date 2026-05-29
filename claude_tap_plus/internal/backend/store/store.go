@@ -1,6 +1,17 @@
 package store
 
-import "context"
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+var (
+	ErrSessionExists   = errors.New("session already exists")
+	ErrSessionNotFound = errors.New("session not found or already closed")
+)
+
+// --- Issue types ---
 
 type ClaimResult struct {
 	Success   bool
@@ -30,7 +41,42 @@ type IssueCheckResult struct {
 	ClaimedAt *string
 }
 
+// --- Session types ---
+
+type Session struct {
+	SessionID      string
+	MachineID      string
+	OS             string
+	ProjectSlug    string
+	ProjectCwd     string
+	TranscriptPath string
+	LocalTracePath string
+	Model          string
+	Source         string
+	Status         string
+	RegisteredAt   time.Time
+	ClosedAt       *time.Time
+	CloseReason    string
+}
+
+type SessionFilter struct {
+	MachineID   *string
+	ProjectSlug *string
+	Status      *string
+}
+
+type SessionStore interface {
+	RegisterSession(ctx context.Context, s Session) error
+	CloseSession(ctx context.Context, sessionID string, reason string) error
+	ListSessions(ctx context.Context, filter SessionFilter) ([]Session, error)
+	GetSession(ctx context.Context, sessionID string) (*Session, error)
+	CleanupTimedOut(ctx context.Context) (int, error)
+}
+
+// --- Store aggregate ---
+
 type Store interface {
 	Issues() IssueStore
+	Sessions() SessionStore
 	Close() error
 }
