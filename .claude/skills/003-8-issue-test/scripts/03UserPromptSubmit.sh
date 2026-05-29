@@ -3,6 +3,7 @@
 PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 SKILL_TAG="003-8-issue-test"
 source "$PROJECT_DIR/.claude/skills/log.sh"
+source "$PROJECT_DIR/.claude/skills/backend.sh"
 
 # gh 路径检测
 _gh() { command -v gh &>/dev/null && gh "$@" || "C:/Program Files/GitHub CLI/gh.exe" "$@"; }
@@ -26,6 +27,9 @@ if [ -n "$ISSUE_NUM" ]; then
       echo "未找到关联 issue #$ISSUE_NUM 的 PR"
     fi
   fi
+
+  # 向后端标记 testing 状态（降级静默）
+  update_issue_status "$ISSUE_NUM" "testing"
 else
   # 无参数时列出有 PR 的 issues
   if _gh --version &>/dev/null; then
