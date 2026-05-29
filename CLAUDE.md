@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Code configuration and documentation project. The repo provides a hooks system, custom skills, Chinese-translated Claude Code documentation, and a Go-based Claude Code API traffic proxy (`claude_tap_plus/`).
+Claude Code configuration and documentation project. The repo provides a hooks system, custom skills, Chinese-translated Claude Code documentation, and a Go-based Claude Code API traffic proxy with a backend service (`claude_tap_plus/`).
 
 ## Architecture
 
@@ -19,7 +19,8 @@ Claude Code configuration and documentation project. The repo provides a hooks s
 - `03-user-prompt-submit` — calls `skill-inject.sh` to detect `/skill-name` and inject context
 - `05-pre-tool-use` — two-layer interception: `enforce_boundary.sh` (tool whitelist) + `dispatch_to_skill` (skill-level)
 - `16-stop` — runs active skill's `16Stop.sh` for cleanup; `skill-register.sh` auto-registers new skills
-- `02`, `04`, `06`-`15`, `17`-`29` — logging only (forward to active skill via `dispatch_to_skill`)
+- `29-session-end` — dispatches to active skill, then calls backend `/api/issue/release-session` to auto-release claimed issues
+- `02`, `04`, `06`-`15`, `17`-`28` — logging only (forward to active skill via `dispatch_to_skill`)
 
 **Shared infrastructure** (`hooks/base.sh`):
 - `json_get()` — jq first, fallback `json_get.py` via Python, final sed fallback
@@ -61,6 +62,7 @@ Script names follow hook event numbers: `02Setup.sh`, `05PreToolUse.sh`, `08Post
 
 **Key shared modules:**
 - `skills/active.sh` — `.active` file CRUD (`active_add/get/remove`), uses `lock.sh` for file locking
+- `skills/backend.sh` — shared backend API call helpers (`_backend_available`, `_call_backend`, `_get_session_id`, `update_issue_status`); sourced by 003 skill scripts
 - `skills/log.sh` — dual-write logging: unified `hooks/logs/<date>.log` + module `skills/log/<tag>/<date>.log`
 - `skills/lock.sh` — cross-platform file lock via `mkdir` atomic operation (`lock_acquire/release`)
 - `skills/enforce_boundary.sh` — parses `SKILL.md` frontmatter `allowed-tools`, blocks unauthorized tool calls in `05-pre-tool-use`
@@ -76,11 +78,20 @@ The 003 series is a complete issue-driven development pipeline:
 ```
 
 - `/003-1-issue-init` — initialize labels (one-time), reads `labels.conf`
-- `/003-4-issue-claim` — atomic claim (`in-progress` label), file lock prevents multi-agent conflicts
+- `/003-4-issue-claim` — atomic claim via backend API (`POST /api/issue/claim`), falls back to label-based claim if backend unavailable
 - `/003-5-issue-fix` — generates branch name from issue labels (bug→fix, enhancement→feat), creates branch
 - `/003-7-issue-pr` — creates PR; **must include `## Test plan` section** (each item as `- [ ]` checkbox)
 - `/003-8-issue-test` — executes Test Plan items, checks off `- [x]`
 - `/003-9-issue-review merge/reject` — **blocks merge if any Test Plan item is unchecked `[ ]`**
+
+### Backend Integration
+
+Skills communicate with the Go backend service via `skills/backend.sh` shared module:
+
+- `.claude/backend.conf` — stores `BACKEND_URL` (default `http://127.0.0.1:8080`)
+- `003-4-issue-claim` calls `/api/issue/claim` for atomic claims
+- `29-session-end` hook calls `/api/issue/release-session` to release all issues held by the ending session
+- All backend calls are silent-fail (degrade gracefully when backend is down)
 
 ### Initialization Flow
 
@@ -102,7 +113,7 @@ Every session: re-checks UTF-8, Python, directory integrity, and each skill's `i
 | `003-1-issue-init` | — | Initialize issue label system (one-time) |
 | `003-2-issue` | `doc/issues/{drafts,templates}/` | Create GitHub Issue |
 | `003-3-issue-discuss` | — | Pull issue content for discussion |
-| `003-4-issue-claim` | — | Atomically claim issue |
+| `003-4-issue-claim` | — | Atomically claim issue (backend API or label fallback) |
 | `003-5-issue-fix` | — | Create branch from issue and start development |
 | `003-6-issue-done` | — | Mark development complete, ready for PR |
 | `003-7-issue-pr` | — | Create PR linked to issue |
@@ -110,20 +121,30 @@ Every session: re-checks UTF-8, Python, directory integrity, and each skill's `i
 | `003-9-issue-review` | — | Review PR: merge or reject |
 | `004-git-push` | — | Commit (grouped, Chinese messages) + push |
 | `005-git-commit` | — | Commit only (grouped, Chinese messages), no push |
+| `999-other-110-requirement-planning` | `requirement/prds/` | Requirement planning: generate PRD page docs and domain module docs |
 
 ## claude_tap_plus (Go Project)
 
-A Go rewrite of claude-tap — a reverse proxy that intercepts Claude Code API traffic, records JSONL traces, and prints token usage summaries.
+A Go rewrite of claude-tap — a reverse proxy that intercepts Claude Code API traffic, records JSONL traces, and prints token usage summaries. Also includes a backend service for issue claim management.
 
 **Build & Run:**
 ```bash
 cd claude_tap_plus
 go build -o claude-tap-plus ./cmd/claude-tap
-go run ./cmd/claude-tap claude          # Run directly
+go run ./cmd/claude-tap claude          # Proxy mode (default)
+go run ./cmd/claude-tap backend         # Backend service mode
+go run ./cmd/claude-tap session-push    # Collect sessions
 ```
 
+**Subcommands:**
+- `(default)` — proxy mode: intercept API traffic, record traces
+- `backend [--port 8080] [--db backend.db]` — start backend HTTP server for issue/session management
+- `session-push/pull/status` — session sync between `~/.claude/` and local storage
+
 **Architecture:**
-- `cmd/claude-tap/main.go` — CLI entry: flag parsing, proxy lifecycle, child process management, session sync subcommands
+
+Proxy path:
+- `cmd/claude-tap/main.go` — CLI entry: flag parsing, proxy lifecycle, child process management, subcommand routing
 - `internal/config/` — Client config, upstream URL detection, `~/.claude.json` reader
 - `internal/proxy/` — Reverse proxy: request forwarding, header redaction, path whitelist, SSE/non-SSE handling
 - `internal/sse/` — SSE byte stream reassembler → complete API response reconstruction
@@ -131,14 +152,47 @@ go run ./cmd/claude-tap claude          # Run directly
 - `internal/usage/` — Multi-provider token field normalization (Anthropic/OpenAI/Gemini)
 - `internal/session/` — Session push/pull/status: collect `~/.claude/` sessions to local storage and restore
 
-**Data flow:** CLI parses flags → detects upstream URL → starts local proxy → intercepts requests → SSE reassembler for streaming → JSONL trace per API call → exit summary (API calls, token counts).
+Backend path:
+- `cmd/claude-tap/backend_cmd.go` — `backend` subcommand entry: parse flags, create and start server
+- `internal/backend/server.go` — HTTP server setup: wire handlers → services → stores
+- `internal/backend/config.go` — Backend config (host, port, DB path), defaults to `127.0.0.1:8080`
+- `internal/backend/api/` — HTTP handlers: `router.go` (routes), `issue_handler.go` (check/claim/release), `session_handler.go`, `health_handler.go`, request/response types
+- `internal/backend/domain/` — Entity structs: `issue.go`, `machine.go`, `project.go`, `session.go`
+- `internal/backend/service/` — Business logic: `issue_service.go`, `session_service.go`, `cleanup_service.go`
+- `internal/backend/store/` — SQLite persistence layer:
+  - `sqlite.go` — `SQLiteStore` with WAL mode, auto-migration on open
+  - `migrations.go` — Schema: 4 tables (`machines`, `projects`, `sessions`, `issue_claims`)
+  - `issue_store.go` — `IssueStore` interface + SQLite impl (check/claim/release/release-session)
+  - `store.go` — Interfaces: `IssueStore`, `Store`
+
+**Backend API routes:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/health` | Health check |
+| POST | `/api/issue/check` | Batch check issue claim status |
+| POST | `/api/issue/claim` | Atomically claim an issue |
+| POST | `/api/issue/release` | Release a specific issue |
+| POST | `/api/issue/release-session` | Release all issues for a session |
+
+**Data flow (proxy):** CLI parses flags → detects upstream URL → starts local proxy → intercepts requests → SSE reassembler for streaming → JSONL trace per API call → exit summary (API calls, token counts).
 
 **Testing:**
 ```bash
 cd claude_tap_plus
-go test ./...                           # All tests
-go test ./internal/sse/...              # Specific package
+go test ./...                                       # All tests
+go test ./internal/sse/...                          # Specific package
+go test ./tests/backend/...                         # Backend API tests
+go test ./tests/integration/...                     # Integration tests
+go test ./tests/backend/issue_api_test.go -run TestClaim  # Single test
 ```
+
+**Test structure:**
+- `tests/backend/` — Backend API tests (issue API, session API, concurrency)
+- `tests/integration/` — End-to-end skill flow tests (backend + skill script interaction)
+- `tests/e2e/` — Proxy + trace end-to-end tests
+- `tests/proxy/`, `tests/session/`, `tests/sse/`, `tests/trace/`, `tests/usage/` — Unit tests per package
+
+**Dependencies:** Pure Go SQLite driver (`modernc.org/sqlite`), no CGO required.
 
 ## Git Commit Convention (Skills 004/005)
 
@@ -147,6 +201,7 @@ All commits use Chinese: `<type>: <主描述>` with `- 具体修改描述` sub-i
 Types: fix/feat/update/style/refactor/perf/test/docs/revert/build/chore
 
 Grouping priority: type → directory/module → functional association → impact scope. Never `git add .` or `git add -A` — always add specific files by group.
+
 
 
 # CLAUDE.md

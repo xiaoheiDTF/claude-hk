@@ -12,9 +12,9 @@
 2. B5: 释放机制 API ✅
 3. B6-3: SessionEnd Hook 改造 ✅
 4. claude-tap-plus 会话管理 — 子需求拆分总览 ✅
-5. D1: 003-4-issue-claim 改造
-6. D2: 003-5-issue-fix 改造
-7. D3: 003-6-issue-done 改造
+5. D1: 003-4-issue-claim 改造 ✅
+6. D2: 003-5-issue-fix 改造 ✅
+7. D3: 003-6-issue-done 改造 ✅
 8. D4: 003-7-issue-pr 改造
 9. D5: 003-8-issue-test 改造
 10. D6: 003-9-issue-review 改造
@@ -23,9 +23,9 @@
 13. SR-1: Trace 存储路径重构
 14. SR-4: 后端会话管理服务
 15. Issue 全局管理 — 总览与架构
-16. B3: 原子领取 API
+16. B3: 原子领取 API ✅
 17. 模块 D 总览：Issue 技能集成后端服务
-18. D0: 公共后端调用基础设施
+18. D0: 公共后端调用基础设施 ✅
 19. B7: 公共后端调用模块与服务启动
 20. B4: 状态流转 API
 21. B6-2: 003-5 ~ 003-9 技能改造
