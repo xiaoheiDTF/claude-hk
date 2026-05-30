@@ -3331,3 +3331,352 @@
 [2026-05-31 00:40:42] SUCCESS: Window is now foreground!
 [2026-05-31 00:40:44] Foreground lock timeout restored to 0
 [2026-05-31 00:40:44] === done ===
+[2026-05-31 00:43:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:43:56] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Delete backend.conf file'
+[2026-05-31 00:43:56] Current foreground lock timeout: 0
+[2026-05-31 00:43:56] Disable foreground lock: True
+[2026-05-31 00:43:56] COM AppActivate(title)=True
+[2026-05-31 00:43:56] SetForeground=True BringToTop=True
+[2026-05-31 00:43:56] SUCCESS: Window is now foreground!
+[2026-05-31 00:43:59] Foreground lock timeout restored to 0
+[2026-05-31 00:43:59] === done ===
+[2026-05-31 00:45:11] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:45:12] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug Go build errors for claude-tap'
+[2026-05-31 00:45:12] Current foreground lock timeout: 0
+[2026-05-31 00:45:12] Disable foreground lock: True
+[2026-05-31 00:45:12] COM AppActivate(title)=True
+[2026-05-31 00:45:12] SetForeground=True BringToTop=True
+[2026-05-31 00:45:12] SUCCESS: Window is now foreground!
+[2026-05-31 00:45:14] Foreground lock timeout restored to 0
+[2026-05-31 00:45:14] === done ===
+[2026-05-31 00:48:38] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:48:39] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 00:48:39] Current foreground lock timeout: 0
+[2026-05-31 00:48:39] Disable foreground lock: True
+[2026-05-31 00:48:39] COM AppActivate(title)=True
+[2026-05-31 00:48:39] SetForeground=True BringToTop=True
+[2026-05-31 00:48:39] SUCCESS: Window is now foreground!
+[2026-05-31 00:48:41] Foreground lock timeout restored to 0
+[2026-05-31 00:48:41] === done ===
+[2026-05-31 00:49:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:49:56] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Claude Code'
+[2026-05-31 00:49:56] Current foreground lock timeout: 0
+[2026-05-31 00:49:56] Disable foreground lock: True
+[2026-05-31 00:49:56] COM AppActivate(title)=True
+[2026-05-31 00:49:56] SetForeground=True BringToTop=True
+[2026-05-31 00:49:57] SUCCESS: Window is now foreground!
+[2026-05-31 00:49:59] Foreground lock timeout restored to 0
+[2026-05-31 00:49:59] === done ===
+[2026-05-31 00:50:38] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:50:39] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Claude Code'
+[2026-05-31 00:50:39] Current foreground lock timeout: 0
+[2026-05-31 00:50:39] Disable foreground lock: True
+[2026-05-31 00:50:39] COM AppActivate(title)=True
+[2026-05-31 00:50:39] SetForeground=True BringToTop=True
+[2026-05-31 00:50:39] SUCCESS: Window is now foreground!
+[2026-05-31 00:50:42] Foreground lock timeout restored to 0
+[2026-05-31 00:50:42] === done ===
+[2026-05-31 00:53:53] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:53:54] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 00:53:54] Current foreground lock timeout: 0
+[2026-05-31 00:53:54] Disable foreground lock: True
+[2026-05-31 00:53:54] COM AppActivate(title)=True
+[2026-05-31 00:53:54] SetForeground=True BringToTop=True
+[2026-05-31 00:53:54] SUCCESS: Window is now foreground!
+[2026-05-31 00:53:56] Foreground lock timeout restored to 0
+[2026-05-31 00:53:56] === done ===
+[2026-05-31 00:55:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:55:15] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 00:55:15] Current foreground lock timeout: 0
+[2026-05-31 00:55:15] Disable foreground lock: True
+[2026-05-31 00:55:15] COM AppActivate(title)=True
+[2026-05-31 00:55:15] SetForeground=True BringToTop=True
+[2026-05-31 00:55:16] SUCCESS: Window is now foreground!
+[2026-05-31 00:55:18] Foreground lock timeout restored to 0
+[2026-05-31 00:55:18] === done ===
+[2026-05-31 00:56:10] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:56:11] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 00:56:11] Current foreground lock timeout: 0
+[2026-05-31 00:56:11] Disable foreground lock: True
+[2026-05-31 00:56:11] COM AppActivate(title)=True
+[2026-05-31 00:56:11] SetForeground=True BringToTop=True
+[2026-05-31 00:56:12] SUCCESS: Window is now foreground!
+[2026-05-31 00:56:14] Foreground lock timeout restored to 0
+[2026-05-31 00:56:14] === done ===
+[2026-05-31 00:57:17] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:57:18] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? refactor-backend-config-loading'
+[2026-05-31 00:57:18] Current foreground lock timeout: 0
+[2026-05-31 00:57:18] Disable foreground lock: True
+[2026-05-31 00:57:18] COM AppActivate(title)=True
+[2026-05-31 00:57:18] SetForeground=True BringToTop=True
+[2026-05-31 00:57:18] SUCCESS: Window is now foreground!
+[2026-05-31 00:57:20] Foreground lock timeout restored to 0
+[2026-05-31 00:57:20] === done ===
+[2026-05-31 00:58:04] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:58:05] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? refactor-backend-config-loading'
+[2026-05-31 00:58:05] Current foreground lock timeout: 0
+[2026-05-31 00:58:05] Disable foreground lock: True
+[2026-05-31 00:58:05] COM AppActivate(title)=True
+[2026-05-31 00:58:05] SetForeground=True BringToTop=True
+[2026-05-31 00:58:05] SUCCESS: Window is now foreground!
+[2026-05-31 00:58:07] Foreground lock timeout restored to 0
+[2026-05-31 00:58:07] === done ===
+[2026-05-31 00:58:25] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:58:26] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 00:58:26] Current foreground lock timeout: 0
+[2026-05-31 00:58:26] Disable foreground lock: False
+[2026-05-31 00:58:26] COM AppActivate(title)=True
+[2026-05-31 00:58:26] SetForeground=True BringToTop=True
+[2026-05-31 00:58:26] SUCCESS: Window is now foreground!
+[2026-05-31 00:58:28] Foreground lock timeout restored to 0
+[2026-05-31 00:58:28] === done ===
+[2026-05-31 00:58:51] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:58:52] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 00:58:52] Current foreground lock timeout: 0
+[2026-05-31 00:58:52] Disable foreground lock: True
+[2026-05-31 00:58:52] COM AppActivate(title)=True
+[2026-05-31 00:58:52] SetForeground=True BringToTop=True
+[2026-05-31 00:58:52] SUCCESS: Window is now foreground!
+[2026-05-31 00:58:55] Foreground lock timeout restored to 0
+[2026-05-31 00:58:55] === done ===
+[2026-05-31 00:59:52] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 00:59:53] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 00:59:53] Current foreground lock timeout: 0
+[2026-05-31 00:59:53] Disable foreground lock: True
+[2026-05-31 00:59:53] COM AppActivate(title)=True
+[2026-05-31 00:59:53] SetForeground=True BringToTop=True
+[2026-05-31 00:59:53] SUCCESS: Window is now foreground!
+[2026-05-31 00:59:55] Foreground lock timeout restored to 0
+[2026-05-31 00:59:55] === done ===
+[2026-05-31 01:00:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:00:56] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:00:56] Current foreground lock timeout: 0
+[2026-05-31 01:00:56] Disable foreground lock: True
+[2026-05-31 01:00:56] COM AppActivate(title)=True
+[2026-05-31 01:00:56] SetForeground=True BringToTop=True
+[2026-05-31 01:00:56] SUCCESS: Window is now foreground!
+[2026-05-31 01:00:59] Foreground lock timeout restored to 0
+[2026-05-31 01:00:59] === done ===
+[2026-05-31 01:01:21] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:01:22] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? refactor-backend-config-loading'
+[2026-05-31 01:01:22] Current foreground lock timeout: 0
+[2026-05-31 01:01:22] Disable foreground lock: True
+[2026-05-31 01:01:22] COM AppActivate(title)=True
+[2026-05-31 01:01:22] SetForeground=True BringToTop=True
+[2026-05-31 01:01:22] SUCCESS: Window is now foreground!
+[2026-05-31 01:01:24] Foreground lock timeout restored to 0
+[2026-05-31 01:01:24] === done ===
+[2026-05-31 01:02:50] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:02:51] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:02:51] Current foreground lock timeout: 0
+[2026-05-31 01:02:51] Disable foreground lock: True
+[2026-05-31 01:02:51] COM AppActivate(title)=True
+[2026-05-31 01:02:51] SetForeground=True BringToTop=True
+[2026-05-31 01:02:51] SUCCESS: Window is now foreground!
+[2026-05-31 01:02:53] Foreground lock timeout restored to 0
+[2026-05-31 01:02:53] === done ===
+[2026-05-31 01:04:24] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:04:25] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:04:25] Current foreground lock timeout: 0
+[2026-05-31 01:04:25] Disable foreground lock: True
+[2026-05-31 01:04:25] COM AppActivate(title)=True
+[2026-05-31 01:04:25] SetForeground=True BringToTop=True
+[2026-05-31 01:04:25] SUCCESS: Window is now foreground!
+[2026-05-31 01:04:27] Foreground lock timeout restored to 0
+[2026-05-31 01:04:27] === done ===
+[2026-05-31 01:05:00] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:05:01] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 01:05:01] Current foreground lock timeout: 0
+[2026-05-31 01:05:01] Disable foreground lock: True
+[2026-05-31 01:05:01] COM AppActivate(title)=True
+[2026-05-31 01:05:01] SetForeground=True BringToTop=True
+[2026-05-31 01:05:01] SUCCESS: Window is now foreground!
+[2026-05-31 01:05:03] Foreground lock timeout restored to 0
+[2026-05-31 01:05:03] === done ===
+[2026-05-31 01:08:53] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:08:54] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 01:08:54] Current foreground lock timeout: 0
+[2026-05-31 01:08:54] Disable foreground lock: True
+[2026-05-31 01:08:54] COM AppActivate(title)=True
+[2026-05-31 01:08:54] SetForeground=True BringToTop=True
+[2026-05-31 01:08:54] SUCCESS: Window is now foreground!
+[2026-05-31 01:08:57] Foreground lock timeout restored to 0
+[2026-05-31 01:08:57] === done ===
+[2026-05-31 01:10:31] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:10:32] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:10:32] Current foreground lock timeout: 0
+[2026-05-31 01:10:32] Disable foreground lock: True
+[2026-05-31 01:10:32] COM AppActivate(title)=True
+[2026-05-31 01:10:32] SetForeground=True BringToTop=True
+[2026-05-31 01:10:33] SUCCESS: Window is now foreground!
+[2026-05-31 01:10:35] Foreground lock timeout restored to 0
+[2026-05-31 01:10:35] === done ===
+[2026-05-31 01:13:04] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:13:05] Target: Code.exe PID=31556 hwnd=197956 title='Explain code logic - claude-hk - Visual Studio Code [管理员]'
+[2026-05-31 01:13:05] Current foreground lock timeout: 0
+[2026-05-31 01:13:05] Disable foreground lock: True
+[2026-05-31 01:13:05] COM AppActivate(title)=True
+[2026-05-31 01:13:05] SetForeground=True BringToTop=True
+[2026-05-31 01:13:05] SUCCESS: Window is now foreground!
+[2026-05-31 01:13:08] Foreground lock timeout restored to 0
+[2026-05-31 01:13:08] === done ===
+[2026-05-31 01:13:15] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:13:16] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:13:16] Current foreground lock timeout: 0
+[2026-05-31 01:13:16] Disable foreground lock: True
+[2026-05-31 01:13:16] COM AppActivate(title)=True
+[2026-05-31 01:13:16] SetForeground=True BringToTop=True
+[2026-05-31 01:13:16] SUCCESS: Window is now foreground!
+[2026-05-31 01:13:19] Foreground lock timeout restored to 0
+[2026-05-31 01:13:19] === done ===
+[2026-05-31 01:14:21] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:14:22] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:14:22] Current foreground lock timeout: 0
+[2026-05-31 01:14:22] Disable foreground lock: True
+[2026-05-31 01:14:22] COM AppActivate(title)=True
+[2026-05-31 01:14:22] SetForeground=True BringToTop=True
+[2026-05-31 01:14:22] SUCCESS: Window is now foreground!
+[2026-05-31 01:14:25] Foreground lock timeout restored to 0
+[2026-05-31 01:14:25] === done ===
+[2026-05-31 01:15:05] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:15:06] Target: Code.exe PID=31556 hwnd=197956 title='Explain code logic - claude-hk - Visual Studio Code [管理员]'
+[2026-05-31 01:15:06] Current foreground lock timeout: 0
+[2026-05-31 01:15:06] Disable foreground lock: True
+[2026-05-31 01:15:06] COM AppActivate(title)=True
+[2026-05-31 01:15:06] SetForeground=True BringToTop=True
+[2026-05-31 01:15:07] SUCCESS: Window is now foreground!
+[2026-05-31 01:15:09] Foreground lock timeout restored to 0
+[2026-05-31 01:15:09] === done ===
+[2026-05-31 01:17:02] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:17:03] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:17:03] Current foreground lock timeout: 0
+[2026-05-31 01:17:03] Disable foreground lock: True
+[2026-05-31 01:17:03] COM AppActivate(title)=True
+[2026-05-31 01:17:03] SetForeground=True BringToTop=True
+[2026-05-31 01:17:03] SUCCESS: Window is now foreground!
+[2026-05-31 01:17:06] Foreground lock timeout restored to 0
+[2026-05-31 01:17:06] === done ===
+[2026-05-31 01:18:04] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:18:05] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='管理员: Windows PowerShell'
+[2026-05-31 01:18:05] Current foreground lock timeout: 0
+[2026-05-31 01:18:05] Disable foreground lock: True
+[2026-05-31 01:18:05] COM AppActivate(title)=True
+[2026-05-31 01:18:05] SetForeground=True BringToTop=True
+[2026-05-31 01:18:05] SUCCESS: Window is now foreground!
+[2026-05-31 01:18:07] Foreground lock timeout restored to 0
+[2026-05-31 01:18:07] === done ===
+[2026-05-31 01:18:25] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:18:26] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:18:26] Current foreground lock timeout: 0
+[2026-05-31 01:18:26] Disable foreground lock: True
+[2026-05-31 01:18:26] COM AppActivate(title)=True
+[2026-05-31 01:18:26] SetForeground=True BringToTop=True
+[2026-05-31 01:18:26] SUCCESS: Window is now foreground!
+[2026-05-31 01:18:28] Foreground lock timeout restored to 0
+[2026-05-31 01:18:28] === done ===
+[2026-05-31 01:18:49] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:18:50] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:18:50] Current foreground lock timeout: 0
+[2026-05-31 01:18:50] Disable foreground lock: True
+[2026-05-31 01:18:50] COM AppActivate(title)=True
+[2026-05-31 01:18:50] SetForeground=True BringToTop=True
+[2026-05-31 01:18:50] SUCCESS: Window is now foreground!
+[2026-05-31 01:18:52] Foreground lock timeout restored to 0
+[2026-05-31 01:18:52] === done ===
+[2026-05-31 01:20:10] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:20:11] Target: Code.exe PID=31556 hwnd=197956 title='base.sh - claude-hk - Visual Studio Code [管理员]'
+[2026-05-31 01:20:11] Current foreground lock timeout: 0
+[2026-05-31 01:20:11] Disable foreground lock: True
+[2026-05-31 01:20:11] COM AppActivate(title)=True
+[2026-05-31 01:20:11] SetForeground=True BringToTop=True
+[2026-05-31 01:20:11] SUCCESS: Window is now foreground!
+[2026-05-31 01:20:14] Foreground lock timeout restored to 0
+[2026-05-31 01:20:14] === done ===
+[2026-05-31 01:20:14] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:20:15] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:20:15] Current foreground lock timeout: 0
+[2026-05-31 01:20:15] Disable foreground lock: True
+[2026-05-31 01:20:15] COM AppActivate(title)=True
+[2026-05-31 01:20:15] SetForeground=True BringToTop=True
+[2026-05-31 01:20:15] SUCCESS: Window is now foreground!
+[2026-05-31 01:20:17] Foreground lock timeout restored to 0
+[2026-05-31 01:20:17] === done ===
+[2026-05-31 01:21:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:21:29] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:21:29] Current foreground lock timeout: 0
+[2026-05-31 01:21:29] Disable foreground lock: True
+[2026-05-31 01:21:29] COM AppActivate(title)=True
+[2026-05-31 01:21:29] SetForeground=True BringToTop=True
+[2026-05-31 01:21:29] SUCCESS: Window is now foreground!
+[2026-05-31 01:21:32] Foreground lock timeout restored to 0
+[2026-05-31 01:21:32] === done ===
+[2026-05-31 01:21:43] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:21:44] Target: Code.exe PID=31556 hwnd=197956 title='Explain code logic - claude-hk - Visual Studio Code [管理员]'
+[2026-05-31 01:21:44] Current foreground lock timeout: 0
+[2026-05-31 01:21:44] Disable foreground lock: True
+[2026-05-31 01:21:44] COM AppActivate(title)=True
+[2026-05-31 01:21:44] SetForeground=True BringToTop=True
+[2026-05-31 01:21:44] SUCCESS: Window is now foreground!
+[2026-05-31 01:21:46] Foreground lock timeout restored to 0
+[2026-05-31 01:21:46] === done ===
+[2026-05-31 01:21:56] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:21:58] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:21:58] Current foreground lock timeout: 0
+[2026-05-31 01:21:58] Disable foreground lock: True
+[2026-05-31 01:21:58] COM AppActivate(title)=True
+[2026-05-31 01:21:58] SetForeground=True BringToTop=True
+[2026-05-31 01:21:58] SUCCESS: Window is now foreground!
+[2026-05-31 01:22:00] Foreground lock timeout restored to 0
+[2026-05-31 01:22:00] === done ===
+[2026-05-31 01:22:33] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:22:34] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:22:34] Current foreground lock timeout: 0
+[2026-05-31 01:22:34] Disable foreground lock: True
+[2026-05-31 01:22:34] COM AppActivate(title)=True
+[2026-05-31 01:22:34] SetForeground=True BringToTop=True
+[2026-05-31 01:22:34] SUCCESS: Window is now foreground!
+[2026-05-31 01:22:36] Foreground lock timeout restored to 0
+[2026-05-31 01:22:36] === done ===
+[2026-05-31 01:23:44] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:23:45] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:23:45] Current foreground lock timeout: 0
+[2026-05-31 01:23:45] Disable foreground lock: False
+[2026-05-31 01:23:45] COM AppActivate(title)=True
+[2026-05-31 01:23:45] SetForeground=True BringToTop=True
+[2026-05-31 01:23:45] SUCCESS: Window is now foreground!
+[2026-05-31 01:26:35] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:26:36] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Claude Code'
+[2026-05-31 01:26:36] Current foreground lock timeout: 0
+[2026-05-31 01:26:36] Disable foreground lock: True
+[2026-05-31 01:26:36] COM AppActivate(title)=True
+[2026-05-31 01:26:36] SetForeground=True BringToTop=True
+[2026-05-31 01:26:36] SUCCESS: Window is now foreground!
+[2026-05-31 01:26:38] Foreground lock timeout restored to 0
+[2026-05-31 01:26:38] === done ===
+[2026-05-31 01:28:27] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:28:28] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Claude Code'
+[2026-05-31 01:28:28] Current foreground lock timeout: 0
+[2026-05-31 01:28:28] Disable foreground lock: True
+[2026-05-31 01:28:28] COM AppActivate(title)=True
+[2026-05-31 01:28:28] SetForeground=True BringToTop=True
+[2026-05-31 01:28:28] SUCCESS: Window is now foreground!
+[2026-05-31 01:28:30] Foreground lock timeout restored to 0
+[2026-05-31 01:28:30] === done ===
+[2026-05-31 01:29:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:29:29] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Claude Code'
+[2026-05-31 01:29:29] Current foreground lock timeout: 0
+[2026-05-31 01:29:29] Disable foreground lock: True
+[2026-05-31 01:29:29] COM AppActivate(title)=True
+[2026-05-31 01:29:29] SetForeground=True BringToTop=True
+[2026-05-31 01:29:29] SUCCESS: Window is now foreground!
+[2026-05-31 01:29:31] Foreground lock timeout restored to 0
+[2026-05-31 01:29:31] === done ===
+[2026-05-31 01:30:03] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 01:30:04] Target: WindowsTerminal.exe PID=6948 hwnd=394408 title='? Debug proxy and trace file creation'
+[2026-05-31 01:30:04] Current foreground lock timeout: 0
+[2026-05-31 01:30:04] Disable foreground lock: True
+[2026-05-31 01:30:04] COM AppActivate(title)=True
+[2026-05-31 01:30:04] SetForeground=True BringToTop=True
+[2026-05-31 01:30:05] SUCCESS: Window is now foreground!
+[2026-05-31 01:30:07] Foreground lock timeout restored to 0
+[2026-05-31 01:30:07] === done ===
