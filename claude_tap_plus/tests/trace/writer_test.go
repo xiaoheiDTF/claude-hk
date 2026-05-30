@@ -11,21 +11,6 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/trace"
 )
 
-// TestNewTracePath 验证：追踪文件路径格式正确。
-// 路径应包含日期、时间和随机十六进制后缀，以 .jsonl 结尾。
-func TestNewTracePath(t *testing.T) {
-	path := trace.NewTracePath("/tmp/traces")
-	// 路径格式：/tmp/traces/{machine_id}/{project}/{date}/{time}/pending.jsonl
-	filename := filepath.Base(path)
-	if filename != "pending.jsonl" {
-		t.Errorf("expected filename pending.jsonl, got %q", filename)
-	}
-	// 验证路径包含 date/time 目录层级
-	if !strings.Contains(path, "traces") {
-		t.Errorf("expected path to contain traces dir, got %q", path)
-	}
-}
-
 // TestTraceWriterWriteAndSummary 验证：追踪写入器能正确写入记录并汇总统计。
 // 写入两条记录后，验证 API 调用次数、输入/输出 token 数、模型使用次数。
 func TestTraceWriterWriteAndSummary(t *testing.T) {
@@ -231,7 +216,7 @@ func TestExtractProjectSlug(t *testing.T) {
 // TestNewSessionTracePath 验证：Session 追踪路径按 machine_id/project_slug/session_id.jsonl 格式生成。
 func TestNewSessionTracePath(t *testing.T) {
 	path := trace.NewSessionTracePath("/tmp/traces", "user@host", "D--my-project", "abc-123")
-	// 路径格式：/tmp/traces/user@host/D--my-project/{date}/{time}/abc-123.jsonl
+	// 路径格式：/tmp/traces/user@host/D--my-project/abc-123.jsonl
 	if !strings.HasSuffix(path, "abc-123.jsonl") {
 		t.Errorf("expected path to end with abc-123.jsonl, got %q", path)
 	}

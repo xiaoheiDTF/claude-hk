@@ -385,11 +385,11 @@ func TestTraceInitEndpoint(t *testing.T) {
 		t.Errorf("trace file not created: %s", result.TracePath)
 	}
 
-	// 验证目录结构：{machine_id}/{project_slug}/{date}/{time}/{session_id}.jsonl
+	// 验证目录结构：{machine_id}/{project_slug}/{session_id}.jsonl
 	rel, _ := filepath.Rel(traceDir, result.TracePath)
 	parts := strings.Split(filepath.ToSlash(rel), "/")
-	if len(parts) != 5 {
-		t.Errorf("expected 5 path components (machine/project/date/time/file), got %d: %v", len(parts), parts)
+	if len(parts) != 3 {
+		t.Errorf("expected 3 path components (machine/project/file), got %d: %v", len(parts), parts)
 	}
 	if parts[0] != "user@host" {
 		t.Errorf("machine_id dir: got %q, want user@host", parts[0])

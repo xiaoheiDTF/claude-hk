@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/api"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/service"
@@ -47,6 +48,7 @@ func (s *Server) Start() error {
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
 		Session: api.NewSessionHandler(sessionSvc),
+		Proxy:   api.NewProxyHandler(),
 	})
 
 	// 创建 HTTP 服务器
@@ -59,9 +61,22 @@ func (s *Server) Start() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+	// 创建可取消的 context 用于停止 watchdog
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 启动空闲 watchdog：每 30s 检查 proxy.json，持续空闲 10 分钟则关闭
+	watchdog := service.NewIdleWatchdog(30*time.Second, 10*time.Minute, func() {
+		logger.Info("backend", "watchdog triggered shutdown")
+		srv.Shutdown(context.Background())
+		cancel() // 停止 watchdog 自身
+	})
+	go watchdog.Run(ctx)
+
 	go func() {
 		<-quit
 		logger.Info("backend", "shutdown signal received")
+		cancel() // 停止 watchdog
 		srv.Shutdown(context.Background())
 	}()
 

@@ -11,6 +11,7 @@ import (
 type Handlers struct {
 	Issue   *IssueHandler   // Issue 相关接口处理器
 	Session *SessionHandler // Session 相关接口处理器
+	Proxy   *ProxyHandler   // 代理注册和 trace-init 转发处理器
 }
 
 // NewRouter 创建并返回 HTTP 路由器，注册所有 API 端点。
@@ -31,6 +32,13 @@ func NewRouter(h Handlers) http.Handler {
 	mux.HandleFunc("/api/session/close", h.Session.Close)       // 关闭会话
 	mux.HandleFunc("/api/sessions", h.Session.List)             // 获取会话列表
 	mux.HandleFunc("/api/session/", h.Session.Get)              // 获取单个会话详情
+
+	// Proxy 相关路由（代理注册 + trace-init 转发）。
+	if h.Proxy != nil {
+		mux.HandleFunc("/api/proxy/register", h.Proxy.Register)     // 代理注册
+		mux.HandleFunc("/api/proxy/unregister", h.Proxy.Unregister) // 代理注销
+		mux.HandleFunc("/api/proxy/trace-init", h.Proxy.TraceInit)  // 转发 trace-init
+	}
 
 	logger.Debug("api", "routes registered: %d endpoints", 9)
 	return mux

@@ -60,6 +60,17 @@ func runBackend(args []string) {
 	defer logger.Close()
 	logger.Info("backend.cmd", "backend starting: host=%s port=%d db=%s", cfg.Host, cfg.Port, cfg.DBPath)
 
+	// 写入 backend.json，让代理进程知道后端在哪里
+	if err := WriteBackendInfo(BackendInfo{Host: cfg.Host, Port: cfg.Port}); err != nil {
+		logger.Warn("backend.cmd", "write backend.json failed: %v", err)
+	}
+	// 后端退出时删除 backend.json
+	defer func() {
+		if err := RemoveBackendInfo(); err != nil {
+			logger.Warn("backend.cmd", "remove backend.json failed: %v", err)
+		}
+	}()
+
 	// 根据配置创建后端服务器实例
 	srv, err := backend.NewServer(cfg)
 	if err != nil {

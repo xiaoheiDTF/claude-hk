@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/config"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
@@ -242,6 +243,32 @@ func runProxy(args []string) {
 
 	proxyURL := fmt.Sprintf("http://127.0.0.1:%d", actualPort)
 	log.Printf("proxy listening on %s", proxyURL)
+
+	// 自动检测并启动后端服务（如果未运行）
+	ensureBackend()
+
+	// 向后端注册本代理（hooks 通过后端转发 trace-init）
+	registerProxyWithBackend(proxyURL)
+	// 代理退出时注销
+	defer unregisterProxyFromBackend()
+
+	// 设置会话初始化回调：注册到 proxy.json
+	rp.OnSessionInit = func(sessionID, projectSlug string) {
+		key := ProxySessionKey(projectSlug, sessionID)
+		if err := RegisterProxySession(key, time.Now().Format(time.RFC3339)); err != nil {
+			logger.Warn("main", "register proxy session failed: %v", err)
+		}
+	}
+	// 代理退出时注销 proxy.json 中的会话
+	defer func() {
+		if sid := rp.SessionID(); sid != "" {
+			slug := rp.ProjectSlug()
+			key := ProxySessionKey(slug, sid)
+			if err := UnregisterProxySession(key); err != nil {
+				logger.Warn("main", "unregister proxy session failed: %v", err)
+			}
+		}
+	}()
 
 	// 解析 Claude Code 可执行文件路径
 	claudePath, err := config.ResolveCmd(&config.ClaudeClient)

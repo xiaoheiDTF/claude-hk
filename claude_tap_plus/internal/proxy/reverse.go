@@ -21,14 +21,16 @@ import (
 
 // ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
 type ReverseProxy struct {
-	target    string              // 上游 API 目标地址
-	baseDir   string              // Trace 文件存放的基础目录
-	writer    *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
-	client    *http.Client        // 转发请求的 HTTP 客户端
-	turn      atomic.Int64        // 请求计数器，用于标记 Turn 编号
-	server    *http.Server        // 本地代理 HTTP 服务器
-	startOnce sync.Once           // 确保 Start 只执行一次
-	sessionID string              // 当前会话 ID（由 trace-init 设置）
+	target         string              // 上游 API 目标地址
+	baseDir        string              // Trace 文件存放的基础目录
+	writer         *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
+	client         *http.Client        // 转发请求的 HTTP 客户端
+	turn           atomic.Int64        // 请求计数器，用于标记 Turn 编号
+	server         *http.Server        // 本地代理 HTTP 服务器
+	startOnce      sync.Once           // 确保 Start 只执行一次
+	sessionID      string              // 当前会话 ID（由 trace-init 设置）
+	projectSlug    string              // 当前项目标识（由 trace-init 设置）
+	OnSessionInit  func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
 }
 
 // NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
@@ -235,8 +237,12 @@ func (p *ReverseProxy) handleStreaming(
 		p.target,
 	)
 
-	if err := p.getWriter().Write(record); err != nil {
-		logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
+	if w := p.getWriter(); w != nil {
+		if err := w.Write(record); err != nil {
+			logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
+		}
+	} else {
+		logger.Warn("proxy", "[Turn %d] trace skipped: writer not initialized", turn)
 	}
 
 	logger.Info("proxy", "[Turn %d] <- %d stream done (%dms, model=%s)", turn, upstreamResp.StatusCode, durationMs, model)
@@ -295,8 +301,12 @@ func (p *ReverseProxy) handleNonStreaming(
 		p.target,
 	)
 
-	if err := p.getWriter().Write(record); err != nil {
-		logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
+	if w := p.getWriter(); w != nil {
+		if err := w.Write(record); err != nil {
+			logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
+		}
+	} else {
+		logger.Warn("proxy", "[Turn %d] trace skipped: writer not initialized", turn)
 	}
 
 	// 将响应返回给客户端
@@ -423,7 +433,8 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 	// 创建会话专属的 Trace 写入器
 	tracePath := trace.NewSessionTracePath(p.baseDir, machineID, projectSlug, req.SessionID)
 	writer, err := trace.NewTraceWriter(tracePath)
-	p.sessionID = req.SessionID // 记录当前会话 ID
+	p.sessionID = req.SessionID   // 记录当前会话 ID
+	p.projectSlug = projectSlug   // 记录当前项目标识
 	if err != nil {
 		logger.Error("proxy", "trace-init: failed to create writer: %v", err)
 		http.Error(w, "failed to create trace file", http.StatusInternalServerError)
@@ -437,6 +448,11 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 		}
 	p.writer = writer
 	logger.Info("proxy", "trace initialized: %s", tracePath)
+
+	// 通知外部注册 proxy.json
+	if p.OnSessionInit != nil {
+		p.OnSessionInit(req.SessionID, projectSlug)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -476,6 +492,11 @@ func (p *ReverseProxy) SessionID() string {
 		return w.SessionID()
 	}
 	return ""
+}
+
+// ProjectSlug 返回当前项目的 project_slug（由 trace-init 设置）。
+func (p *ReverseProxy) ProjectSlug() string {
+	return p.projectSlug
 }
 
 // TracePath 返回当前追踪文件的完整路径。
