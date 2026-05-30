@@ -87,11 +87,11 @@ WHERE status = 'active'
 
 ## 验证标准
 
-- [ ] 正常退出 Claude Code 后，后端会话状态变为 `closed`
-- [ ] 后端记录了 `close_reason` 和 `closed_at` 时间
-- [ ] 代理未运行时，退出无报错
-- [ ] 后端不可达时，退出无报错
-- [ ] 异常退出后，后端 session 状态保持 `active`（符合预期）
+- [x] 正常退出 Claude Code 后，后端会话状态变为 `closed`
+- [x] 后端记录了 `close_reason` 和 `closed_at` 时间
+- [x] 代理未运行时，退出无报错
+- [x] 后端不可达时，退出无报错
+- [x] 异常退出后，后端 session 状态保持 `active`（符合预期）
 
 ## 依赖
 

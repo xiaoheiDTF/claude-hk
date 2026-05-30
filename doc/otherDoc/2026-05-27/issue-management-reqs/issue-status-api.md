@@ -121,9 +121,9 @@ curl -s -X POST "$backend_url/api/issue/status" \
 
 ## 验收标准
 
-- [ ] 合法状态可成功更新
-- [ ] 非领取者 session 无法更新状态（返回 not_owner）
+- [x] 合法状态可成功更新
+- [x] 非领取者 session 无法更新状态（返回 not_owner）
 - [ ] （可选）非法状态流转返回 invalid_transition
-- [ ] updated_at 自动更新
-- [ ] 响应中包含 previous_status 字段
-- [ ] 不存在的 issue 返回错误
+- [x] updated_at 自动更新
+- [x] 响应中包含 previous_status 字段
+- [x] 不存在的 issue 返回错误

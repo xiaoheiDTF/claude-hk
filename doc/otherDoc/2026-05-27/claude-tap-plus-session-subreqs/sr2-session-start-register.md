@@ -83,11 +83,11 @@ Hook 通过 `check_proxy_active()` 检测 claude-tap-plus 代理是否在运行�
 
 ## 验证标准
 
-- [ ] 代理运行时（`.proxy.json` 存在且 PID 存活），启动 Claude Code 后能在后端查到会话记录
-- [ ] 代理未运行时（`.proxy.json` 不存在或 PID 已死），启动无报错，不发送请求
-- [ ] 后端不可达时，启动无报错，curl 静默失败
-- [ ] 注册请求包含所有 8 个字段
-- [ ] `source` 正确区分 `startup` 和 `resume`
+- [x] 代理运行时（`.proxy.json` 存在且 PID 存活），启动 Claude Code 后能在后端查到会话记录
+- [x] 代理未运行时（`.proxy.json` 不存在或 PID 已死），启动无报错，不发送请求
+- [x] 后端不可达时，启动无报错，curl 静默失败
+- [x] 注册请求包含所有 8 个字段
+- [x] `source` 正确区分 `startup` 和 `resume`
 
 ## 依赖
 

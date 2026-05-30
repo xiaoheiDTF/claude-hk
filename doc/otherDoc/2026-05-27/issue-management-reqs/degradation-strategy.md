@@ -96,9 +96,9 @@ fi
 
 ## 验收标准
 
-- [ ] `backend.conf` 不存在时，所有技能走原有逻辑，无报错
-- [ ] 后端未启动时，所有技能走原有逻辑，无报错
-- [ ] check API 超时时，展示全部 issue 列表
-- [ ] claim API 超时时，阻止领取并提示用户
-- [ ] status API 超时时，技能主流程不受影响
-- [ ] release API 超时时，SessionEnd hook 不报错不卡住
+- [x] `backend.conf` 不存在时，所有技能走原有逻辑，无报错
+- [x] 后端未启动时，所有技能走原有逻辑，无报错
+- [x] check API 超时时，展示全部 issue 列表
+- [x] claim API 超时时，阻止领取并提示用户
+- [x] status API 超时时，技能主流程不受影响
+- [x] release API 超时时，SessionEnd hook 不报错不卡住

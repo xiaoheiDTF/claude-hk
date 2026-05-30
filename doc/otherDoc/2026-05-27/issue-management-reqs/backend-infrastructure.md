@@ -177,8 +177,8 @@ update_issue_status() {
 
 ### 验收标准
 
-- [ ] 后端运行时返回 `{"status": "ok"}`
-- [ ] 后端未启动时 curl 超时（连接失败）
+- [x] 后端运行时返回 `{"status": "ok"}`
+- [x] 后端未启动时 curl 超时（连接失败）
 
 ## 3. 后端服务启动命令
 
@@ -205,9 +205,9 @@ claude-tap-plus backend --config ./backend.conf
 
 ### 验收标准
 
-- [ ] `claude-tap-plus backend` 启动后监听指定端口
-- [ ] `--port` 和 `--db` 参数生效
-- [ ] 启动时自动创建数据库表（如不存在）
+- [x] `claude-tap-plus backend` 启动后监听指定端口
+- [x] `--port` 和 `--db` 参数生效
+- [x] 启动时自动创建数据库表（如不存在）
 
 ## 4. 配置文件格式
 
@@ -233,8 +233,8 @@ BACKEND_URL=http://localhost:8080
 
 ## 验收标准
 
-- [ ] `backend.sh` 可被各技能脚本正确 source
-- [ ] 未配置 `backend.conf` 时，所有后端调用静默跳过
-- [ ] 后端不可用时，`_backend_available` 在 2 秒内返回失败
-- [ ] `_call_backend` 超时 5 秒后返回空，不阻塞技能主流程
-- [ ] `/health` 端点返回正确响应
+- [x] `backend.sh` 可被各技能脚本正确 source
+- [x] 未配置 `backend.conf` 时，所有后端调用静默跳过
+- [x] 后端不可用时，`_backend_available` 在 2 秒内返回失败
+- [x] `_call_backend` 超时 5 秒后返回空，不阻塞技能主流程
+- [x] `/health` 端点返回正确响应

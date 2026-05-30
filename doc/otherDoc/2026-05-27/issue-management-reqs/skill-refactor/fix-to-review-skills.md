@@ -108,9 +108,9 @@ fi
 
 ## 验收标准
 
-- [ ] 每个技能在关键节点调用正确的 status 值
-- [ ] 后端可用时，状态流转后 GitHub label 自动同步（旧 label 移除、新 label 添加）
-- [ ] 后端不可用时不影响技能主流程，GitHub 不报错
-- [ ] 后端可用时状态正确流转
-- [ ] session_id 正确传入
-- [ ] merged 状态自动关闭 GitHub issue
+- [x] 每个技能在关键节点调用正确的 status 值
+- [x] 后端可用时，状态流转后 GitHub label 自动同步（旧 label 移除、新 label 添加）
+- [x] 后端不可用时不影响技能主流程，GitHub 不报错
+- [x] 后端可用时状态正确流转
+- [x] session_id 正确传入
+- [x] merged 状态自动关闭 GitHub issue
