@@ -88,7 +88,7 @@ The 003 series is a complete issue-driven development pipeline:
 
 Skills communicate with the Go backend service via `skills/backend.sh` shared module:
 
-- `.claude/backend.conf` — stores `BACKEND_URL` (default `http://127.0.0.1:8080`)
+- `~/.claude-tap-plus/backend.json` — stores backend host/port (written by Go backend on startup, auto-deleted on exit)
 - `003-4-issue-claim` calls `/api/issue/claim` for atomic claims
 - `29-session-end` hook calls `/api/issue/release-session` to release all issues held by the ending session
 - All backend calls are silent-fail (degrade gracefully when backend is down)
