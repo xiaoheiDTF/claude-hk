@@ -20,11 +20,10 @@ func BaseDir() string {
 
 // --- backend.json ---
 
-// BackendInfo 记录后端服务和代理的连接信息，存储在 ~/.claude-tap-plus/backend.json 中。
+// BackendInfo 记录后端服务的连接信息，存储在 ~/.claude-tap-plus/backend.json 中。
 type BackendInfo struct {
-	Host      string `json:"host"`       // 后端监听地址，如 127.0.0.1
-	Port      int    `json:"port"`       // 后端监听端口，如 8080
-	ProxyURL  string `json:"proxy_url"`  // 本地代理地址，如 http://127.0.0.1:64902
+	Host string `json:"host"` // 后端监听地址，如 127.0.0.1
+	Port int    `json:"port"` // 后端监听端口，如 8080
 }
 
 // BackendJSONPath 返回 backend.json 的完整路径。
@@ -56,16 +55,6 @@ func WriteBackendInfo(info BackendInfo) error {
 		return err
 	}
 	return os.WriteFile(BackendJSONPath(), data, 0o644)
-}
-
-// WriteProxyURL 将代理 URL 合并写入已有的 backend.json（保留后端的 host/port）。
-func WriteProxyURL(proxyURL string) error {
-	info := ReadBackendInfo()
-	if info == nil {
-		info = &BackendInfo{}
-	}
-	info.ProxyURL = proxyURL
-	return WriteBackendInfo(*info)
 }
 
 // RemoveBackendInfo 删除 backend.json。

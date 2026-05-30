@@ -3,19 +3,12 @@
 
 BACKEND_URL=""
 
-# 从 ~/.claude-tap-plus/backend.json 读取后端 URL
+# 引入统一配置读取（~/.claude-tap-plus/backend.json）
+source "$CLAUDE_PROJECT_DIR/.claude/lib/config.sh"
+
+# 加载后端 URL（委托给 config.sh 的 load_backend_config）
 _load_backend_url() {
-  if [ -z "$BACKEND_URL" ]; then
-    local json_file="$HOME/.claude-tap-plus/backend.json"
-    [ -f "$json_file" ] || return 1
-
-    local host port
-    host=$(grep -o '"host"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
-    port=$(grep -o '"port"[[:space:]]*:[[:space:]]*[0-9]*' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *//')
-    [ -z "$host" ] || [ -z "$port" ] && return 1
-
-    BACKEND_URL="http://$host:$port"
-  fi
+  load_backend_config
 }
 
 # 检查后端是否可用

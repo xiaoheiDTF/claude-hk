@@ -82,15 +82,8 @@ ensure_skill_checks
 
 # 5. 初始化代理 trace 路径（通过后端 8080 转发到代理）
 init_trace_path() {
-  local json_file="$HOME/.claude-tap-plus/backend.json"
-  [ -f "$json_file" ] || return 0
-
-  local host port
-  host=$(grep -o '"host"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
-  port=$(grep -o '"port"[[:space:]]*:[[:space:]]*[0-9]*' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *//')
-  [ -z "$host" ] || [ -z "$port" ] && return 0
-
-  local backend_url="http://$host:$port"
+  source "$CLAUDE_PROJECT_DIR/.claude/lib/config.sh"
+  load_backend_config || return 0
 
   local sid
   sid=$(json_get '.session_id')
@@ -106,15 +99,18 @@ init_trace_path() {
   project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
   [ -z "$project_slug" ] && project_slug=$(basename "$(json_get '.cwd')" 2>/dev/null)
 
+  # Windows 路径反斜杠转义：\ → \\（否则 Go JSON 解析器拒绝非法转义序列如 \U）
+  local safe_transcript_path="${transcript_path//\\/\\\\}"
+
   # 通过后端转发 trace-init 到代理
   local result
-  result=$(curl -s --max-time 3 -X POST "$backend_url/api/proxy/trace-init" \
+  result=$(curl -s --max-time 3 -X POST "$BACKEND_URL/api/proxy/trace-init" \
     -H "Content-Type: application/json" \
     -d "{
       \"session_id\":\"$sid\",
       \"machine_id\":\"$machine_id\",
       \"project_slug\":\"$project_slug\",
-      \"transcript_path\":\"$transcript_path\"
+      \"transcript_path\":\"$safe_transcript_path\"
     }" 2>/dev/null)
 
   if [ -n "$result" ]; then
@@ -159,13 +155,17 @@ register_session() {
   project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
   [ -z "$project_slug" ] && project_slug=$(basename "$cwd" 2>/dev/null)
 
+  # Windows 路径反斜杠转义
+  local safe_cwd="${cwd//\\/\\\\}"
+  local safe_transcript_path="${transcript_path//\\/\\\\}"
+
   _call_backend "/api/session/register" "{
     \"session_id\":\"$session_id\",
     \"machine_id\":\"$machine_id\",
     \"os\":\"$os_type\",
     \"project_slug\":\"$project_slug\",
-    \"project_cwd\":\"$cwd\",
-    \"transcript_path\":\"$transcript_path\",
+    \"project_cwd\":\"$safe_cwd\",
+    \"transcript_path\":\"$safe_transcript_path\",
     \"model\":\"$model\",
     \"source\":\"$source_type\"
   }" > /dev/null 2>&1
