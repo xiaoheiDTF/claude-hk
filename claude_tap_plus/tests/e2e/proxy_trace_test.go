@@ -375,10 +375,9 @@ func TestTraceInitEndpoint(t *testing.T) {
 		t.Errorf("status: got %q, want ok", result.Status)
 	}
 
-	// 验证追踪文件路径后缀包含 machine_id/project_slug/session_id
-	expectedSuffix := filepath.Join("user@host", "my-project", "sess-abc.jsonl")
-	if !strings.HasSuffix(filepath.ToSlash(result.TracePath), filepath.ToSlash(expectedSuffix)) {
-		t.Errorf("trace_path suffix: got %q, want ending with %q", result.TracePath, expectedSuffix)
+	// 验证追踪文件路径以 session_id 结尾
+	if !strings.HasSuffix(filepath.ToSlash(result.TracePath), "sess-abc.jsonl") {
+		t.Errorf("trace_path suffix: got %q, want ending with sess-abc.jsonl", result.TracePath)
 	}
 
 	// 验证追踪文件已被创建
@@ -386,11 +385,11 @@ func TestTraceInitEndpoint(t *testing.T) {
 		t.Errorf("trace file not created: %s", result.TracePath)
 	}
 
-	// 验证目录结构包含 machine_id 和 project_slug
+	// 验证目录结构：{machine_id}/{project_slug}/{date}/{time}/{session_id}.jsonl
 	rel, _ := filepath.Rel(traceDir, result.TracePath)
 	parts := strings.Split(filepath.ToSlash(rel), "/")
-	if len(parts) != 3 {
-		t.Errorf("expected 3 path components (machine/project/file), got %d: %v", len(parts), parts)
+	if len(parts) != 5 {
+		t.Errorf("expected 5 path components (machine/project/date/time/file), got %d: %v", len(parts), parts)
 	}
 	if parts[0] != "user@host" {
 		t.Errorf("machine_id dir: got %q, want user@host", parts[0])

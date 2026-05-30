@@ -21,15 +21,14 @@ import (
 
 // ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
 type ReverseProxy struct {
-	target    string                // 上游 API 目标地址
-	baseDir   string                // Trace 文件存放的基础目录
-	writer    *trace.TraceWriter    // 当前会话的 Trace 写入器
-	fallbackW *trace.TraceWriter    // 会话初始化前的回退写入器
-	client    *http.Client          // 转发请求的 HTTP 客户端
-	turn      atomic.Int64          // 请求计数器，用于标记 Turn 编号
-	server    *http.Server          // 本地代理 HTTP 服务器
-	startOnce sync.Once             // 确保 Start 只执行一次
-	sessionID string                // 当前会话 ID（由 trace-init 设置）
+	target    string              // 上游 API 目标地址
+	baseDir   string              // Trace 文件存放的基础目录
+	writer    *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
+	client    *http.Client        // 转发请求的 HTTP 客户端
+	turn      atomic.Int64        // 请求计数器，用于标记 Turn 编号
+	server    *http.Server        // 本地代理 HTTP 服务器
+	startOnce sync.Once           // 确保 Start 只执行一次
+	sessionID string              // 当前会话 ID（由 trace-init 设置）
 }
 
 // NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
@@ -75,14 +74,11 @@ func (p *ReverseProxy) Start(host string, port int) (int, error) {
 	return actualPort, nil
 }
 
-// Stop 优雅地关闭代理服务器，并关闭所有 Trace 写入器。
+// Stop 优雅地关闭代理服务器，并关闭 Trace 写入器。
 func (p *ReverseProxy) Stop() {
 	logger.Info("proxy", "stopping")
 	if p.writer != nil {
 		p.writer.Close()
-	}
-	if p.fallbackW != nil {
-		p.fallbackW.Close()
 	}
 	if p.server != nil {
 		_ = p.server.Close()
@@ -434,13 +430,11 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 关闭之前的回退写入器（如果存在）
-	if p.fallbackW != nil {
-		p.fallbackW.Close()
-		logger.Debug("proxy", "fallback writer closed")
-		p.fallbackW = nil
-	}
-
+		// 关闭之前的写入器（如果存在，如 session resume 场景）
+		if p.writer != nil {
+			p.writer.Close()
+			logger.Debug("proxy", "previous writer closed")
+		}
 	p.writer = writer
 	logger.Info("proxy", "trace initialized: %s", tracePath)
 
@@ -452,23 +446,9 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 }
 
 // getWriter 返回当前会话的 Trace 写入器。
-// 若会话尚未初始化，则创建一个回退写入器用于临时记录。
+// trace-init 调用前返回 nil（由 SessionStart hook 触发，一定在首个 API 请求之前）。
 func (p *ReverseProxy) getWriter() *trace.TraceWriter {
-	if p.writer != nil {
-		return p.writer
-	}
-	// 回退：创建旧式路径的临时写入器
-	if p.fallbackW == nil {
-		fallbackPath := trace.NewTracePath(p.baseDir)
-		w, err := trace.NewTraceWriter(fallbackPath)
-		if err != nil {
-			logger.Warn("proxy", "fallback trace: %v", err)
-			return nil
-		}
-		p.fallbackW = w
-		logger.Warn("proxy", "using fallback trace: %s", fallbackPath)
-	}
-	return p.fallbackW
+	return p.writer
 }
 
 // Summary 返回当前 Trace 写入器的聚合统计信息。

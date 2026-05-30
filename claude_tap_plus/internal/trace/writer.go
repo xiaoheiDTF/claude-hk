@@ -233,21 +233,20 @@ func DetectProjectName() string {
 	return project
 }
 
-// NewTracePath 根据当前项目和时间信息生成追踪文件路径。
+// NewTracePath 根据当前机器和项目信息生成追踪文件路径（fallback 用）。
 //
-// 路径格式：baseDir/{project}/{date}_{time}_{shortID}.jsonl
-//   - project:  通过 DetectProjectName() 自动检测
-//   - dateTime: 本地时间，格式 "2006-01-02_150405"
-//   - shortID:  3 字节（6 位十六进制）随机字符串，用于保证唯一性且便于云同步
+// 路径格式：baseDir/{machine_id}/{project_slug}/{date}/{time}/pending.jsonl
+// 使用 pending 作为文件名标记，表示 session_id 尚未确定。
+// 当 _internal/trace-init 提供真实 session_id 后，由调用方负责重命名。
 func NewTracePath(baseDir string) string {
+	machineID := MachineID()
 	project := DetectProjectName()
 
 	now := time.Now()
-	dateTime := now.Format("2006-01-02_150405")
-	shortID := randomHex(3) // 3 字节 = 6 位十六进制字符
-	filename := fmt.Sprintf("%s_%s.jsonl", dateTime, shortID)
+	date := now.Format("2006-01-02")
+	t := now.Format("150405")
 
-	path := filepath.Join(baseDir, project, filename)
+	path := filepath.Join(baseDir, machineID, project, date, t, "pending.jsonl")
 	logger.Debug("trace", "trace path: %s", path)
 	return path
 }
@@ -349,7 +348,7 @@ func ExtractProjectSlug(transcriptPath string) string {
 
 // NewSessionTracePath 基于会话信息构建追踪文件路径。
 //
-// 路径格式：baseDir/{machineID}/{projectSlug}/{sessionID}.jsonl
+// 路径格式：baseDir/{machineID}/{projectSlug}/{date}/{time}/{sessionID}.jsonl
 //
 // 参数说明：
 //   - baseDir:     基础追踪目录
@@ -357,7 +356,10 @@ func ExtractProjectSlug(transcriptPath string) string {
 //   - projectSlug: 项目标识（如 D--xxx-yyy）
 //   - sessionID:   会话唯一标识
 func NewSessionTracePath(baseDir, machineID, projectSlug, sessionID string) string {
-	path := filepath.Join(baseDir, machineID, projectSlug, sessionID+".jsonl")
+	now := time.Now()
+	date := now.Format("2006-01-02")
+	t := now.Format("150405")
+	path := filepath.Join(baseDir, machineID, projectSlug, date, t, sessionID+".jsonl")
 	logger.Debug("trace", "session trace path: %s", path)
 	return path
 }

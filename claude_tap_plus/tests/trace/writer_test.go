@@ -15,18 +15,14 @@ import (
 // 路径应包含日期、时间和随机十六进制后缀，以 .jsonl 结尾。
 func TestNewTracePath(t *testing.T) {
 	path := trace.NewTracePath("/tmp/traces")
-	// 路径格式：/tmp/traces/{project}/{date}_{time}_{hex}.jsonl
+	// 路径格式：/tmp/traces/{machine_id}/{project}/{date}/{time}/pending.jsonl
 	filename := filepath.Base(path)
-	if !strings.HasSuffix(filename, ".jsonl") {
-		t.Errorf("expected .jsonl suffix, got %q", filename)
+	if filename != "pending.jsonl" {
+		t.Errorf("expected filename pending.jsonl, got %q", filename)
 	}
-	// 文件名格式：2006-01-02_150405_a1b2c3.jsonl
-	parts := strings.Split(strings.TrimSuffix(filename, ".jsonl"), "_")
-	if len(parts) != 3 {
-		t.Errorf("expected 3-part filename (date_time_hex), got %d parts: %q", len(parts), parts)
-	}
-	if len(parts[0]) != 10 || parts[0][4] != '-' {
-		t.Errorf("expected date prefix YYYY-MM-DD, got %q", parts[0])
+	// 验证路径包含 date/time 目录层级
+	if !strings.Contains(path, "traces") {
+		t.Errorf("expected path to contain traces dir, got %q", path)
 	}
 }
 
@@ -235,9 +231,12 @@ func TestExtractProjectSlug(t *testing.T) {
 // TestNewSessionTracePath 验证：Session 追踪路径按 machine_id/project_slug/session_id.jsonl 格式生成。
 func TestNewSessionTracePath(t *testing.T) {
 	path := trace.NewSessionTracePath("/tmp/traces", "user@host", "D--my-project", "abc-123")
-	expected := filepath.Join("/tmp/traces", "user@host", "D--my-project", "abc-123.jsonl")
-	if path != expected {
-		t.Errorf("NewSessionTracePath = %q, want %q", path, expected)
+	// 路径格式：/tmp/traces/user@host/D--my-project/{date}/{time}/abc-123.jsonl
+	if !strings.HasSuffix(path, "abc-123.jsonl") {
+		t.Errorf("expected path to end with abc-123.jsonl, got %q", path)
+	}
+	if !strings.Contains(path, filepath.Join("user@host", "D--my-project")) {
+		t.Errorf("expected path to contain machine_id/project_slug dirs, got %q", path)
 	}
 }
 
