@@ -16,3 +16,7 @@
 [2026-05-30 15:32:02] [INFO] [005-git-commit] [check] git 可用
 [2026-05-30 15:32:56] [INFO] [005-git-commit] [check] git 可用
 [2026-05-30 15:33:05] [INFO] [005-git-commit] skill 调用: git-commit | 分支: main
+[2026-05-30 15:35:51] [INFO] [005-git-commit] [stop] skill completed | branch: main | session: 927cbac9-93e2-4c52-8b24-e538632b054d
+[2026-05-30 15:35:51] [INFO] [005-git-commit] [stop] .active removed session: 927cbac9-93e2-4c52-8b24-e538632b054d
+[2026-05-30 15:35:51] [INFO] [005-git-commit] [stop] skill lifecycle end
+[2026-05-30 15:44:28] [INFO] [005-git-commit] [check] git 可用
