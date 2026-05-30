@@ -36,6 +36,8 @@ type TraceWriter struct {
 	cacheRead    int64          // 累计缓存读取 Token
 	cacheCreate  int64          // 累计缓存创建 Token
 	modelsUsed   map[string]int // 各模型使用次数统计
+	path         string         // 追踪文件路径
+	sessionID    string         // 从首条记录提取的 session_id
 }
 
 // NewTraceWriter 创建 TraceWriter 实例，按需创建输出目录并打开追踪文件。
@@ -60,6 +62,7 @@ func NewTraceWriter(path string) (*TraceWriter, error) {
 		file:       f,
 		writer:     bufio.NewWriter(f),
 		modelsUsed: make(map[string]int),
+		path:       path,
 	}, nil
 }
 
@@ -91,6 +94,13 @@ func (w *TraceWriter) Write(record map[string]any) error {
 
 	w.count++
 	w.updateStats(record)
+
+	// 从首条记录提取 session_id
+	if w.count == 1 {
+		if sid, ok := record["session_id"].(string); ok {
+			w.sessionID = sid
+		}
+	}
 	return nil
 }
 
@@ -107,6 +117,17 @@ func (w *TraceWriter) Close() error {
 		return w.file.Close()
 	}
 	return nil
+}
+
+// Path 返回追踪文件的完整路径。
+func (w *TraceWriter) Path() string {
+	return w.path
+}
+
+// SessionID 返回从追踪记录中提取的 session_id。
+// 如果尚无记录或首条记录不含 session_id，返回空字符串。
+func (w *TraceWriter) SessionID() string {
+	return w.sessionID
 }
 
 // Summary 返回当前追踪会话的聚合统计信息。

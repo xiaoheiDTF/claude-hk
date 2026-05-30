@@ -77,6 +77,10 @@ func printUsage() {
 	fmt.Println("  --tap-port PORT        Local proxy port (default: random)")
 	fmt.Println("  --tap-output-dir DIR   Trace output directory")
 	fmt.Println("  --tap-verbose          Enable verbose logging")
+	fmt.Println("  --tap-console          Output logs to console (requires --tap-verbose)")
+	fmt.Println("  --tap-profile NAME     Use named profile from profiles.json")
+	fmt.Println("  --tap-api-key KEY      Override API key (highest priority)")
+	fmt.Println("  --tap-base-url URL     Override upstream API URL (highest priority)")
 	fmt.Println("  --claude               Alias for -- (pass remaining args to claude)")
 	fmt.Println()
 	fmt.Println("Session-push flags:")
@@ -106,12 +110,19 @@ func printUsage() {
 //  7. 监听系统信号并转发给子进程，支持优雅关闭
 //  8. 子进程退出后打印 API 调用统计摘要
 func runProxy(args []string) {
+	// 记录原始命令行参数，用于生成 resume 命令
+	originalArgs := append([]string{}, args...)
+
 	// 解析 --tap-* 标志，收集剩余参数作为传递给 Claude Code 的参数
 	var (
 		tapTarget    string // 上游 API 目标地址
 		tapPort      int    // 本地代理监听端口
 		tapOutputDir string // 追踪记录输出目录
 		tapVerbose   bool   // 是否启用详细日志
+		tapConsole   bool   // 是否输出日志到终端（需配合 --tap-verbose）
+		tapProfile   string // 配置名（读取 profiles.json）
+		tapAPIKey    string // 直接传入 API Key
+		tapBaseURL   string // 直接传入上游地址
 	)
 
 	var claudeArgs []string
@@ -142,6 +153,27 @@ func runProxy(args []string) {
 		// 启用详细日志
 		case arg == "--tap-verbose":
 			tapVerbose = true
+		// 启用终端日志输出（需配合 --tap-verbose）
+		case arg == "--tap-console":
+			tapConsole = true
+		// 解析 --tap-profile 参数（读取 profiles.json 中的配置）
+		case arg == "--tap-profile" && i+1 < len(args):
+			i++
+			tapProfile = args[i]
+		case strings.HasPrefix(arg, "--tap-profile="):
+			tapProfile = arg[len("--tap-profile="):]
+		// 解析 --tap-api-key 参数（直接传入 API Key）
+		case arg == "--tap-api-key" && i+1 < len(args):
+			i++
+			tapAPIKey = args[i]
+		case strings.HasPrefix(arg, "--tap-api-key="):
+			tapAPIKey = arg[len("--tap-api-key="):]
+		// 解析 --tap-base-url 参数（直接传入上游地址，优先级高于 --tap-target）
+		case arg == "--tap-base-url" && i+1 < len(args):
+			i++
+			tapBaseURL = args[i]
+		case strings.HasPrefix(arg, "--tap-base-url="):
+			tapBaseURL = arg[len("--tap-base-url="):]
 		// -- 或 --claude 后的所有参数都传递给 Claude Code
 		case arg == "--", arg == "--claude":
 			claudeArgs = append(claudeArgs, args[i+1:]...)
@@ -159,19 +191,31 @@ func runProxy(args []string) {
 		tapOutputDir = trace.DefaultTraceDir()
 	}
 
+	// 校验：--tap-console 必须配合 --tap-verbose
+	if tapConsole && !tapVerbose {
+		fmt.Fprintf(os.Stderr, "Error: --tap-console requires --tap-verbose\n")
+		os.Exit(1)
+	}
+
 	// 根据详细程度重新初始化日志器
 	if tapVerbose {
-		logger.Init(tapOutputDir, true, logger.DEBUG)
+		logger.Init(tapOutputDir, tapConsole, logger.DEBUG)
 	} else {
 		logger.Init(tapOutputDir, false, logger.INFO)
 	}
 	logger.Info("main", "proxy mode: output_dir=%s verbose=%v", tapOutputDir, tapVerbose)
 
-	// 探测上游目标地址：如果用户未指定，则自动探测
-	target := tapTarget
-	if target == "" {
-		target = config.DetectTarget(&config.ClaudeClient)
+	// 按优先级解析上游 API 配置（--tap-base-url > --tap-target > profile > env > ~/.claude.json > default）
+	resolved, err := config.ResolveTargetConfig(
+		firstNonEmpty(tapBaseURL, tapTarget),
+		tapAPIKey,
+		tapProfile,
+		&config.ClaudeClient,
+	)
+	if err != nil {
+		log.Fatalf("resolve config: %v", err)
 	}
+	target := resolved.BaseURL
 	if tapVerbose {
 		log.Printf("upstream target: %s", target)
 	}
@@ -198,6 +242,11 @@ func runProxy(args []string) {
 
 	// 构建子进程环境变量，将 API 请求指向本地代理
 	childEnv := config.BuildChildEnv(&config.ClaudeClient, proxyURL)
+
+	// 如果通过 profile 或 CLI 指定了 API Key，注入到子进程环境变量
+	if resolved.APIKey != "" {
+		childEnv = append(childEnv, "ANTHROPIC_API_KEY="+resolved.APIKey)
+	}
 
 	// 对于需要注入 --settings 参数的客户端（如 Claude Code），自动添加
 	finalArgs := claudeArgs
@@ -248,6 +297,8 @@ func runProxy(args []string) {
 
 	// 打印运行摘要：API 调用次数和 token 使用情况
 	summary := rp.Summary()
+	tracePath := rp.TracePath()
+
 	fmt.Printf("\n📋 Claude Code exited")
 	if waitErr != nil {
 		fmt.Printf(" with error: %v", waitErr)
@@ -258,7 +309,18 @@ func runProxy(args []string) {
 	fmt.Printf("   Output tokens:   %v\n", summary["output_tokens"])
 	fmt.Printf("   Cache read:      %v\n", summary["cache_read_tokens"])
 	fmt.Printf("   Cache create:    %v\n", summary["cache_create_tokens"])
-	fmt.Printf("   Trace: %s\n", tapOutputDir)
+	if tracePath != "" {
+		fmt.Printf("   Trace: %s\n", shortenPath(tracePath))
+	}
+	fmt.Printf("\n")
+
+	// 生成 Resume 命令（仅在有 session_id 时）
+	sessionID := rp.SessionID()
+	if sessionID != "" {
+		resumeCmd := buildResumeCommand(originalArgs, sessionID)
+		fmt.Printf("📎 Resume:\n")
+		fmt.Printf("   %s\n", resumeCmd)
+	}
 }
 
 // runSessionPush 执行 session-push 子命令，收集本地 Claude 会话到集中存储。
@@ -392,4 +454,53 @@ func containsSpace(s string) bool {
 		}
 	}
 	return false
+}
+
+// firstNonEmpty 返回第一个非空字符串。如果所有参数都为空，返回空字符串。
+func firstNonEmpty(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+// buildResumeCommand 根据原始命令行参数和新的 session_id 生成 resume 命令。
+//
+// 逻辑：
+//  1. 复制原始参数
+//  2. 移除已有的 --resume <old-id>（如果存在）
+//  3. 追加 --resume <new-session-id>
+func buildResumeCommand(originalArgs []string, sessionID string) string {
+	filtered := make([]string, 0, len(originalArgs))
+	skip := false
+	for i, arg := range originalArgs {
+		if skip {
+			skip = false
+			continue
+		}
+		if arg == "--resume" && i+1 < len(originalArgs) {
+			skip = true // 跳过 --resume 及其值
+			continue
+		}
+		if strings.HasPrefix(arg, "--resume=") {
+			continue // 跳过 --resume=id 形式
+		}
+		filtered = append(filtered, arg)
+	}
+	filtered = append(filtered, "--resume", sessionID)
+	return "claude-tap-plus " + formatArgs(filtered)
+}
+
+// shortenPath 将路径中的用户主目录替换为 ~，使输出更简洁。
+func shortenPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
 }

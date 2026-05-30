@@ -31,13 +31,14 @@ const (
 )
 
 var (
-	mu          sync.Mutex // 保护文件句柄与全局状态
-	file        *os.File   // 当前日志文件
-	dir         string     // 日志存放目录
-	console     bool       // 是否同时输出到 stderr
-	minLevel    Level = INFO
-	currentDate string     // 当前日志文件对应的日期
-	writer      io.Writer  // 包装 file 的写入器
+	mu              sync.Mutex // 保护文件句柄与全局状态
+	file            *os.File   // 当前日志文件
+	dir             string     // 日志存放目录
+	console         bool       // 是否同时输出到 stderr
+	consoleMinLevel Level      // 终端输出的最低日志级别
+	minLevel        Level = INFO
+	currentDate     string    // 当前日志文件对应的日期
+	writer          io.Writer // 包装 file 的写入器
 )
 
 // Init 初始化全局日志器。
@@ -54,6 +55,19 @@ func Init(d string, consoleEnabled bool, level Level) error {
 
 	minLevel = level
 	console = consoleEnabled
+	// 计算终端输出的最低级别：
+	//   console=true + level=DEBUG → 全级别到终端（verbose+console 模式）
+	//   console=true + level=INFO+ → 仅 INFO 及以上到终端
+	//   console=false → 禁用终端输出
+	if consoleEnabled {
+		if level <= DEBUG {
+			consoleMinLevel = DEBUG
+		} else {
+			consoleMinLevel = INFO
+		}
+	} else {
+		consoleMinLevel = ERROR + 1 // 哨兵值：任何级别都不满足 >= ERROR+1
+	}
 
 	if d == "" {
 		// 空目录：静默模式，所有写入被丢弃
@@ -153,8 +167,8 @@ func write(level Level, module, format string, args ...any) {
 		_, _ = writer.Write([]byte(line))
 	}
 
-	// 可选：同时输出到 stderr（仅 INFO 及以上）
-	if console && level >= INFO {
+	// 可选：同时输出到 stderr（级别 >= consoleMinLevel）
+	if console && level >= consoleMinLevel {
 		_, _ = fmt.Fprint(os.Stderr, line)
 	}
 }

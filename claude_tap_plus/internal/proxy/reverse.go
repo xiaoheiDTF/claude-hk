@@ -29,6 +29,7 @@ type ReverseProxy struct {
 	turn      atomic.Int64          // 请求计数器，用于标记 Turn 编号
 	server    *http.Server          // 本地代理 HTTP 服务器
 	startOnce sync.Once             // 确保 Start 只执行一次
+	sessionID string                // 当前会话 ID（由 trace-init 设置）
 }
 
 // NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
@@ -426,6 +427,7 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 	// 创建会话专属的 Trace 写入器
 	tracePath := trace.NewSessionTracePath(p.baseDir, machineID, projectSlug, req.SessionID)
 	writer, err := trace.NewTraceWriter(tracePath)
+	p.sessionID = req.SessionID // 记录当前会话 ID
 	if err != nil {
 		logger.Error("proxy", "trace-init: failed to create writer: %v", err)
 		http.Error(w, "failed to create trace file", http.StatusInternalServerError)
@@ -482,4 +484,24 @@ func (p *ReverseProxy) Summary() map[string]any {
 		"cache_read_tokens":   int64(0),
 		"cache_create_tokens": int64(0),
 	}
+}
+
+// SessionID 返回当前会话的 session_id。
+// 优先返回 trace-init 设置的值，其次回退到写入器中提取的值。
+func (p *ReverseProxy) SessionID() string {
+	if p.sessionID != "" {
+		return p.sessionID
+	}
+	if w := p.getWriter(); w != nil {
+		return w.SessionID()
+	}
+	return ""
+}
+
+// TracePath 返回当前追踪文件的完整路径。
+func (p *ReverseProxy) TracePath() string {
+	if w := p.getWriter(); w != nil {
+		return w.Path()
+	}
+	return ""
 }
