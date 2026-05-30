@@ -1,3 +1,4 @@
+// Package session 提供 Claude Code 会话的收集、恢复、状态查看等核心功能。
 package session
 
 import (
@@ -5,21 +6,25 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
-// StatusOptions controls session-status display.
+// StatusOptions 控制 session-status（状态查看）的显示选项。
 type StatusOptions struct {
-	Verbose bool // show file-level details
+	Verbose bool // 是否显示文件级别的详细信息
 }
 
-// SessionStatus displays the current state of local session storage.
+// SessionStatus 展示本地会话存储的当前状态。
+// 遍历本地 sessions 目录，显示每个项目的会话数量、Git 信息、与 Claude 目录的同步状态等。
 func SessionStatus(opts StatusOptions) error {
 	baseDir := BaseDir()
 	sessionsDir := filepath.Join(baseDir, "sessions")
+	logger.Info("session", "session-status: storage=%s", sessionsDir)
 
 	fmt.Printf("Session storage: %s\n\n", sessionsDir)
 
-	// Check if sessions directory exists.
+	// 检查 sessions 目录是否存在。
 	entries, err := os.ReadDir(sessionsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -34,10 +39,10 @@ func SessionStatus(opts StatusOptions) error {
 		return nil
 	}
 
-	// Collect Claude's current project dirs for comparison.
+	// 收集 Claude 当前的项目目录 slug 集合，用于后续同步状态对比。
 	claudeProjects := listClaudeProjectSlugs()
 
-	// Display each project.
+	// 逐个展示每个项目的信息。
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -56,7 +61,7 @@ func SessionStatus(opts StatusOptions) error {
 			project = slugToProjectName(slug)
 		}
 
-		// Check if there's a matching Claude project dir.
+		// 检查是否存在匹配的 Claude 项目目录，并统计其中的会话数量。
 		claudeSessionCount := 0
 		claudeDir := filepath.Join(ClaudeProjectsDir(), slug)
 		if _, ok := claudeProjects[slug]; ok {
@@ -64,6 +69,8 @@ func SessionStatus(opts StatusOptions) error {
 				claudeSessionCount = len(files)
 			}
 		}
+
+		logger.Debug("session", "project: %s slug=%s local=%d claude=%d", project, slug, len(meta.Sessions), claudeSessionCount)
 
 		fmt.Printf("Project: %s (slug: %s)\n", project, slug)
 		fmt.Printf("  Local storage: %d sessions | Claude dir: %d sessions\n",
@@ -75,6 +82,7 @@ func SessionStatus(opts StatusOptions) error {
 			fmt.Printf("  CWD: %s\n", meta.LocalCwd)
 		}
 
+		// 详细模式下展示每个会话的具体信息。
 		if opts.Verbose && len(meta.Sessions) > 0 {
 			fmt.Printf("  Sessions:\n")
 			for _, s := range meta.Sessions {
@@ -90,7 +98,7 @@ func SessionStatus(opts StatusOptions) error {
 			}
 		}
 
-		// Sync status.
+		// 同步状态提示。
 		if claudeSessionCount > len(meta.Sessions) {
 			fmt.Printf("  ⚠ Claude has %d sessions not yet collected\n", claudeSessionCount-len(meta.Sessions))
 		} else if len(meta.Sessions) > claudeSessionCount {
@@ -104,7 +112,7 @@ func SessionStatus(opts StatusOptions) error {
 	return nil
 }
 
-// listClaudeProjectSlugs returns a set of all slugs in ~/.claude/projects/.
+// listClaudeProjectSlugs 返回 ~/.claude/projects/ 下所有 slug 的集合。
 func listClaudeProjectSlugs() map[string]bool {
 	result := make(map[string]bool)
 	projectsDir := ClaudeProjectsDir()
@@ -120,6 +128,7 @@ func listClaudeProjectSlugs() map[string]bool {
 	return result
 }
 
+// shortID 截断长 ID 字符串，最多保留前 8 个字符并附加省略号。
 func shortID(id string) string {
 	if len(id) > 8 {
 		return id[:8] + "…"

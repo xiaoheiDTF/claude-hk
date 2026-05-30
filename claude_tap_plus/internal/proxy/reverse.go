@@ -1,3 +1,4 @@
+// Package proxy 提供 HTTP 代理功能，包括请求转发、SSE 流式处理与 Trace 记录。
 package proxy
 
 import (
@@ -7,44 +8,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/sse"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/trace"
 )
 
-// ReverseProxy intercepts HTTP requests, forwards them to an upstream API,
-// records the request/response to a JSONL trace, and handles SSE streaming.
+// ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
 type ReverseProxy struct {
-	target    string
-	writer    *trace.TraceWriter
-	client    *http.Client
-	turn      atomic.Int64
-	server    *http.Server
-	startOnce sync.Once
+	target    string                // 上游 API 目标地址
+	baseDir   string                // Trace 文件存放的基础目录
+	writer    *trace.TraceWriter    // 当前会话的 Trace 写入器
+	fallbackW *trace.TraceWriter    // 会话初始化前的回退写入器
+	client    *http.Client          // 转发请求的 HTTP 客户端
+	turn      atomic.Int64          // 请求计数器，用于标记 Turn 编号
+	server    *http.Server          // 本地代理 HTTP 服务器
+	startOnce sync.Once             // 确保 Start 只执行一次
 }
 
-// NewReverseProxy creates a proxy that forwards to the given target URL.
-func NewReverseProxy(target string, writer *trace.TraceWriter) *ReverseProxy {
+// NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
+// traceDir 为 Trace 文件存放的基础目录。
+func NewReverseProxy(target, traceDir string) *ReverseProxy {
+	logger.Debug("proxy", "new proxy: target=%s baseDir=%s", target, traceDir)
 	return &ReverseProxy{
-		target: strings.TrimRight(target, "/"),
-		writer: writer,
+		target:  strings.TrimRight(target, "/"),
+		baseDir: traceDir,
 		client: &http.Client{
-			Timeout: 0, // no timeout for streaming
+			Timeout: 0, // 流式场景不设超时
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
+				return http.ErrUseLastResponse // 不自动跟随重定向
 			},
 		},
 	}
 }
 
-// Start begins the proxy HTTP server on the given host:port.
-// If port is 0, a random available port is chosen. Returns the actual port.
+// Start 启动代理 HTTP 服务器，监听指定的 host:port。
+// 若 port 为 0，则自动选择可用端口。返回实际监听的端口号。
 func (p *ReverseProxy) Start(host string, port int) (int, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", p.serveHTTP)
@@ -58,31 +62,48 @@ func (p *ReverseProxy) Start(host string, port int) (int, error) {
 		return 0, fmt.Errorf("listen: %w", err)
 	}
 
+	// 在后台 goroutine 中启动服务
 	go func() {
 		if err := p.server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			log.Printf("proxy server error: %v", err)
+			logger.Error("proxy", "server error: %v", err)
 		}
 	}()
 
 	actualPort := listener.Addr().(*netTCPAddr).Port
+	logger.Info("proxy", "listening on 127.0.0.1:%d", actualPort)
 	return actualPort, nil
 }
 
-// Stop gracefully shuts down the proxy server.
+// Stop 优雅地关闭代理服务器，并关闭所有 Trace 写入器。
 func (p *ReverseProxy) Stop() {
+	logger.Info("proxy", "stopping")
+	if p.writer != nil {
+		p.writer.Close()
+	}
+	if p.fallbackW != nil {
+		p.fallbackW.Close()
+	}
 	if p.server != nil {
 		_ = p.server.Close()
 	}
 }
 
+// serveHTTP 是代理的核心 HTTP 处理函数。
+// 处理流程：内部端点 → 路径白名单检查 → 读取请求体 → 构建上游请求 → 转发 → 流式/非流式处理。
 func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	// Reject unknown paths.
+	// 处理内部端点（绕过路径白名单）
+	if strings.HasPrefix(r.URL.Path, "/_internal/") {
+		p.handleInternal(w, r)
+		return
+	}
+
+	// 拒绝未知路径
 	if !IsAllowedPath(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Read request body.
+	// 读取请求体
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body: "+err.Error(), http.StatusBadRequest)
@@ -90,17 +111,20 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = r.Body.Close()
 
-	// Parse request body as JSON.
+	// 解析请求体为 JSON（用于后续提取 model、stream 等字段）
 	var reqBody any
 	if len(bodyBytes) > 0 {
 		_ = json.Unmarshal(bodyBytes, &reqBody)
 	}
 
+	// 生成请求 ID 与 Turn 编号
 	reqID := fmt.Sprintf("req_%d", time.Now().UnixNano()%1e12)
 	turn := int(p.turn.Add(1))
 	t0 := time.Now()
 
-	// Build upstream request URL.
+	logger.Debug("proxy", "[Turn %d] request: %s %s (%d bytes)", turn, r.Method, r.URL.Path, len(bodyBytes))
+
+	// 构建上游请求 URL
 	upstreamURL := p.target + r.URL.Path
 	if r.URL.RawQuery != "" {
 		upstreamURL += "?" + r.URL.RawQuery
@@ -112,7 +136,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Copy headers, filter hop-by-hop.
+	// 复制请求头，过滤逐跳头
 	for k, vals := range r.Header {
 		lower := strings.ToLower(k)
 		if hopByHopHeaders[lower] {
@@ -124,15 +148,18 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	upstreamReq.Header.Del("Host")
 
+	// 向上游发送请求
 	upstreamResp, err := p.client.Do(upstreamReq)
 	if err != nil {
-		log.Printf("[Turn %d] upstream error: %v", turn, err)
+		logger.Warn("proxy", "[Turn %d] upstream error: %v", turn, err)
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 	defer upstreamResp.Body.Close()
 
 	duration := time.Since(t0).Milliseconds()
+
+	// 从请求体中提取 model 字段
 	model := ""
 	if m, ok := reqBody.(map[string]any); ok {
 		if v, ok := m["model"].(string); ok {
@@ -140,7 +167,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Detect streaming.
+	// 检测是否为流式请求
 	isStreaming := false
 	if m, ok := reqBody.(map[string]any); ok {
 		if s, ok := m["stream"].(bool); ok {
@@ -148,6 +175,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 根据是否流式分发到对应处理器
 	if isStreaming {
 		p.handleStreaming(w, upstreamResp, reqID, turn, int(duration), r, reqBody, t0, model)
 	} else {
@@ -155,6 +183,11 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleStreaming 处理 SSE 流式响应：
+//   - 复制响应头并写入客户端
+//   - 逐块读取上游响应体并实时转发给客户端
+//   - 使用 SSE 重组器收集完整事件
+//   - 将重组后的结果写入 Trace
 func (p *ReverseProxy) handleStreaming(
 	w http.ResponseWriter,
 	upstreamResp *http.Response,
@@ -162,7 +195,7 @@ func (p *ReverseProxy) handleStreaming(
 	r *http.Request, reqBody any,
 	t0 time.Time, model string,
 ) {
-	// Copy response headers.
+	// 复制响应头
 	respHeaders := FilterHeaders(upstreamResp.Header, false)
 	for k, vals := range respHeaders {
 		for _, v := range vals {
@@ -174,6 +207,7 @@ func (p *ReverseProxy) handleStreaming(
 	flusher, canFlush := w.(http.Flusher)
 	reassembler := sse.NewSSEReassembler()
 
+	// 逐块读取并转发流式数据
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := upstreamResp.Body.Read(buf)
@@ -191,7 +225,9 @@ func (p *ReverseProxy) handleStreaming(
 
 	durationMs = int(time.Since(t0).Milliseconds())
 	reconstructed := reassembler.Reconstruct()
+	logger.Debug("proxy", "[Turn %d] stream done: %d SSE events, %dms", turn, len(reassembler.Events), durationMs)
 
+	// 构建 Trace 记录
 	record := buildRecord(
 		reqID, turn, durationMs,
 		r.Method, r.URL.RequestURI(),
@@ -202,13 +238,18 @@ func (p *ReverseProxy) handleStreaming(
 		p.target,
 	)
 
-	if err := p.writer.Write(record); err != nil {
-		log.Printf("[Turn %d] trace write error: %v", turn, err)
+	if err := p.getWriter().Write(record); err != nil {
+		logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
 	}
 
-	log.Printf("[Turn %d] ← %d stream done (%dms, model=%s)", turn, upstreamResp.StatusCode, durationMs, model)
+	logger.Info("proxy", "[Turn %d] <- %d stream done (%dms, model=%s)", turn, upstreamResp.StatusCode, durationMs, model)
 }
 
+// handleNonStreaming 处理普通（非流式）响应：
+//   - 读取完整响应体
+//   - 按需解压（gzip / deflate）
+//   - 解析 JSON 响应体
+//   - 写入 Trace 并返回给客户端
 func (p *ReverseProxy) handleNonStreaming(
 	w http.ResponseWriter,
 	upstreamResp *http.Response,
@@ -221,7 +262,7 @@ func (p *ReverseProxy) handleNonStreaming(
 		return
 	}
 
-	// Decompress if needed.
+	// 按需解压响应体
 	decodeBytes := respBytes
 	encoding := strings.ToLower(upstreamResp.Header.Get("Content-Encoding"))
 	if len(respBytes) > 0 && (encoding == "gzip" || encoding == "deflate") {
@@ -233,17 +274,20 @@ func (p *ReverseProxy) handleNonStreaming(
 		}
 		if reader != nil {
 			if decoded, err := io.ReadAll(reader); err == nil {
+				logger.Debug("proxy", "[Turn %d] decompressed: %d -> %d bytes (%s)", turn, len(respBytes), len(decoded), encoding)
 				decodeBytes = decoded
 			}
 			_ = reader.Close()
 		}
 	}
 
+	// 解析解压后的 JSON 响应体
 	var respBody any
 	if len(decodeBytes) > 0 {
 		_ = json.Unmarshal(decodeBytes, &respBody)
 	}
 
+	// 构建 Trace 记录
 	record := buildRecord(
 		reqID, turn, durationMs,
 		r.Method, r.URL.RequestURI(),
@@ -254,11 +298,11 @@ func (p *ReverseProxy) handleNonStreaming(
 		p.target,
 	)
 
-	if err := p.writer.Write(record); err != nil {
-		log.Printf("[Turn %d] trace write error: %v", turn, err)
+	if err := p.getWriter().Write(record); err != nil {
+		logger.Error("proxy", "[Turn %d] trace write error: %v", turn, err)
 	}
 
-	// Write response to client.
+	// 将响应返回给客户端
 	respHeaders := FilterHeaders(upstreamResp.Header, false)
 	for k, vals := range respHeaders {
 		for _, v := range vals {
@@ -268,9 +312,10 @@ func (p *ReverseProxy) handleNonStreaming(
 	w.WriteHeader(upstreamResp.StatusCode)
 	_, _ = w.Write(respBytes)
 
-	log.Printf("[Turn %d] ← %d (%dms, %d bytes, model=%s)", turn, upstreamResp.StatusCode, durationMs, len(respBytes), model)
+	logger.Info("proxy", "[Turn %d] <- %d (%dms, %d bytes, model=%s)", turn, upstreamResp.StatusCode, durationMs, len(respBytes), model)
 }
 
+// buildRecord 构建一条 Trace 记录，包含请求/响应的完整信息。
 func buildRecord(
 	reqID string, turn, durationMs int,
 	method, path string,
@@ -281,11 +326,11 @@ func buildRecord(
 	upstreamBaseURL string,
 ) map[string]any {
 	record := map[string]any{
-		"timestamp":    time.Now().UTC().Format("2006-01-02T15:04:05.000000Z"),
-		"request_id":   reqID,
-		"session_id":   extractSessionID(reqBody),
-		"turn":         turn,
-		"duration_ms":  durationMs,
+		"timestamp":   time.Now().UTC().Format("2006-01-02T15:04:05.000000Z"),
+		"request_id":  reqID,
+		"session_id":  extractSessionID(reqBody),
+		"turn":        turn,
+		"duration_ms": durationMs,
 		"request": map[string]any{
 			"method":  method,
 			"path":    path,
@@ -307,8 +352,8 @@ func buildRecord(
 	return record
 }
 
-// extractSessionID extracts session_id from request.body.metadata.user_id (JSON string).
-// Claude Code sends: metadata.user_id = "{\"session_id\": \"uuid\", ...}"
+// extractSessionID 从请求体的 metadata.user_id 字段中提取 session_id。
+// Claude Code 发送的格式为：metadata.user_id = "{\"session_id\": \"uuid\", ...}"
 func extractSessionID(reqBody any) string {
 	body, ok := reqBody.(map[string]any)
 	if !ok {
@@ -327,4 +372,114 @@ func extractSessionID(reqBody any) string {
 		return ""
 	}
 	return userData["session_id"]
+}
+
+// handleInternal 分发内部代理端点请求。
+func (p *ReverseProxy) handleInternal(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/_internal/trace-init":
+		p.handleTraceInit(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+// handleTraceInit 接收 SessionStart 钩子传来的会话信息，创建 Trace 写入器。
+func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		SessionID      string `json:"session_id"`
+		MachineID      string `json:"machine_id"`
+		ProjectSlug    string `json:"project_slug"`
+		TranscriptPath string `json:"transcript_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.SessionID == "" {
+		http.Error(w, "session_id is required", http.StatusBadRequest)
+		return
+	}
+
+	logger.Debug("proxy", "trace-init: session=%s machine=%s slug=%s", req.SessionID, req.MachineID, req.ProjectSlug)
+
+	// 若请求中未提供，则通过 trace 包自动检测
+	machineID := req.MachineID
+	if machineID == "" {
+		machineID = trace.MachineID()
+	}
+
+	projectSlug := req.ProjectSlug
+	if projectSlug == "" {
+		projectSlug = trace.ExtractProjectSlug(req.TranscriptPath)
+		if projectSlug == "" {
+			projectSlug = trace.DetectProjectName()
+		}
+	}
+
+	// 创建会话专属的 Trace 写入器
+	tracePath := trace.NewSessionTracePath(p.baseDir, machineID, projectSlug, req.SessionID)
+	writer, err := trace.NewTraceWriter(tracePath)
+	if err != nil {
+		logger.Error("proxy", "trace-init: failed to create writer: %v", err)
+		http.Error(w, "failed to create trace file", http.StatusInternalServerError)
+		return
+	}
+
+	// 关闭之前的回退写入器（如果存在）
+	if p.fallbackW != nil {
+		p.fallbackW.Close()
+		logger.Debug("proxy", "fallback writer closed")
+		p.fallbackW = nil
+	}
+
+	p.writer = writer
+	logger.Info("proxy", "trace initialized: %s", tracePath)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":     "ok",
+		"trace_path": tracePath,
+	})
+}
+
+// getWriter 返回当前会话的 Trace 写入器。
+// 若会话尚未初始化，则创建一个回退写入器用于临时记录。
+func (p *ReverseProxy) getWriter() *trace.TraceWriter {
+	if p.writer != nil {
+		return p.writer
+	}
+	// 回退：创建旧式路径的临时写入器
+	if p.fallbackW == nil {
+		fallbackPath := trace.NewTracePath(p.baseDir)
+		w, err := trace.NewTraceWriter(fallbackPath)
+		if err != nil {
+			logger.Warn("proxy", "fallback trace: %v", err)
+			return nil
+		}
+		p.fallbackW = w
+		logger.Warn("proxy", "using fallback trace: %s", fallbackPath)
+	}
+	return p.fallbackW
+}
+
+// Summary 返回当前 Trace 写入器的聚合统计信息。
+// 若无有效写入器，返回零值统计。
+func (p *ReverseProxy) Summary() map[string]any {
+	if w := p.getWriter(); w != nil {
+		return w.Summary()
+	}
+	return map[string]any{
+		"api_calls":           0,
+		"input_tokens":        int64(0),
+		"output_tokens":       int64(0),
+		"cache_read_tokens":   int64(0),
+		"cache_create_tokens": int64(0),
+	}
 }

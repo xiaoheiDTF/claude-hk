@@ -1,9 +1,17 @@
+// Package store 提供数据持久化层，基于 SQLite 实现。
 package store
 
-import "database/sql"
+import (
+	"database/sql"
 
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
+)
+
+// runMigrations 执行数据库迁移，创建必要的表和索引。
+// 如果表或索引已存在则跳过（使用 IF NOT EXISTS）。
 func runMigrations(db *sql.DB) error {
 	stmts := []string{
+		// machines 表：记录使用 claude-tap-plus 的机器信息
 		`CREATE TABLE IF NOT EXISTS machines (
 			id              INTEGER PRIMARY KEY AUTOINCREMENT,
 			machine_id      TEXT NOT NULL UNIQUE,
@@ -15,6 +23,7 @@ func runMigrations(db *sql.DB) error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_machines_hostname ON machines(hostname)`,
 
+		// projects 表：记录 Claude Code 工作过的项目
 		`CREATE TABLE IF NOT EXISTS projects (
 			id              INTEGER PRIMARY KEY AUTOINCREMENT,
 			project_slug    TEXT NOT NULL UNIQUE,
@@ -24,6 +33,7 @@ func runMigrations(db *sql.DB) error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(project_slug)`,
 
+		// sessions 表：记录每次 Claude Code 会话的元数据
 		`CREATE TABLE IF NOT EXISTS sessions (
 			id               INTEGER PRIMARY KEY AUTOINCREMENT,
 			session_id       TEXT NOT NULL UNIQUE,
@@ -45,6 +55,7 @@ func runMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_sessions_registered ON sessions(registered_at)`,
 
+		// issue_claims 表：存储 Issue 领取关系和状态流转
 		`CREATE TABLE IF NOT EXISTS issue_claims (
 			id              INTEGER PRIMARY KEY AUTOINCREMENT,
 			repo_full_name  TEXT NOT NULL,
@@ -61,10 +72,13 @@ func runMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_issue_claims_status ON issue_claims(status)`,
 	}
 
+	logger.Debug("store", "running %d migration statements", len(stmts))
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
+			logger.Error("store", "migration failed: %s: %v", stmt[:60], err)
 			return err
 		}
+		logger.Debug("store", "migration OK: %.60s", stmt)
 	}
 	return nil
 }

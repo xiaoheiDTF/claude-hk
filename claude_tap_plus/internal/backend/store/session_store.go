@@ -1,3 +1,4 @@
+// Package store 提供数据持久化层，基于 SQLite 实现。
 package store
 
 import (
@@ -6,23 +7,31 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
+// sqliteSessionStore 是 Session 存储的 SQLite 实现。
 type sqliteSessionStore struct {
-	db *sql.DB
+	db *sql.DB // SQLite 数据库连接
 }
 
+// RegisterSession 注册一个新会话。
+// 使用事务同时更新 machines 表（upsert）、projects 表（upsert）和 sessions 表（insert）。
 func (s *sqliteSessionStore) RegisterSession(ctx context.Context, sess Session) error {
+	logger.Debug("store.session", "register: id=%s machine=%s slug=%s", sess.SessionID, sess.MachineID, sess.ProjectSlug)
+
+	// 开启事务
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Parse machine_id into username and hostname.
+	// 解析 machine_id 为 username 和 hostname
 	username, hostname := parseMachineID(sess.MachineID)
 
-	// Upsert machine.
+	// Upsert machine：不存在则插入，存在则更新 last_seen_at
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO machines (machine_id, os, hostname, username, first_seen_at, last_seen_at)
 		 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -32,7 +41,7 @@ func (s *sqliteSessionStore) RegisterSession(ctx context.Context, sess Session) 
 		return fmt.Errorf("upsert machine: %w", err)
 	}
 
-	// Upsert project.
+	// Upsert project：不存在则插入，存在则更新 last_seen_at
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO projects (project_slug, project_cwd, first_seen_at, last_seen_at)
 		 VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -42,7 +51,7 @@ func (s *sqliteSessionStore) RegisterSession(ctx context.Context, sess Session) 
 		return fmt.Errorf("upsert project: %w", err)
 	}
 
-	// Insert session.
+	// 插入 session 记录
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO sessions (session_id, machine_id, os, project_slug, project_cwd,
 		    transcript_path, local_trace_path, model, source, status, registered_at)
@@ -57,10 +66,15 @@ func (s *sqliteSessionStore) RegisterSession(ctx context.Context, sess Session) 
 		return fmt.Errorf("insert session: %w", err)
 	}
 
+	logger.Info("store.session", "session registered: %s slug=%s", sess.SessionID, sess.ProjectSlug)
 	return tx.Commit()
 }
 
+// CloseSession 关闭指定会话。
+// 仅对状态为 active 的会话生效，将其标记为 closed 并记录关闭时间和原因。
 func (s *sqliteSessionStore) CloseSession(ctx context.Context, sessionID string, reason string) error {
+	logger.Debug("store.session", "close: id=%s reason=%s", sessionID, reason)
+
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE sessions
 		    SET status = 'closed', closed_at = CURRENT_TIMESTAMP, close_reason = ?
@@ -73,16 +87,22 @@ func (s *sqliteSessionStore) CloseSession(ctx context.Context, sessionID string,
 	if n == 0 {
 		return ErrSessionNotFound
 	}
+	logger.Info("store.session", "session closed: %s reason=%s", sessionID, reason)
 	return nil
 }
 
+// ListSessions 获取会话列表，支持按 machine_id、project_slug、status 过滤。
+// 结果按注册时间倒序排列。
 func (s *sqliteSessionStore) ListSessions(ctx context.Context, filter SessionFilter) ([]Session, error) {
+	logger.Debug("store.session", "list: filter applied")
+
 	query := `SELECT session_id, machine_id, os, project_slug, project_cwd,
 	                 transcript_path, local_trace_path, model, source,
 	                 status, registered_at, closed_at, close_reason
 	            FROM sessions WHERE 1=1`
 	args := []any{}
 
+	// 动态构建过滤条件
 	if filter.MachineID != nil {
 		query += " AND machine_id = ?"
 		args = append(args, *filter.MachineID)
@@ -114,6 +134,7 @@ func (s *sqliteSessionStore) ListSessions(ctx context.Context, filter SessionFil
 		); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
 		}
+		// 处理 NULL 值
 		if localTracePath.Valid {
 			sess.LocalTracePath = localTracePath.String
 		}
@@ -135,7 +156,11 @@ func (s *sqliteSessionStore) ListSessions(ctx context.Context, filter SessionFil
 	return sessions, rows.Err()
 }
 
+// GetSession 获取单个会话的详细信息。
+// 如果会话不存在，返回 nil。
 func (s *sqliteSessionStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
+	logger.Debug("store.session", "get: id=%s", sessionID)
+
 	var sess Session
 	var localTracePath, model, source, closedAt, closeReason sql.NullString
 	err := s.db.QueryRowContext(ctx,
@@ -156,6 +181,7 @@ func (s *sqliteSessionStore) GetSession(ctx context.Context, sessionID string) (
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 
+	// 处理 NULL 值
 	if localTracePath.Valid {
 		sess.LocalTracePath = localTracePath.String
 	}
@@ -175,6 +201,8 @@ func (s *sqliteSessionStore) GetSession(ctx context.Context, sessionID string) (
 	return &sess, nil
 }
 
+// CleanupTimedOut 清理注册超过 24 小时仍处于 active 状态的会话。
+// 返回被清理的会话数量。
 func (s *sqliteSessionStore) CleanupTimedOut(ctx context.Context) (int, error) {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE sessions
@@ -188,6 +216,8 @@ func (s *sqliteSessionStore) CleanupTimedOut(ctx context.Context) (int, error) {
 	return int(n), nil
 }
 
+// parseMachineID 将 machine_id（格式为 username@hostname）分割为 username 和 hostname。
+// 如果不含 @，则整个字符串作为 username，hostname 为空。
 func parseMachineID(machineID string) (username, hostname string) {
 	parts := strings.SplitN(machineID, "@", 2)
 	if len(parts) == 2 {
@@ -196,6 +226,8 @@ func parseMachineID(machineID string) (username, hostname string) {
 	return machineID, ""
 }
 
+// nilIfEmpty 如果字符串为空则返回 nil，否则返回原字符串。
+// 用于将空字符串存储为 SQL NULL。
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil

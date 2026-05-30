@@ -1,3 +1,4 @@
+// Package api 提供后端 HTTP API 的处理函数和路由定义。
 package api
 
 import (
@@ -5,28 +6,36 @@ import (
 	"net/http"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/service"
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
+// IssueHandler 处理 Issue 相关的 HTTP 请求。
 type IssueHandler struct {
-	svc *service.IssueService
+	svc *service.IssueService // Issue 业务逻辑服务
 }
 
+// NewIssueHandler 创建新的 IssueHandler 实例。
 func NewIssueHandler(svc *service.IssueService) *IssueHandler {
 	return &IssueHandler{svc: svc}
 }
 
+// CheckIssues 处理检查 Issue 状态的请求。
+// 接收 POST 请求，返回指定仓库中 Issue 的当前状态列表。
 func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
+	// 只允许 POST 方法
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
 		return
 	}
 
+	// 解析请求体
 	var req CheckIssuesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
 		return
 	}
 
+	// 校验必填字段
 	if req.RepoFullName == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "repo_full_name is required")
 		return
@@ -36,12 +45,16 @@ func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Debug("api.issue", "POST /api/issue/check repo=%s", req.RepoFullName)
+
+	// 调用服务层查询 Issue 状态
 	results, err := h.svc.Check(r.Context(), req.RepoFullName, req.IssueNumbers)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to check issues")
 		return
 	}
 
+	// 转换为响应格式
 	items := make([]IssueStatusItem, len(results))
 	for i, r := range results {
 		items[i] = IssueStatusItem{
@@ -52,6 +65,7 @@ func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 确保返回空数组而非 null
 	if items == nil {
 		items = []IssueStatusItem{}
 	}
@@ -59,6 +73,8 @@ func (h *IssueHandler) CheckIssues(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, CheckIssuesResponse{Issues: items})
 }
 
+// ClaimIssue 处理领取 Issue 的请求。
+// 接收 POST 请求，将指定 Issue 标记为已领取状态。
 func (h *IssueHandler) ClaimIssue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
@@ -76,12 +92,16 @@ func (h *IssueHandler) ClaimIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Debug("api.issue", "POST /api/issue/claim repo=%s #%d", req.RepoFullName, req.IssueNumber)
+
+	// 调用服务层领取 Issue
 	result, err := h.svc.Claim(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID, req.IssueTitle)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to claim issue")
 		return
 	}
 
+	// 领取成功
 	if result.Success {
 		writeJSON(w, http.StatusOK, ClaimIssueResponse{
 			Success:   true,
@@ -91,6 +111,7 @@ func (h *IssueHandler) ClaimIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 已被其他会话领取，返回冲突信息
 	writeJSON(w, http.StatusConflict, ClaimIssueResponse{
 		Success:   false,
 		Error:     "already_claimed",
@@ -99,6 +120,8 @@ func (h *IssueHandler) ClaimIssue(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ReleaseIssue 处理释放单个 Issue 的请求。
+// 接收 POST 请求，将指定 Issue 恢复为空闲状态（仅限当前持有者）。
 func (h *IssueHandler) ReleaseIssue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
@@ -116,12 +139,16 @@ func (h *IssueHandler) ReleaseIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Debug("api.issue", "POST /api/issue/release repo=%s #%d", req.RepoFullName, req.IssueNumber)
+
+	// 调用服务层释放 Issue
 	released, err := h.svc.Release(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to release issue")
 		return
 	}
 
+	// 不是该会话持有的 Issue
 	if !released {
 		writeJSON(w, http.StatusOK, ReleaseIssueResponse{Success: false, Error: "not_owner"})
 		return
@@ -130,6 +157,8 @@ func (h *IssueHandler) ReleaseIssue(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ReleaseIssueResponse{Success: true, Released: boolPtr(true)})
 }
 
+// ReleaseSession 处理释放某会话下所有 Issue 的请求。
+// 接收 POST 请求，将该 session 持有的所有非终态 Issue 恢复为空闲。
 func (h *IssueHandler) ReleaseSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
@@ -147,12 +176,16 @@ func (h *IssueHandler) ReleaseSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Debug("api.issue", "POST /api/issue/release-session session=%s", req.SessionID)
+
+	// 调用服务层释放该会话下的所有 Issue
 	numbers, err := h.svc.ReleaseSession(r.Context(), req.SessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to release session issues")
 		return
 	}
 
+	// 确保返回空数组而非 null
 	if numbers == nil {
 		numbers = []int{}
 	}
@@ -160,6 +193,8 @@ func (h *IssueHandler) ReleaseSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ReleaseSessionResponse{Released: numbers, Count: len(numbers)})
 }
 
+// UpdateStatus 处理更新 Issue 状态的请求。
+// 接收 POST 请求，仅允许当前持有者更新 Issue 状态。
 func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
@@ -177,12 +212,16 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Debug("api.issue", "POST /api/issue/status repo=%s #%d -> %s", req.RepoFullName, req.IssueNumber, req.Status)
+
+	// 调用服务层更新状态
 	result, err := h.svc.UpdateStatus(r.Context(), req.RepoFullName, req.IssueNumber, req.SessionID, req.Status)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to update status")
 		return
 	}
 
+	// 更新失败（非持有者或不存在）
 	if !result.Updated {
 		status := http.StatusOK
 		errMsg := ""
@@ -199,6 +238,7 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 更新成功
 	writeJSON(w, http.StatusOK, UpdateStatusResponse{
 		Success:        true,
 		PreviousStatus: result.PreviousStatus,
@@ -206,4 +246,5 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// boolPtr 返回 bool 的指针，用于 JSON 响应中区分零值和未设置。
 func boolPtr(b bool) *bool { return &b }

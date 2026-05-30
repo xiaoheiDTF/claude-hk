@@ -14,42 +14,46 @@ import (
 	"testing"
 )
 
-// Fixture represents a single test case with request, response, and expected trace output.
+// Fixture 表示一个完整的代理测试用例，包含请求、预期响应和预期追踪输出。
 type Fixture struct {
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	Request       FixtureRequest  `json:"request"`
-	Response      FixtureResponse `json:"response"`
-	ExpectedTrace ExpectedTrace   `json:"expected_trace"`
+	Name          string          `json:"name"`          // 用例名称
+	Description   string          `json:"description"`   // 用例描述
+	Request       FixtureRequest  `json:"request"`       // 发送给代理的 HTTP 请求
+	Response      FixtureResponse `json:"response"`      // 模拟上游服务器返回的响应
+	ExpectedTrace ExpectedTrace   `json:"expected_trace"` // 预期生成的追踪记录验证项
 }
 
-// FixtureRequest is the HTTP request to send through the proxy.
+// FixtureRequest 定义通过代理发送的 HTTP 请求。
 type FixtureRequest struct {
-	Method  string            `json:"method"`
-	Path    string            `json:"path"`
-	Headers map[string]string `json:"headers"`
-	Body    any               `json:"body"`
+	Method  string            `json:"method"`  // HTTP 方法
+	Path    string            `json:"path"`    // 请求路径
+	Headers map[string]string `json:"headers"` // 请求头
+	Body    any               `json:"body"`    // 请求体（JSON 对象）
 }
 
-// FixtureResponse is what the mock upstream server should return.
+// FixtureResponse 定义模拟上游服务器应返回的响应。
 type FixtureResponse struct {
-	Status  int               `json:"status"`
-	Headers map[string]string `json:"headers"`
-	Body    any               `json:"body,omitempty"`
-	RawSSE  string            `json:"raw_sse,omitempty"`
-	Gzip    bool              `json:"gzip,omitempty"`
+	Status  int               `json:"status"`              // HTTP 状态码
+	Headers map[string]string `json:"headers"`             // 响应头
+	Body    any               `json:"body,omitempty"`      // 响应体（JSON 对象，与 RawSSE 二选一）
+	RawSSE  string            `json:"raw_sse,omitempty"`   // 原始 SSE 流文本（与 Body 二选一）
+	Gzip    bool              `json:"gzip,omitempty"`      // 是否使用 gzip 压缩响应体
 }
 
-// ExpectedTrace contains fields to verify in the trace output.
+// ExpectedTrace 定义需要在追踪输出中验证的字段。
 type ExpectedTrace struct {
-	SessionID         string `json:"session_id"`
-	InputTokens       int64  `json:"input_tokens,omitempty"`
-	OutputTokens      int64  `json:"output_tokens,omitempty"`
-	CacheReadTokens   int64  `json:"cache_read_tokens,omitempty"`
-	CacheCreateTokens int64  `json:"cache_create_tokens,omitempty"`
+	SessionID         string `json:"session_id"`                    // 预期会话标识
+	InputTokens       int64  `json:"input_tokens,omitempty"`        // 预期输入 Token 数量
+	OutputTokens      int64  `json:"output_tokens,omitempty"`       // 预期输出 Token 数量
+	CacheReadTokens   int64  `json:"cache_read_tokens,omitempty"`   // 预期缓存读取 Token 数量
+	CacheCreateTokens int64  `json:"cache_create_tokens,omitempty"` // 预期缓存创建 Token 数量
 }
 
-// LoadFixture reads a fixture JSON file from testdata/fixtures/.
+// LoadFixture 从 testdata/fixtures/ 目录读取夹具 JSON 文件。
+//
+// 搜索逻辑：从当前工作目录开始向上查找最多 10 层目录，
+// 定位到 testdata/fixtures/{name} 文件。
+// 如果读取或解析失败，调用 t.Fatalf 终止测试。
 func LoadFixture(t *testing.T, name string) *Fixture {
 	t.Helper()
 	path := findUpward(t, filepath.Join("testdata", "fixtures", name))
@@ -64,7 +68,9 @@ func LoadFixture(t *testing.T, name string) *Fixture {
 	return &f
 }
 
-// FindDir searches upward for a directory. Calls t.Skip if not found.
+// FindDir 从当前目录向上搜索指定的相对路径目录。
+//
+// 最多向上搜索 10 层父目录，如果未找到则调用 t.Skip 跳过当前测试。
 func FindDir(t *testing.T, relPath string) string {
 	t.Helper()
 	dir, _ := os.Getwd()
@@ -83,7 +89,9 @@ func FindDir(t *testing.T, relPath string) string {
 	return ""
 }
 
-// findUpward searches upward for a file. Calls t.Fatal if not found.
+// findUpward 从当前目录向上搜索指定的相对路径文件。
+//
+// 最多向上搜索 10 层父目录，如果未找到则调用 t.Fatal 终止测试。
 func findUpward(t *testing.T, relPath string) string {
 	t.Helper()
 	dir, _ := os.Getwd()
@@ -102,7 +110,12 @@ func findUpward(t *testing.T, relPath string) string {
 	return ""
 }
 
-// CreateMockServer creates an httptest.Server that returns the fixture's response.
+// CreateMockServer 创建一个 httptest.Server，按夹具配置返回模拟响应。
+//
+// 响应生成逻辑：
+//   - 如果 RawSSE 非空，按 SSE 格式返回（支持流式刷新）
+//   - 如果 Gzip 为 true，对响应体进行 gzip 压缩
+//   - 否则返回 JSON 序列化后的 Body
 func CreateMockServer(t *testing.T, fx *Fixture) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +152,10 @@ func CreateMockServer(t *testing.T, fx *Fixture) *httptest.Server {
 	}))
 }
 
-// SendRequestThroughProxy sends the fixture's request to the proxy.
+// SendRequestThroughProxy 将夹具中定义的请求发送到代理服务器。
+//
+// 请求体会被 JSON 序列化，目标地址为 proxyURL + fx.Request.Path。
+// 如果请求构建或发送失败，调用 t.Fatalf 终止测试。
 func SendRequestThroughProxy(t *testing.T, fx *Fixture, proxyURL string) *http.Response {
 	t.Helper()
 	bodyBytes, err := json.Marshal(fx.Request.Body)
@@ -160,7 +176,9 @@ func SendRequestThroughProxy(t *testing.T, fx *Fixture, proxyURL string) *http.R
 	return resp
 }
 
-// ReadTraceRecords reads the trace JSONL file and returns all records.
+// ReadTraceRecords 读取 JSONL 格式的追踪文件，返回所有解析后的记录。
+//
+// 逐行解析，跳过空行，忽略无法解析的行。
 func ReadTraceRecords(t *testing.T, path string) []map[string]any {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -182,7 +200,14 @@ func ReadTraceRecords(t *testing.T, path string) []map[string]any {
 	return records
 }
 
-// AssertTrace verifies that a trace record matches the expected trace.
+// AssertTrace 验证单条追踪记录是否符合预期。
+//
+// 检查项：
+//   - session_id 是否匹配
+//   - response.body.usage 中的 input_tokens、output_tokens、
+//     cache_read_input_tokens、cache_creation_input_tokens 是否匹配
+//
+// 预期值为 0 的字段会被跳过验证（表示不检查该项）。
 func AssertTrace(t *testing.T, record map[string]any, expected ExpectedTrace) {
 	t.Helper()
 	if expected.SessionID != "" {
@@ -221,7 +246,7 @@ func AssertTrace(t *testing.T, record map[string]any, expected ExpectedTrace) {
 	assertToken("cache_creation_input_tokens", expected.CacheCreateTokens)
 }
 
-// AssertResponseStatus checks the HTTP response status code.
+// AssertResponseStatus 检查 HTTP 响应状态码是否与预期一致。
 func AssertResponseStatus(t *testing.T, resp *http.Response, expected int) {
 	t.Helper()
 	if resp.StatusCode != expected {
@@ -229,7 +254,8 @@ func AssertResponseStatus(t *testing.T, resp *http.Response, expected int) {
 	}
 }
 
-// DrainAndClose reads the response body and closes it.
+// DrainAndClose 读取响应体的全部内容并关闭响应体。
+// 如果读取失败，调用 t.Fatalf 终止测试。
 func DrainAndClose(t *testing.T, resp *http.Response) []byte {
 	t.Helper()
 	defer resp.Body.Close()
@@ -240,12 +266,14 @@ func DrainAndClose(t *testing.T, resp *http.Response) []byte {
 	return data
 }
 
-// TempTraceFile creates a temporary file for trace output and returns its path.
+// TempTraceFile 在临时目录中创建一个追踪文件并返回其路径。
 func TempTraceFile(t *testing.T) string {
 	t.Helper()
 	return filepath.Join(t.TempDir(), "trace.jsonl")
 }
 
+// toInt64 将任意数值类型转换为 int64。
+// 支持 float64、int、int64；不支持的类型返回 (0, false)。
 func toInt64(v any) (int64, bool) {
 	switch n := v.(type) {
 	case float64:
@@ -259,7 +287,7 @@ func toInt64(v any) (int64, bool) {
 	}
 }
 
-// FixtureName returns a short description for error messages.
+// FixtureName 返回夹具的名称和描述，用于测试错误信息。
 func FixtureName(fx *Fixture) string {
 	return fmt.Sprintf("%s (%s)", fx.Name, fx.Description)
 }

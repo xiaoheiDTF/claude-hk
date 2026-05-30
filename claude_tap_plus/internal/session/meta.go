@@ -1,3 +1,4 @@
+// Package session 提供 Claude Code 会话的收集、恢复、状态查看等核心功能。
 package session
 
 import (
@@ -11,38 +12,38 @@ import (
 	"time"
 )
 
-// SessionMeta is the per-project metadata stored in meta.json.
+// SessionMeta 是每个项目存储在 meta.json 中的元数据结构。
 type SessionMeta struct {
-	Project   string         `json:"project"`
-	GitRemote string         `json:"git_remote,omitempty"`
-	LocalSlug string         `json:"local_slug"`
-	LocalCwd  string         `json:"local_cwd"`
-	MachineID string         `json:"machine_id,omitempty"`
-	Sessions  []SessionEntry `json:"sessions"`
+	Project   string         `json:"project"`             // 项目名称
+	GitRemote string         `json:"git_remote,omitempty"` // Git 远程仓库地址（可选）
+	LocalSlug string         `json:"local_slug"`          // 本地 slug（路径派生，唯一标识）
+	LocalCwd  string         `json:"local_cwd"`           // 本地工作目录
+	MachineID string         `json:"machine_id,omitempty"` // 机器 ID（可选）
+	Sessions  []SessionEntry `json:"sessions"`            // 该项目下的会话列表
 }
 
-// SessionEntry describes a single session file.
+// SessionEntry 描述单个会话文件的信息。
 type SessionEntry struct {
-	SessionID     string   `json:"session_id"`
-	File          string   `json:"file"`
-	FileSize      int64    `json:"file_size"`
-	RecordCount   int      `json:"record_count"`
-	FirstTimestamp string   `json:"first_timestamp"`
-	LastTimestamp  string   `json:"last_timestamp"`
-	ModelsUsed    []string `json:"models_used"`
-	GitBranch     string   `json:"git_branch,omitempty"`
-	SourceSlug    string   `json:"source_slug"`
-	CollectedAt   string   `json:"collected_at"`
+	SessionID      string   `json:"session_id"`      // 会话唯一 ID
+	File           string   `json:"file"`            // 文件名
+	FileSize       int64    `json:"file_size"`       // 文件大小（字节）
+	RecordCount    int      `json:"record_count"`    // 记录条数
+	FirstTimestamp string   `json:"first_timestamp"` // 第一条记录的时间戳
+	LastTimestamp  string   `json:"last_timestamp"`  // 最后一条记录的时间戳
+	ModelsUsed     []string `json:"models_used"`     // 使用的模型列表
+	GitBranch      string   `json:"git_branch,omitempty"` // Git 分支（可选）
+	SourceSlug     string   `json:"source_slug"`     // 来源 slug
+	CollectedAt    string   `json:"collected_at"`    // 收集时间（RFC3339 格式）
 }
 
-// SessionDir returns the session storage directory for a slug under baseDir.
-// Uses slug (path-derived, unique) to avoid collisions when multiple projects
-// share the same basename at different paths (e.g. D:\work\app vs D:\personal\app).
+// SessionDir 返回指定 slug 在 baseDir 下的会话存储目录。
+// 使用 slug（由路径派生，全局唯一）作为目录名，可避免不同路径下同名的项目发生冲突
+//（例如 D:\work\app 与 D:\personal\app）。
 func SessionDir(baseDir, slug string) string {
 	return filepath.Join(baseDir, "sessions", slug)
 }
 
-// BaseDir returns the executable's directory (the root for all storage).
+// BaseDir 返回可执行文件所在的目录，作为所有本地存储的根目录。
 func BaseDir() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -51,7 +52,8 @@ func BaseDir() string {
 	return filepath.Dir(exe)
 }
 
-// LoadMeta reads meta.json from the given directory. Returns empty meta if not found.
+// LoadMeta 从指定目录读取 meta.json 文件。
+// 如果文件不存在，则返回一个空的 SessionMeta（含空会话列表）。
 func LoadMeta(dir string) (*SessionMeta, error) {
 	path := filepath.Join(dir, "meta.json")
 	data, err := os.ReadFile(path)
@@ -68,7 +70,8 @@ func LoadMeta(dir string) (*SessionMeta, error) {
 	return &meta, nil
 }
 
-// SaveMeta writes meta.json to the given directory.
+// SaveMeta 将 meta.json 写入指定目录。
+// 如果目录不存在会自动创建。
 func SaveMeta(dir string, meta *SessionMeta) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create session dir: %w", err)
@@ -81,8 +84,8 @@ func SaveMeta(dir string, meta *SessionMeta) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// ParseSessionJSONL scans a JSONL file to extract session metadata.
-// It reads the file line-by-line to collect: session ID, timestamps, models, branch, record count.
+// ParseSessionJSONL 扫描一个 JSONL 文件以提取会话元数据。
+// 逐行读取文件，收集：会话 ID、时间戳、使用的模型、Git 分支、记录条数等。
 func ParseSessionJSONL(path string, sourceSlug string) (*SessionEntry, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -96,7 +99,7 @@ func ParseSessionJSONL(path string, sourceSlug string) (*SessionEntry, error) {
 	}
 
 	scanner := bufio.NewScanner(f)
-	// Allow lines up to 1MB (Claude JSONL lines can be large).
+	// 允许每行最大 1MB（Claude 的 JSONL 行可能很大）。
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	var (
@@ -120,14 +123,14 @@ func ParseSessionJSONL(path string, sourceSlug string) (*SessionEntry, error) {
 			continue
 		}
 
-		// Extract session_id from first record.
+		// 从第一条记录中提取 session_id。
 		if sessionID == "" {
 			if sid, ok := record["sessionId"].(string); ok {
 				sessionID = sid
 			}
 		}
 
-		// Track timestamps.
+		// 追踪最早和最晚的时间戳。
 		if ts, ok := record["timestamp"].(string); ok && ts != "" {
 			if firstTS == "" {
 				firstTS = ts
@@ -135,20 +138,20 @@ func ParseSessionJSONL(path string, sourceSlug string) (*SessionEntry, error) {
 			lastTS = ts
 		}
 
-		// Extract model from message field (assistant records).
+		// 从 message 字段中提取模型信息（助手回复记录）。
 		if msg, ok := record["message"].(map[string]any); ok {
 			if model, ok := msg["model"].(string); ok && model != "" {
 				modelsMap[model] = true
 			}
 		}
 
-		// Extract gitBranch from user records.
+		// 从用户记录中提取 Git 分支。
 		if branch, ok := record["gitBranch"].(string); ok && branch != "" {
 			gitBranch = branch
 		}
 	}
 
-	// If no session_id from JSONL, try filename.
+	// 如果 JSONL 中未提取到 session_id，则使用文件名作为回退。
 	if sessionID == "" {
 		sessionID = strings.TrimSuffix(filepath.Base(path), ".jsonl")
 	}
@@ -159,21 +162,21 @@ func ParseSessionJSONL(path string, sourceSlug string) (*SessionEntry, error) {
 	}
 
 	return &SessionEntry{
-		SessionID:     sessionID,
-		File:          filepath.Base(path),
-		FileSize:      fi.Size(),
-		RecordCount:   count,
+		SessionID:      sessionID,
+		File:           filepath.Base(path),
+		FileSize:       fi.Size(),
+		RecordCount:    count,
 		FirstTimestamp: firstTS,
 		LastTimestamp:  lastTS,
-		ModelsUsed:    models,
-		GitBranch:     gitBranch,
-		SourceSlug:    sourceSlug,
-		CollectedAt:   time.Now().UTC().Format(time.RFC3339),
+		ModelsUsed:     models,
+		GitBranch:      gitBranch,
+		SourceSlug:     sourceSlug,
+		CollectedAt:    time.Now().UTC().Format(time.RFC3339),
 	}, nil
 }
 
-// FindSessionJSONLFiles lists all .jsonl files in a directory that look like session files
-// (filename is a UUID pattern: {sessionId}.jsonl).
+// FindSessionJSONLFiles 列出目录中所有看起来像会话文件的 .jsonl 文件。
+// 会话文件名需符合 UUID 模式：{sessionId}.jsonl（至少包含 4 个短横线）。
 func FindSessionJSONLFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -185,7 +188,7 @@ func FindSessionJSONLFiles(dir string) ([]string, error) {
 		if entry.IsDir() {
 			continue
 		}
-		// Session files are {uuid}.jsonl — UUIDs have 4 dashes.
+		// 会话文件格式为 {uuid}.jsonl — UUID 包含 4 个短横线。
 		if strings.HasSuffix(name, ".jsonl") && strings.Count(name, "-") >= 4 {
 			files = append(files, filepath.Join(dir, name))
 		}
@@ -193,7 +196,8 @@ func FindSessionJSONLFiles(dir string) ([]string, error) {
 	return files, nil
 }
 
-// copyFile copies a single file from src to dst.
+// copyFile 将单个文件从 src 复制到 dst。
+// 会自动创建目标文件所在目录。
 func copyFile(dst, src string) error {
 	in, err := os.Open(src)
 	if err != nil {

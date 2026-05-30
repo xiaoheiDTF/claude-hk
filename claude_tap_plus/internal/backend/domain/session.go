@@ -1,7 +1,9 @@
+// Package domain 定义核心业务实体和枚举类型。
 package domain
 
 import "time"
 
+// SessionStatus 表示会话的状态。
 type SessionStatus string
 
 const (

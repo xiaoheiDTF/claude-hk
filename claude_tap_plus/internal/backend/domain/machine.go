@@ -1,3 +1,4 @@
+// Package domain 定义核心业务实体和枚举类型。
 package domain
 
 import "time"
