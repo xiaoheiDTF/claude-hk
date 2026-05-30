@@ -3,33 +3,18 @@
 
 BACKEND_URL=""
 
+# 从 ~/.claude-tap-plus/backend.json 读取后端 URL
 _load_backend_url() {
   if [ -z "$BACKEND_URL" ]; then
-    local conf_file="$CLAUDE_PROJECT_DIR/.claude/backend.conf"
-    [ -f "$conf_file" ] || return 1
+    local json_file="$HOME/.claude-tap-plus/backend.json"
+    [ -f "$json_file" ] || return 1
 
-    local raw_url
-    raw_url=$(grep '^BACKEND_URL=' "$conf_file" 2>/dev/null | head -1 | cut -d= -f2-)
-    [ -z "$raw_url" ] && return 1
+    local host port
+    host=$(grep -o '"host"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
+    port=$(grep -o '"port"[[:space:]]*:[[:space:]]*[0-9]*' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *//')
+    [ -z "$host" ] || [ -z "$port" ] && return 1
 
-    # URL 格式校验：必须以 http:// 或 https:// 开头
-    case "$raw_url" in
-      http://*|https://*) ;;
-      *)
-        [ -n "${SKILL_TAG:-}" ] && skill_log "WARN" "backend.conf: invalid URL format: $raw_url"
-        return 1
-        ;;
-    esac
-
-    # 拒绝包含空白字符的 URL
-    case "$raw_url" in
-      *\ *|*\	*)
-        [ -n "${SKILL_TAG:-}" ] && skill_log "WARN" "backend.conf: URL contains whitespace"
-        return 1
-        ;;
-    esac
-
-    BACKEND_URL="$raw_url"
+    BACKEND_URL="http://$host:$port"
   fi
 }
 

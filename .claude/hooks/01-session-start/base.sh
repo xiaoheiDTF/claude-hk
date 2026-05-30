@@ -80,10 +80,17 @@ ensure_skill_checks() {
 
 ensure_skill_checks
 
-# 5. 初始化代理 trace 路径（通过 ANTHROPIC_BASE_URL 告知代理）
+# 5. 初始化代理 trace 路径（通过后端 8080 转发到代理）
 init_trace_path() {
-  local proxy_url="${ANTHROPIC_BASE_URL:-}"
-  [ -z "$proxy_url" ] && return 0
+  local json_file="$HOME/.claude-tap-plus/backend.json"
+  [ -f "$json_file" ] || return 0
+
+  local host port
+  host=$(grep -o '"host"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
+  port=$(grep -o '"port"[[:space:]]*:[[:space:]]*[0-9]*' "$json_file" 2>/dev/null | head -1 | sed 's/.*: *//')
+  [ -z "$host" ] || [ -z "$port" ] && return 0
+
+  local backend_url="http://$host:$port"
 
   local sid
   sid=$(json_get '.session_id')
@@ -99,8 +106,9 @@ init_trace_path() {
   project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
   [ -z "$project_slug" ] && project_slug=$(basename "$(json_get '.cwd')" 2>/dev/null)
 
+  # 通过后端转发 trace-init 到代理
   local result
-  result=$(curl -s --max-time 3 -X POST "$proxy_url/_internal/trace-init" \
+  result=$(curl -s --max-time 3 -X POST "$backend_url/api/proxy/trace-init" \
     -H "Content-Type: application/json" \
     -d "{
       \"session_id\":\"$sid\",
@@ -112,7 +120,7 @@ init_trace_path() {
   if [ -n "$result" ]; then
     log "INFO" "Trace initialized: $(echo "$result" | jq -r '.trace_path // "unknown"' 2>/dev/null)"
   else
-    log "DEBUG" "Trace init skipped (proxy unreachable)"
+    log "DEBUG" "Trace init skipped (backend/proxy unreachable)"
   fi
 }
 
