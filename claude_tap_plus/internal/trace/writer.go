@@ -2,8 +2,6 @@ package trace
 
 import (
 	"bufio"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/usage"
@@ -233,24 +230,6 @@ func DetectProjectName() string {
 	return project
 }
 
-// NewTracePath 根据当前机器和项目信息生成追踪文件路径（fallback 用）。
-//
-// 路径格式：baseDir/{machine_id}/{project_slug}/{date}/{time}/pending.jsonl
-// 使用 pending 作为文件名标记，表示 session_id 尚未确定。
-// 当 _internal/trace-init 提供真实 session_id 后，由调用方负责重命名。
-func NewTracePath(baseDir string) string {
-	machineID := MachineID()
-	project := DetectProjectName()
-
-	now := time.Now()
-	date := now.Format("2006-01-02")
-	t := now.Format("150405")
-
-	path := filepath.Join(baseDir, machineID, project, date, t, "pending.jsonl")
-	logger.Debug("trace", "trace path: %s", path)
-	return path
-}
-
 // gitRemoteRepoName 从 .git/config 文件中提取 remote origin 对应的仓库名。
 //
 // 示例：
@@ -286,13 +265,6 @@ func gitRemoteRepoName(dir string) string {
 		}
 	}
 	return ""
-}
-
-// randomHex 生成 n 个随机字节并以十六进制字符串返回（共 2*n 个字符）。
-func randomHex(n int) string {
-	b := make([]byte, n)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 // MachineID 返回 "用户名@主机名" 格式的机器标识符。
@@ -348,7 +320,9 @@ func ExtractProjectSlug(transcriptPath string) string {
 
 // NewSessionTracePath 基于会话信息构建追踪文件路径。
 //
-// 路径格式：baseDir/{machineID}/{projectSlug}/{date}/{time}/{sessionID}.jsonl
+// 路径格式：baseDir/{machineID}/{projectSlug}/{sessionID}.jsonl
+//
+// 同一 session_id 对应唯一路径，resume 时追加写入而非创建新文件。
 //
 // 参数说明：
 //   - baseDir:     基础追踪目录
@@ -356,10 +330,7 @@ func ExtractProjectSlug(transcriptPath string) string {
 //   - projectSlug: 项目标识（如 D--xxx-yyy）
 //   - sessionID:   会话唯一标识
 func NewSessionTracePath(baseDir, machineID, projectSlug, sessionID string) string {
-	now := time.Now()
-	date := now.Format("2006-01-02")
-	t := now.Format("150405")
-	path := filepath.Join(baseDir, machineID, projectSlug, date, t, sessionID+".jsonl")
+	path := filepath.Join(baseDir, machineID, projectSlug, sessionID+".jsonl")
 	logger.Debug("trace", "session trace path: %s", path)
 	return path
 }
