@@ -1,3 +1,4 @@
+// Package trace_test 包含追踪写入器的单元测试，覆盖文件创建、记录写入、统计汇总等功能。
 package trace_test
 
 import (
@@ -10,14 +11,16 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/trace"
 )
 
+// TestNewTracePath 验证：追踪文件路径格式正确。
+// 路径应包含日期、时间和随机十六进制后缀，以 .jsonl 结尾。
 func TestNewTracePath(t *testing.T) {
 	path := trace.NewTracePath("/tmp/traces")
-	// Path format: /tmp/traces/{project}/{date}_{time}_{hex}.jsonl
+	// 路径格式：/tmp/traces/{project}/{date}_{time}_{hex}.jsonl
 	filename := filepath.Base(path)
 	if !strings.HasSuffix(filename, ".jsonl") {
 		t.Errorf("expected .jsonl suffix, got %q", filename)
 	}
-	// Filename format: 2006-01-02_150405_a1b2c3.jsonl
+	// 文件名格式：2006-01-02_150405_a1b2c3.jsonl
 	parts := strings.Split(strings.TrimSuffix(filename, ".jsonl"), "_")
 	if len(parts) != 3 {
 		t.Errorf("expected 3-part filename (date_time_hex), got %d parts: %q", len(parts), parts)
@@ -27,6 +30,8 @@ func TestNewTracePath(t *testing.T) {
 	}
 }
 
+// TestTraceWriterWriteAndSummary 验证：追踪写入器能正确写入记录并汇总统计。
+// 写入两条记录后，验证 API 调用次数、输入/输出 token 数、模型使用次数。
 func TestTraceWriterWriteAndSummary(t *testing.T) {
 	dir := t.TempDir()
 	tracePath := filepath.Join(dir, "test_trace.jsonl")
@@ -36,6 +41,7 @@ func TestTraceWriterWriteAndSummary(t *testing.T) {
 		t.Fatalf("NewTraceWriter: %v", err)
 	}
 
+	// 写入第一条记录
 	record := map[string]any{
 		"request_id": "req_001",
 		"turn":       1,
@@ -59,6 +65,7 @@ func TestTraceWriterWriteAndSummary(t *testing.T) {
 		t.Fatalf("Write: %v", err)
 	}
 
+	// 写入第二条记录
 	record2 := map[string]any{
 		"request_id": "req_002",
 		"turn":       2,
@@ -81,6 +88,7 @@ func TestTraceWriterWriteAndSummary(t *testing.T) {
 		t.Fatalf("Write second record: %v", err)
 	}
 
+	// 验证汇总统计
 	summary := w.Summary()
 	if summary["api_calls"] != 2 {
 		t.Errorf("expected 2 api_calls, got %v", summary["api_calls"])
@@ -101,6 +109,7 @@ func TestTraceWriterWriteAndSummary(t *testing.T) {
 		t.Fatalf("Close: %v", err)
 	}
 
+	// 验证文件内容
 	data, err := os.ReadFile(tracePath)
 	if err != nil {
 		t.Fatalf("read trace file: %v", err)
@@ -120,6 +129,7 @@ func TestTraceWriterWriteAndSummary(t *testing.T) {
 	}
 }
 
+// TestTraceWriterCreatesDirectory 验证：追踪写入器能自动创建嵌套目录。
 func TestTraceWriterCreatesDirectory(t *testing.T) {
 	dir := t.TempDir()
 	nestedPath := filepath.Join(dir, "sub1", "sub2", "trace.jsonl")
@@ -135,6 +145,7 @@ func TestTraceWriterCreatesDirectory(t *testing.T) {
 	}
 }
 
+// TestTraceWriterCacheTokenStats 验证：缓存 token（cache_read_tokens、cache_create_tokens）被正确统计。
 func TestTraceWriterCacheTokenStats(t *testing.T) {
 	dir := t.TempDir()
 	w, err := trace.NewTraceWriter(filepath.Join(dir, "cache_test.jsonl"))
@@ -172,6 +183,7 @@ func TestTraceWriterCacheTokenStats(t *testing.T) {
 	}
 }
 
+// splitLines 将字符串按换行符分割，过滤空行。
 func splitLines(s string) []string {
 	var lines []string
 	for _, line := range strings.Split(s, "\n") {
@@ -180,4 +192,65 @@ func splitLines(s string) []string {
 		}
 	}
 	return lines
+}
+
+// TestMachineID 验证：MachineID 返回非空字符串，且包含用户名和主机名。
+func TestMachineID(t *testing.T) {
+	mid := trace.MachineID()
+	if mid == "" {
+		t.Fatal("MachineID should not be empty")
+	}
+	if !strings.Contains(mid, "@") {
+		t.Errorf("MachineID should contain '@', got %q", mid)
+	}
+	parts := strings.SplitN(mid, "@", 2)
+	if parts[0] == "" || parts[1] == "" {
+		t.Errorf("MachineID should have non-empty username and hostname, got %q", mid)
+	}
+}
+
+// TestExtractProjectSlug 验证：从追踪文件路径中提取项目 slug。
+func TestExtractProjectSlug(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"windows_path", `C:\Users\Admin\.claude\projects\D--CodeDevelopment-CodeProject-claude-hk\uuid.jsonl`, "D--CodeDevelopment-CodeProject-claude-hk"},
+		{"unix_path", "/home/user/.claude/projects/D--CodeDevelopment-CodeProject-claude-hk/uuid.jsonl", "D--CodeDevelopment-CodeProject-claude-hk"},
+		{"empty", "", ""},
+		{"no_projects_segment", "/some/random/path.jsonl", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := trace.ExtractProjectSlug(tt.input)
+			if got != tt.want {
+				t.Errorf("ExtractProjectSlug(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNewSessionTracePath 验证：Session 追踪路径按 machine_id/project_slug/session_id.jsonl 格式生成。
+func TestNewSessionTracePath(t *testing.T) {
+	path := trace.NewSessionTracePath("/tmp/traces", "user@host", "D--my-project", "abc-123")
+	expected := filepath.Join("/tmp/traces", "user@host", "D--my-project", "abc-123.jsonl")
+	if path != expected {
+		t.Errorf("NewSessionTracePath = %q, want %q", path, expected)
+	}
+}
+
+// TestDefaultTraceDir 验证：默认追踪目录包含 .claude-tap-plus 和 .traces 后缀。
+func TestDefaultTraceDir(t *testing.T) {
+	dir := trace.DefaultTraceDir()
+	if dir == "" {
+		t.Fatal("DefaultTraceDir should not be empty")
+	}
+	if !strings.Contains(dir, ".claude-tap-plus") {
+		t.Errorf("DefaultTraceDir should contain .claude-tap-plus, got %q", dir)
+	}
+	if !strings.HasSuffix(dir, ".traces") {
+		t.Errorf("DefaultTraceDir should end with .traces, got %q", dir)
+	}
 }

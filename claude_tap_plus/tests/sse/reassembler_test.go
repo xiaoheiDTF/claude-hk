@@ -1,3 +1,5 @@
+// Package sse_test 包含 SSE（Server-Sent Events）流重组器的单元测试。
+// 测试覆盖 Anthropic、OpenAI 等流式响应格式的解析与重组。
 package sse_test
 
 import (
@@ -6,21 +8,23 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/sse"
 )
 
+// TestAnthropicStreamReconstruction 验证：Anthropic 流式响应能正确重组为完整消息快照。
+// 模拟 message_start → content_block_start → content_block_delta → content_block_stop → message_delta → message_stop 事件流。
 func TestAnthropicStreamReconstruction(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"event: message_start\n"+
-			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"m1\",\"role\":\"assistant\","+
-			"\"content\":[],\"model\":\"claude-x\",\"usage\":{\"input_tokens\":3,\"output_tokens\":0}}}\n\n"+
-			"event: content_block_start\n"+
-			"data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"+
-			"event: content_block_delta\n"+
-			"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"hi\"}}\n\n"+
-			"event: content_block_stop\n"+
-			"data: {\"type\":\"content_block_stop\",\"index\":0}\n\n"+
-			"event: message_delta\n"+
-			"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\n"+
-			"event: message_stop\n"+
+		"event: message_start\n" +
+			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"m1\",\"role\":\"assistant\"," +
+			"\"content\":[],\"model\":\"claude-x\",\"usage\":{\"input_tokens\":3,\"output_tokens\":0}}}\n\n" +
+			"event: content_block_start\n" +
+			"data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n" +
+			"event: content_block_delta\n" +
+			"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"hi\"}}\n\n" +
+			"event: content_block_stop\n" +
+			"data: {\"type\":\"content_block_stop\",\"index\":0}\n\n" +
+			"event: message_delta\n" +
+			"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\n" +
+			"event: message_stop\n" +
 			"data: {\"type\":\"message_stop\"}\n\n",
 	))
 
@@ -40,12 +44,14 @@ func TestAnthropicStreamReconstruction(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsStream 验证：OpenAI chat.completions 流式响应能正确解析。
+// 模拟包含角色、内容和结束标记的 SSE 事件流。
 func TestChatCompletionsStream(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"content\":\"OK\"}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"finish_reason\":\"stop\",\"delta\":{}}]}\n\n"+
+		"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"content\":\"OK\"}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"finish_reason\":\"stop\",\"delta\":{}}]}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -78,12 +84,14 @@ func TestChatCompletionsStream(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsUsageNormalization 验证：OpenAI 流式响应中的 usage 被正确标准化为统一格式。
+// 将 prompt_tokens/completion_tokens 映射为 input_tokens/output_tokens。
 func TestChatCompletionsUsageNormalization(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c1\",\"model\":\"hy3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],"+
-			"\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3,\"total_tokens\":15}}\n\n"+
+		"data: {\"id\":\"c1\",\"model\":\"hy3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}," +
+			"\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3,\"total_tokens\":15}}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -107,12 +115,13 @@ func TestChatCompletionsUsageNormalization(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsCachedTokens 验证：缓存 token（cached_tokens）被正确提取为 cache_read_input_tokens。
 func TestChatCompletionsCachedTokens(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c_kimi\",\"model\":\"kimi-k2\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n"+
-			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\","+
-			"\"usage\":{\"prompt_tokens\":8,\"completion_tokens\":5,\"total_tokens\":13,\"cached_tokens\":3}}]}\n\n"+
+		"data: {\"id\":\"c_kimi\",\"model\":\"kimi-k2\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n" +
+			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"," +
+			"\"usage\":{\"prompt_tokens\":8,\"completion_tokens\":5,\"total_tokens\":13,\"cached_tokens\":3}}]}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -136,12 +145,13 @@ func TestChatCompletionsCachedTokens(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsReasoningContent 验证：推理内容（reasoning_content）被正确累加。
 func TestChatCompletionsReasoningContent(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"reasoning_content\":\"Think \"}}]}\n\n"+
-			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"reasoning_content\":\"carefully.\"}}]}\n\n"+
-			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"content\":\"Done.\"}}]}\n\n"+
+		"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"reasoning_content\":\"Think \"}}]}\n\n" +
+			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"reasoning_content\":\"carefully.\"}}]}\n\n" +
+			"data: {\"id\":\"c_kimi\",\"choices\":[{\"delta\":{\"content\":\"Done.\"}}]}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -168,16 +178,18 @@ func TestChatCompletionsReasoningContent(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsToolCallAccumulation 验证：流式工具调用参数被正确拼接。
+// 模拟工具调用的 arguments 分多段发送的场景。
 func TestChatCompletionsToolCallAccumulation(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"tool_calls\":"+
-			"[{\"index\":0,\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"tool_calls\":"+
-			"[{\"index\":0,\"function\":{\"arguments\":\"{\\\"city\\\":\"}}]}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"tool_calls\":"+
-			"[{\"index\":0,\"function\":{\"arguments\":\"\\\"SF\\\"}\"}}]}}]}\n\n"+
-			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"+
+		"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"tool_calls\":" +
+			"[{\"index\":0,\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"tool_calls\":" +
+			"[{\"index\":0,\"function\":{\"arguments\":\"{\\\"city\\\":\"}}]}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{\"tool_calls\":" +
+			"[{\"index\":0,\"function\":{\"arguments\":\"\\\"SF\\\"}\"}}]}}]}\n\n" +
+			"data: {\"id\":\"c1\",\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -216,14 +228,15 @@ func TestChatCompletionsToolCallAccumulation(t *testing.T) {
 	}
 }
 
+// TestChatCompletionsParallelToolCalls 验证：并行工具调用被正确解析。
 func TestChatCompletionsParallelToolCalls(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"tool_calls\":["+
-			"{\"index\":0,\"id\":\"a\",\"type\":\"function\",\"function\":{\"name\":\"f1\",\"arguments\":\"{}\"}},"+
-			"{\"index\":1,\"id\":\"b\",\"type\":\"function\",\"function\":{\"name\":\"f2\",\"arguments\":\"{}\"}}"+
-			"]}}]}\n\n"+
-			"data: {\"id\":\"c3\",\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"+
+		"data: {\"id\":\"c3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"tool_calls\":[" +
+			"{\"index\":0,\"id\":\"a\",\"type\":\"function\",\"function\":{\"name\":\"f1\",\"arguments\":\"{}\"}}," +
+			"{\"index\":1,\"id\":\"b\",\"type\":\"function\",\"function\":{\"name\":\"f2\",\"arguments\":\"{}\"}}" +
+			"]}}]}\n\n" +
+			"data: {\"id\":\"c3\",\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -247,6 +260,7 @@ func TestChatCompletionsParallelToolCalls(t *testing.T) {
 	}
 }
 
+// TestDoneSentinelFiltered 验证：[DONE] 哨兵事件被正确过滤，不计入有效事件。
 func TestDoneSentinelFiltered(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte("data: [DONE]\n\n"))
@@ -255,6 +269,7 @@ func TestDoneSentinelFiltered(t *testing.T) {
 	}
 }
 
+// TestChunkedAcrossFeeds 验证：SSE 数据跨多次 FeedBytes 调用能正确拼接。
 func TestChunkedAcrossFeeds(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte("data: {\"id\":\"c1\",\"choices\":[{\"de"))
@@ -269,12 +284,13 @@ func TestChunkedAcrossFeeds(t *testing.T) {
 	}
 }
 
+// TestUsageOnlyFinalChunk 验证：仅最后一个 chunk 包含 usage 时，仍能正确提取 token 统计。
 func TestUsageOnlyFinalChunk(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"data: {\"id\":\"c4\",\"model\":\"hy3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n"+
-			"data: {\"id\":\"c4\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"+
-			"data: {\"id\":\"c4\",\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2,\"total_tokens\":12}}\n\n"+
+		"data: {\"id\":\"c4\",\"model\":\"hy3\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"hi\"}}]}\n\n" +
+			"data: {\"id\":\"c4\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n" +
+			"data: {\"id\":\"c4\",\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2,\"total_tokens\":12}}\n\n" +
 			"data: [DONE]\n\n",
 	))
 
@@ -295,6 +311,7 @@ func TestUsageOnlyFinalChunk(t *testing.T) {
 	}
 }
 
+// TestUsageOnlyChunkWithoutPriorSnapshotIsSkipped 验证：只有 usage 但没有先前 snapshot 的 chunk 被跳过。
 func TestUsageOnlyChunkWithoutPriorSnapshotIsSkipped(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte("data: {\"choices\":[],\"usage\":{\"prompt_tokens\":1}}\n\n"))
@@ -303,6 +320,7 @@ func TestUsageOnlyChunkWithoutPriorSnapshotIsSkipped(t *testing.T) {
 	}
 }
 
+// TestMixedEventAndBareData 验证：混合命名事件和裸 data 事件都能正确解析。
 func TestMixedEventAndBareData(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte("data: {\"bare\":1}\n\nevent: ping\ndata: {\"named\":2}\n\ndata: {\"bare\":3}\n\n"))
@@ -318,27 +336,28 @@ func TestMixedEventAndBareData(t *testing.T) {
 	}
 }
 
+// TestAnthropicThinkingBlock 验证：Anthropic thinking 内容块被正确解析和重组。
 func TestAnthropicThinkingBlock(t *testing.T) {
 	r := sse.NewSSEReassembler()
 	r.FeedBytes([]byte(
-		"event: message_start\n"+
-			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"m2\",\"role\":\"assistant\","+
-			"\"content\":[],\"model\":\"claude-x\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"+
-			"event: content_block_start\n"+
-			"data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}\n\n"+
-			"event: content_block_delta\n"+
-			"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"Let me think\"}}\n\n"+
-			"event: content_block_stop\n"+
-			"data: {\"type\":\"content_block_stop\",\"index\":0}\n\n"+
-			"event: content_block_start\n"+
-			"data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"+
-			"event: content_block_delta\n"+
-			"data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Answer\"}}\n\n"+
-			"event: content_block_stop\n"+
-			"data: {\"type\":\"content_block_stop\",\"index\":1}\n\n"+
-			"event: message_delta\n"+
-			"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":10}}\n\n"+
-			"event: message_stop\n"+
+		"event: message_start\n" +
+			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"m2\",\"role\":\"assistant\"," +
+			"\"content\":[],\"model\":\"claude-x\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n" +
+			"event: content_block_start\n" +
+			"data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}\n\n" +
+			"event: content_block_delta\n" +
+			"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"Let me think\"}}\n\n" +
+			"event: content_block_stop\n" +
+			"data: {\"type\":\"content_block_stop\",\"index\":0}\n\n" +
+			"event: content_block_start\n" +
+			"data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n" +
+			"event: content_block_delta\n" +
+			"data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Answer\"}}\n\n" +
+			"event: content_block_stop\n" +
+			"data: {\"type\":\"content_block_stop\",\"index\":1}\n\n" +
+			"event: message_delta\n" +
+			"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":10}}\n\n" +
+			"event: message_stop\n" +
 			"data: {\"type\":\"message_stop\"}\n\n",
 	))
 

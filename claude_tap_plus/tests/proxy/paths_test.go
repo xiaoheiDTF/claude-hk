@@ -1,3 +1,4 @@
+// Package proxy_test 包含代理层路径过滤的单元测试。
 package proxy_test
 
 import (
@@ -6,6 +7,9 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/proxy"
 )
 
+// TestIsAllowedPath 验证：代理的路径白名单和黑名单逻辑。
+// 允许的路径包括 Anthropic、OpenAI、Google Gemini、Kimi 等 API 路径；
+// 被屏蔽的路径包括管理后台、robots.txt、.env 等。
 func TestIsAllowedPath(t *testing.T) {
 	tests := []struct {
 		path     string
@@ -21,7 +25,7 @@ func TestIsAllowedPath(t *testing.T) {
 		{"/v1/models", true},
 		{"/v1/embeddings", true},
 		{"/v1/files", true},
-		// Stripped prefix variants
+		// 无前缀变体
 		{"/responses", true},
 		{"/chat/completions", true},
 		{"/completions", true},
@@ -31,9 +35,9 @@ func TestIsAllowedPath(t *testing.T) {
 		{"/v1/models/gemini-pro", true},
 		// Kimi
 		{"/coding/v1/messages", true},
-		// OpenAI compatible relay
+		// OpenAI 兼容转发
 		{"/anthropic/v1/messages", true},
-		// Blocked paths
+		// 被屏蔽的路径
 		{"/admin/config", false},
 		{"/robots.txt", false},
 		{"/wp-admin", false},

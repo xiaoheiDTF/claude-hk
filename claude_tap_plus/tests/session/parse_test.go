@@ -1,3 +1,4 @@
+// Package session_test 包含会话解析相关功能的单元测试。
 package session_test
 
 import (
@@ -9,7 +10,8 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/testutil"
 )
 
-// TestGenerateSlug verifies slug generation for various path formats.
+// TestGenerateSlug 验证：目录路径正确转换为 slug 格式。
+// 将路径中的反斜杠和斜杠替换为短横线，用于项目标识。
 func TestGenerateSlug(t *testing.T) {
 	tests := []struct {
 		input string
@@ -30,7 +32,8 @@ func TestGenerateSlug(t *testing.T) {
 	}
 }
 
-// TestCwdToClaudeKey verifies forward-slash conversion for .claude.json keys.
+// TestCwdToClaudeKey 验证：工作目录路径正确转换为 .claude.json 键名。
+// 将 Windows 反斜杠替换为正斜杠。
 func TestCwdToClaudeKey(t *testing.T) {
 	got := session.CwdToClaudeKey(`D:\development\code\claude-tap`)
 	want := "D:/development/code/claude-tap"
@@ -39,7 +42,8 @@ func TestCwdToClaudeKey(t *testing.T) {
 	}
 }
 
-// TestParseSessionJSONL uses the real session file from testdata.
+// TestParseSessionJSONL 验证：真实会话 JSONL 文件能被正确解析。
+// 读取 testdata 中的会话文件，验证解析后的基本字段非空。
 func TestParseSessionJSONL(t *testing.T) {
 	sessionDir := testutil.FindDir(t, filepath.Join("testdata", "sessions", "claude-tap"))
 	entries, err := os.ReadDir(sessionDir)
@@ -60,7 +64,7 @@ func TestParseSessionJSONL(t *testing.T) {
 			continue
 		}
 
-		// Verify basic fields.
+		// 验证基本字段
 		if se.SessionID == "" {
 			t.Errorf("%s: empty session_id", path)
 		}
@@ -97,17 +101,18 @@ func TestParseSessionJSONL(t *testing.T) {
 	}
 }
 
-// TestFindSessionJSONLFiles tests the file filtering logic.
+// TestFindSessionJSONLFiles 验证：会话文件过滤逻辑正确。
+// 只匹配包含 4 个以上短横线的 UUID 格式文件名，排除非 JSONL 文件和短横线不足的文件。
 func TestFindSessionJSONLFiles(t *testing.T) {
 	dir := t.TempDir()
 
-	// Create test files with different patterns.
+	// 创建不同模式的测试文件
 	files := []string{
-		"731bcd6d-b7eb-401f-a9f9-4ed73ce85b38.jsonl", // UUID format: 4+ dashes ✓
-		"4a430bc7-cdd0-4010-adf2-70a4ddaacd36.jsonl", // UUID format: 4+ dashes ✓
-		"simple.jsonl",                                // Too few dashes ✗
-		"two-parts.jsonl",                             // Only 1 dash ✗
-		"readme.md",                                   // Not JSONL ✗
+		"731bcd6d-b7eb-401f-a9f9-4ed73ce85b38.jsonl", // UUID 格式：4+ 短横线 ✓
+		"4a430bc7-cdd0-4010-adf2-70a4ddaacd36.jsonl", // UUID 格式：4+ 短横线 ✓
+		"simple.jsonl",                                // 短横线不足 ✗
+		"two-parts.jsonl",                             // 仅 1 个短横线 ✗
+		"readme.md",                                   // 非 JSONL ✗
 	}
 	for _, name := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("{}\n"), 0o644); err != nil {
@@ -128,7 +133,8 @@ func TestFindSessionJSONLFiles(t *testing.T) {
 	}
 }
 
-// TestLoadSaveMeta tests meta.json round-trip.
+// TestLoadSaveMeta 验证：meta.json 的写入和读取（往返测试）。
+// 创建 SessionMeta 对象，保存到文件后再加载，验证字段保持一致。
 func TestLoadSaveMeta(t *testing.T) {
 	dir := t.TempDir()
 
@@ -180,7 +186,7 @@ func TestLoadSaveMeta(t *testing.T) {
 	}
 }
 
-// TestLoadMetaNotExist tests that LoadMeta returns empty meta for missing file.
+// TestLoadMetaNotExist 验证：当 meta.json 不存在时，LoadMeta 返回空的 meta 对象而非错误。
 func TestLoadMetaNotExist(t *testing.T) {
 	meta, err := session.LoadMeta(t.TempDir())
 	if err != nil {
@@ -194,6 +200,7 @@ func TestLoadMetaNotExist(t *testing.T) {
 	}
 }
 
+// formatSize 将字节大小转换为可读字符串（small/medium/big）。
 func formatSize(bytes int64) string {
 	const (
 		KB = 1024

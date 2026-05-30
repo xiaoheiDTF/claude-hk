@@ -1,3 +1,4 @@
+// Package proxy_test 包含代理层 HTTP 头处理的单元测试。
 package proxy_test
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/proxy"
 )
 
+// TestFilterHeadersNoRedact 验证：不脱敏时，请求头原样通过。
 func TestFilterHeadersNoRedact(t *testing.T) {
 	h := http.Header{}
 	h.Set("Content-Type", "application/json")
@@ -23,6 +25,8 @@ func TestFilterHeadersNoRedact(t *testing.T) {
 	}
 }
 
+// TestFilterHeadersWithRedact 验证：脱敏模式下，敏感头被正确脱敏。
+// Authorization 和 X-Api-Key 被前缀脱敏，Cookie 被完全掩码。
 func TestFilterHeadersWithRedact(t *testing.T) {
 	h := http.Header{}
 	h.Set("Content-Type", "application/json")
@@ -46,6 +50,8 @@ func TestFilterHeadersWithRedact(t *testing.T) {
 	}
 }
 
+// TestFilterHeadersHopByHop 验证：逐跳头（hop-by-hop）被正确移除。
+// Connection 和 Transfer-Encoding 等逐跳头不应出现在过滤后的头中。
 func TestFilterHeadersHopByHop(t *testing.T) {
 	h := http.Header{}
 	h.Set("Connection", "keep-alive")
@@ -65,6 +71,7 @@ func TestFilterHeadersHopByHop(t *testing.T) {
 	}
 }
 
+// TestHeadersToMap 验证：HTTP 头正确转换为 map，多值头取第一个值。
 func TestHeadersToMap(t *testing.T) {
 	h := http.Header{}
 	h.Set("Content-Type", "application/json")

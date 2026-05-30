@@ -1,3 +1,4 @@
+// Package backend_test 包含后端 Issue API 的验收测试，覆盖 check、claim、release、status 等接口。
 package backend_test
 
 import (
@@ -18,11 +19,13 @@ import (
 
 // --- helpers ---
 
+// testEnv 是后端测试的通用环境，包含测试服务器和 SQLite 存储。
 type testEnv struct {
 	srv   *httptest.Server
 	store *store.SQLiteStore
 }
 
+// setupTest 创建后端测试环境，自动清理临时数据库。
 func setupTest(t *testing.T) *testEnv {
 	t.Helper()
 
@@ -57,6 +60,7 @@ func setupTest(t *testing.T) *testEnv {
 	return &testEnv{srv: srv, store: s}
 }
 
+// post 发送 POST 请求到测试环境。
 func (e *testEnv) post(t *testing.T, path, body string) *http.Response {
 	t.Helper()
 	resp, err := http.Post(e.srv.URL+path, "application/json", strings.NewReader(body))
@@ -66,6 +70,7 @@ func (e *testEnv) post(t *testing.T, path, body string) *http.Response {
 	return resp
 }
 
+// readJSON 读取 HTTP 响应并解析为 JSON。
 func readJSON(t *testing.T, resp *http.Response, v any) {
 	t.Helper()
 	defer resp.Body.Close()
@@ -78,6 +83,7 @@ func readJSON(t *testing.T, resp *http.Response, v any) {
 	}
 }
 
+// seedIssue 在数据库中预置一条 issue 记录。
 func seedIssue(db *sql.DB, repo string, number int, status, sessionID, claimedAt string) {
 	db.Exec(
 		`INSERT INTO issue_claims (repo_full_name, issue_number, status, session_id, claimed_at, updated_at)
@@ -87,6 +93,7 @@ func seedIssue(db *sql.DB, repo string, number int, status, sessionID, claimedAt
 	)
 }
 
+// nilIfEmpty 将空字符串转为 nil，用于数据库插入。
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil
@@ -96,6 +103,7 @@ func nilIfEmpty(s string) any {
 
 // --- tests ---
 
+// TestHealth 验证：/health 健康检查接口返回 200 和 {"status":"ok"}。
 func TestHealth(t *testing.T) {
 	env := setupTest(t)
 
@@ -116,6 +124,7 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_EmptyArray 验证：传入空 issue 数组时返回空结果。
 func TestCheckIssues_EmptyArray(t *testing.T) {
 	env := setupTest(t)
 
@@ -135,6 +144,7 @@ func TestCheckIssues_EmptyArray(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_NewIssuesAutoCreatedAsIdle 验证：首次出现的 issue 自动创建为 idle 状态。
 func TestCheckIssues_NewIssuesAutoCreatedAsIdle(t *testing.T) {
 	env := setupTest(t)
 
@@ -171,6 +181,8 @@ func TestCheckIssues_NewIssuesAutoCreatedAsIdle(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_ClaimedAndMerged 验证：check 接口返回不同状态 issue 的正确信息。
+// 覆盖 idle、claimed（有 session_id 和 claimed_at）、merged 三种状态。
 func TestCheckIssues_ClaimedAndMerged(t *testing.T) {
 	env := setupTest(t)
 	db := env.store.DB()
@@ -208,7 +220,7 @@ func TestCheckIssues_ClaimedAndMerged(t *testing.T) {
 		byNumber[result.Issues[i].Number] = &result.Issues[i]
 	}
 
-	// #9: new → idle
+	// #9: 新 issue → idle
 	if byNumber[9].Status != "idle" {
 		t.Errorf("issue 9: expected idle, got %s", byNumber[9].Status)
 	}
@@ -232,12 +244,13 @@ func TestCheckIssues_ClaimedAndMerged(t *testing.T) {
 		t.Errorf("issue 11: expected null session_id, got %v", byNumber[11].SessionID)
 	}
 
-	// #12: new → idle
+	// #12: 新 issue → idle
 	if byNumber[12].Status != "idle" {
 		t.Errorf("issue 12: expected idle, got %s", byNumber[12].Status)
 	}
 }
 
+// TestCheckIssues_MissingRepoFullName 验证：缺少 repo_full_name 返回 400。
 func TestCheckIssues_MissingRepoFullName(t *testing.T) {
 	env := setupTest(t)
 
@@ -258,6 +271,7 @@ func TestCheckIssues_MissingRepoFullName(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_MissingIssueNumbers 验证：缺少 issue_numbers 返回 400。
 func TestCheckIssues_MissingIssueNumbers(t *testing.T) {
 	env := setupTest(t)
 
@@ -278,6 +292,7 @@ func TestCheckIssues_MissingIssueNumbers(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_InvalidJSON 验证：非法 JSON 请求体返回 400。
 func TestCheckIssues_InvalidJSON(t *testing.T) {
 	env := setupTest(t)
 
@@ -297,6 +312,7 @@ func TestCheckIssues_InvalidJSON(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_MethodNotAllowed 验证：GET 请求访问 check 接口返回 405。
 func TestCheckIssues_MethodNotAllowed(t *testing.T) {
 	env := setupTest(t)
 
@@ -319,14 +335,15 @@ func TestCheckIssues_MethodNotAllowed(t *testing.T) {
 	}
 }
 
+// TestCheckIssues_IdempotentOnRepeatedCalls 验证：重复调用 check 接口是幂等的。
 func TestCheckIssues_IdempotentOnRepeatedCalls(t *testing.T) {
 	env := setupTest(t)
 
-	// First call creates idle records
+	// 第一次调用创建 idle 记录
 	env.post(t, "/api/issue/check",
 		`{"repo_full_name":"test/repo","issue_numbers":[1,2]}`)
 
-	// Second call should return the same idle records
+	// 第二次调用应返回相同的 idle 记录
 	resp := env.post(t, "/api/issue/check",
 		`{"repo_full_name":"test/repo","issue_numbers":[1,2]}`)
 
@@ -359,6 +376,7 @@ func TestCheckIssues_IdempotentOnRepeatedCalls(t *testing.T) {
 //   - merged/rejected 终态不被释放
 //   - 参数缺失时返回错误
 
+// TestReleaseIssue 验证单个 issue 释放接口。
 func TestReleaseIssue(t *testing.T) {
 	t.Run("owner_can_release", func(t *testing.T) {
 		// 验收：领取者可释放自己的 issue
@@ -539,6 +557,7 @@ func TestReleaseIssue(t *testing.T) {
 //   - 已合并/打回的 issue 不受影响
 //   - 无领取记录的 session 返回空列表
 
+// TestReleaseSession 验证按 session 批量释放接口。
 func TestReleaseSession(t *testing.T) {
 	t.Run("releases_all_non_terminal", func(t *testing.T) {
 		// 验收：释放该 session 所有未终态的 issue
@@ -716,6 +735,7 @@ func TestReleaseSession(t *testing.T) {
 //   - 同一状态幂等更新返回成功
 //   - 完整流程：claim → fixing 验证状态正确流转
 
+// TestUpdateStatus 验证 Issue 状态更新接口。
 func TestUpdateStatus(t *testing.T) {
 	t.Run("owner_can_update_to_fixing", func(t *testing.T) {
 		env := setupTest(t)
@@ -907,7 +927,7 @@ func TestUpdateStatus(t *testing.T) {
 	})
 }
 
-// claimIssue calls the claim API and returns (statusCode, success, claimed_by).
+// claimIssue 调用 claim API 并返回 (statusCode, success, claimed_by)。
 func claimIssue(t *testing.T, env *testEnv, repo string, number int, sessionID string) (int, bool, string) {
 	t.Helper()
 
@@ -931,7 +951,7 @@ func claimIssue(t *testing.T, env *testEnv, repo string, number int, sessionID s
 	return resp.StatusCode, result.Success, claimedBy
 }
 
-// checkStatuses queries the check API and returns a map of issue_number → status.
+// checkStatuses 调用 check API 返回 issue_number → status 的映射。
 func checkStatuses(t *testing.T, env *testEnv, repo string, numbers []int) map[int]string {
 	t.Helper()
 
@@ -964,6 +984,7 @@ func checkStatuses(t *testing.T, env *testEnv, repo string, numbers []int) map[i
 //   - 非 owner 无法更新
 //   - 完整流程：claimed → fixing → ready-for-pr
 
+// TestUpdateStatus_ReadyForPR 验证 fixing → ready-for-pr 状态流转。
 func TestUpdateStatus_ReadyForPR(t *testing.T) {
 	t.Run("fixing_to_ready_for_pr", func(t *testing.T) {
 		// D3 验收：fixing 状态可更新为 ready-for-pr
@@ -1078,6 +1099,7 @@ func TestUpdateStatus_ReadyForPR(t *testing.T) {
 //   - 非 owner 无法更新
 //   - 完整流程：claimed → fixing → ready-for-pr → pr-created
 
+// TestUpdateStatus_PRCreated 验证 ready-for-pr → pr-created 状态流转。
 func TestUpdateStatus_PRCreated(t *testing.T) {
 	t.Run("ready_for_pr_to_pr_created", func(t *testing.T) {
 		// D4 验收：ready-for-pr 状态可更新为 pr-created
@@ -1188,6 +1210,7 @@ func TestUpdateStatus_PRCreated(t *testing.T) {
 //   - 非 owner 无法更新
 //   - 完整流程：claimed → fixing → ready-for-pr → pr-created → testing
 
+// TestUpdateStatus_Testing 验证 pr-created → testing 状态流转。
 func TestUpdateStatus_Testing(t *testing.T) {
 	t.Run("pr_created_to_testing", func(t *testing.T) {
 		env := setupTest(t)
@@ -1295,6 +1318,7 @@ func TestUpdateStatus_Testing(t *testing.T) {
 //   - rejected 不被 session end 释放
 //   - 完整流程：idle → ... → testing → reviewing → merged/rejected
 
+// TestUpdateStatus_Review 验证 testing → reviewing → merged/rejected 状态流转。
 func TestUpdateStatus_Review(t *testing.T) {
 	t.Run("testing_to_reviewing", func(t *testing.T) {
 		env := setupTest(t)

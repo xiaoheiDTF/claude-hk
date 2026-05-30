@@ -1,3 +1,4 @@
+// Package backend_test 包含后端 Session API 的验收测试，覆盖注册、关闭、列表、详情等接口。
 package backend_test
 
 import (
@@ -19,12 +20,14 @@ import (
 
 // --- Session test helpers ---
 
+// sessionTestEnv 是 Session 测试的专用环境，包含测试服务器、存储和数据库连接。
 type sessionTestEnv struct {
 	srv   *httptest.Server
 	store *store.SQLiteStore
 	db    *sql.DB
 }
 
+// setupSessionTest 创建 Session 测试环境，自动注册 Issue 和 Session 路由。
 func setupSessionTest(t *testing.T) *sessionTestEnv {
 	t.Helper()
 
@@ -59,6 +62,7 @@ func setupSessionTest(t *testing.T) *sessionTestEnv {
 	return &sessionTestEnv{srv: srv, store: s, db: s.DB()}
 }
 
+// post 发送 POST 请求到 Session 测试环境。
 func (e *sessionTestEnv) post(t *testing.T, path, body string) *http.Response {
 	t.Helper()
 	resp, err := http.Post(e.srv.URL+path, "application/json", strings.NewReader(body))
@@ -68,6 +72,7 @@ func (e *sessionTestEnv) post(t *testing.T, path, body string) *http.Response {
 	return resp
 }
 
+// get 发送 GET 请求到 Session 测试环境。
 func (e *sessionTestEnv) get(t *testing.T, path string) *http.Response {
 	t.Helper()
 	resp, err := http.Get(e.srv.URL + path)
@@ -77,6 +82,7 @@ func (e *sessionTestEnv) get(t *testing.T, path string) *http.Response {
 	return resp
 }
 
+// sessionReadJSON 读取 HTTP 响应并解析为 JSON。
 func sessionReadJSON(t *testing.T, resp *http.Response, v any) {
 	t.Helper()
 	defer resp.Body.Close()
@@ -91,6 +97,8 @@ func sessionReadJSON(t *testing.T, resp *http.Response, v any) {
 
 // --- Register tests ---
 
+// TestSessionRegister 验证 Session 注册接口。
+// 覆盖成功写入 machines/projects/sessions 三张表、重复注册返回 409、必填字段校验、JSON 格式校验、方法限制。
 func TestSessionRegister(t *testing.T) {
 	t.Run("success_writes_three_tables", func(t *testing.T) {
 		env := setupSessionTest(t)
@@ -116,7 +124,7 @@ func TestSessionRegister(t *testing.T) {
 			t.Errorf("expected status=registered, got %s", result["status"])
 		}
 
-		// Verify machines table.
+		// 验证 machines 表
 		var machineCount int
 		env.db.QueryRow("SELECT COUNT(*) FROM machines WHERE machine_id = 'admin@host1'").Scan(&machineCount)
 		if machineCount != 1 {
@@ -131,14 +139,14 @@ func TestSessionRegister(t *testing.T) {
 			t.Errorf("expected hostname=host1, got %s", hostname)
 		}
 
-		// Verify projects table.
+		// 验证 projects 表
 		var projectCount int
 		env.db.QueryRow("SELECT COUNT(*) FROM projects WHERE project_slug = 'test-project'").Scan(&projectCount)
 		if projectCount != 1 {
 			t.Errorf("expected 1 project row, got %d", projectCount)
 		}
 
-		// Verify sessions table.
+		// 验证 sessions 表
 		var sessionStatus, sessMachineID, sessProject string
 		env.db.QueryRow("SELECT status, machine_id, project_slug FROM sessions WHERE session_id = 'sess-001'").
 			Scan(&sessionStatus, &sessMachineID, &sessProject)
@@ -220,24 +228,24 @@ func TestSessionRegister(t *testing.T) {
 	t.Run("machine_id_update_last_seen", func(t *testing.T) {
 		env := setupSessionTest(t)
 
-		// Register first session.
+		// 注册第一个 session
 		env.post(t, "/api/session/register", `{
 			"session_id":"sess-a","machine_id":"admin@host1","os":"windows",
 			"project_slug":"proj-a","project_cwd":"/a","transcript_path":"/ta.jsonl"}`)
 
-		// Register second session with same machine_id.
+		// 用相同 machine_id 注册第二个 session
 		env.post(t, "/api/session/register", `{
 			"session_id":"sess-b","machine_id":"admin@host1","os":"windows",
 			"project_slug":"proj-b","project_cwd":"/b","transcript_path":"/tb.jsonl"}`)
 
-		// Machine should have only 1 row.
+		// machine 表应只有 1 行
 		var count int
 		env.db.QueryRow("SELECT COUNT(*) FROM machines WHERE machine_id = 'admin@host1'").Scan(&count)
 		if count != 1 {
 			t.Errorf("expected 1 machine row, got %d", count)
 		}
 
-		// last_seen_at should be updated (not null).
+		// last_seen_at 应被更新
 		var lastSeen sql.NullString
 		env.db.QueryRow("SELECT last_seen_at FROM machines WHERE machine_id = 'admin@host1'").Scan(&lastSeen)
 		if !lastSeen.Valid {
@@ -248,6 +256,8 @@ func TestSessionRegister(t *testing.T) {
 
 // --- Close tests ---
 
+// TestSessionClose 验证 Session 关闭接口。
+// 覆盖成功关闭、不存在返回 404、重复关闭返回 404、缺少参数返回 400、方法限制。
 func TestSessionClose(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		env := setupSessionTest(t)
@@ -266,7 +276,7 @@ func TestSessionClose(t *testing.T) {
 			t.Errorf("expected status=closed, got %s", result["status"])
 		}
 
-		// Verify DB.
+		// 验证数据库
 		var status, reason string
 		env.db.QueryRow("SELECT status, close_reason FROM sessions WHERE session_id = 'sess-close-1'").Scan(&status, &reason)
 		if status != "closed" {
@@ -325,12 +335,14 @@ func TestSessionClose(t *testing.T) {
 
 // --- List tests ---
 
+// TestSessionList 验证 Session 列表查询接口。
+// 覆盖全部查询、按 machine_id 过滤、按 status 过滤、按 project_slug 过滤、空结果、方法限制。
 func TestSessionList(t *testing.T) {
 	seedSessions := func(t *testing.T, env *sessionTestEnv) {
 		registerSession(t, env, "sess-list-1")
 		registerSessionWith(t, env, "sess-list-2", "other@host2", "linux", "proj-b", "/b")
 		registerSessionWith(t, env, "sess-list-3", "admin@host1", "windows", "proj-a", "/a")
-		// Close the third one.
+		// 关闭第三个 session
 		env.post(t, "/api/session/close", `{"session_id":"sess-list-3","reason":"done"}`)
 	}
 
@@ -445,6 +457,8 @@ func TestSessionList(t *testing.T) {
 
 // --- Get tests ---
 
+// TestSessionGet 验证 Session 详情查询接口。
+// 覆盖现有 session 查询、不存在返回 404、已关闭 session 包含关闭字段、方法限制。
 func TestSessionGet(t *testing.T) {
 	t.Run("existing_session", func(t *testing.T) {
 		env := setupSessionTest(t)
@@ -528,11 +542,13 @@ func TestSessionGet(t *testing.T) {
 
 // --- Timeout cleanup tests ---
 
+// TestCleanupTimedOutSessions 验证：超时会话自动清理功能。
+// 注册超过 24 小时的 stale session 应被标记为 closed，新 session 不受影响。
 func TestCleanupTimedOutSessions(t *testing.T) {
 	t.Run("marks_stale_sessions_closed", func(t *testing.T) {
 		env := setupSessionTest(t)
 
-		// Insert a session with an old registered_at.
+		// 插入一个 25 小时前的 session
 		env.db.Exec(`INSERT INTO sessions (session_id, machine_id, os, project_slug, project_cwd,
 			transcript_path, status, registered_at)
 			VALUES ('stale-sess', 'admin@host', 'linux', 'proj', '/p', '/t.jsonl', 'active',
@@ -568,10 +584,12 @@ func TestCleanupTimedOutSessions(t *testing.T) {
 
 // --- Full lifecycle test ---
 
+// TestSessionFullLifecycle 验证 Session 的完整生命周期。
+// 覆盖注册 → 获取详情 → 列表过滤 → 关闭 → 验证关闭 → 重复关闭。
 func TestSessionFullLifecycle(t *testing.T) {
 	env := setupSessionTest(t)
 
-	// 1. Register.
+	// 1. 注册
 	resp := env.post(t, "/api/session/register", fmt.Sprintf(`{
 		"session_id": "lifecycle-1",
 		"machine_id": "admin@host1",
@@ -587,7 +605,7 @@ func TestSessionFullLifecycle(t *testing.T) {
 		t.Fatalf("step 1 register: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 2. Get detail.
+	// 2. 获取详情
 	resp = env.get(t, "/api/session/lifecycle-1")
 	var detail struct {
 		Status         string `json:"status"`
@@ -605,7 +623,7 @@ func TestSessionFullLifecycle(t *testing.T) {
 		t.Errorf("step 2 get: expected local_trace_path set, got %s", detail.LocalTracePath)
 	}
 
-	// 3. List with filter.
+	// 3. 带过滤条件的列表查询
 	resp = env.get(t, "/api/sessions?status=active&machine_id=admin@host1")
 	var list struct {
 		Sessions []struct {
@@ -617,21 +635,21 @@ func TestSessionFullLifecycle(t *testing.T) {
 		t.Fatalf("step 3 list: expected 1, got %d", len(list.Sessions))
 	}
 
-	// 4. Close.
+	// 4. 关闭 session
 	resp = env.post(t, "/api/session/close",
 		`{"session_id":"lifecycle-1","reason":"prompt_input_exit"}`)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("step 4 close: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 5. Verify closed via get.
+	// 5. 验证已关闭
 	resp = env.get(t, "/api/session/lifecycle-1")
 	sessionReadJSON(t, resp, &detail)
 	if detail.Status != "closed" {
 		t.Fatalf("step 5 verify: expected closed, got %s", detail.Status)
 	}
 
-	// 6. Double close returns 404.
+	// 6. 重复关闭返回 404
 	resp = env.post(t, "/api/session/close",
 		`{"session_id":"lifecycle-1","reason":"again"}`)
 	if resp.StatusCode != http.StatusNotFound {
@@ -641,11 +659,13 @@ func TestSessionFullLifecycle(t *testing.T) {
 
 // --- Helpers ---
 
+// registerSession 用默认参数注册一个 session。
 func registerSession(t *testing.T, env *sessionTestEnv, sessionID string) {
 	t.Helper()
 	registerSessionWith(t, env, sessionID, "admin@host1", "windows", "proj-a", "/a")
 }
 
+// registerSessionWith 使用指定参数注册一个 session。
 func registerSessionWith(t *testing.T, env *sessionTestEnv, sessionID, machineID, osName, projectSlug, projectCwd string) {
 	t.Helper()
 	body := fmt.Sprintf(`{

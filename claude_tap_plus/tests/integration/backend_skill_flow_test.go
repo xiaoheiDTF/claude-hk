@@ -1,3 +1,5 @@
+// Package integration_test 包含后端技能流程的集成测试。
+// 模拟各个技能（issue-claim、issue-fix、issue-done、issue-pr、issue-test、issue-review）调用后端的完整流程。
 package integration_test
 
 import (
@@ -18,11 +20,13 @@ import (
 
 // --- helpers ---
 
+// env 是集成测试环境，包含测试服务器和 SQLite 存储。
 type env struct {
 	srv   *httptest.Server
 	store *store.SQLiteStore
 }
 
+// setup 创建集成测试环境，自动清理临时数据库。
 func setup(t *testing.T) *env {
 	t.Helper()
 
@@ -54,6 +58,7 @@ func setup(t *testing.T) *env {
 	return &env{srv: srv, store: s}
 }
 
+// post 发送 POST 请求到集成测试环境。
 func (e *env) post(t *testing.T, path, body string) *http.Response {
 	t.Helper()
 	resp, err := http.Post(e.srv.URL+path, "application/json", strings.NewReader(body))
@@ -63,6 +68,7 @@ func (e *env) post(t *testing.T, path, body string) *http.Response {
 	return resp
 }
 
+// readJSON 读取 HTTP 响应并解析为 JSON。
 func readJSON(t *testing.T, resp *http.Response, v any) {
 	t.Helper()
 	defer resp.Body.Close()
@@ -75,6 +81,7 @@ func readJSON(t *testing.T, resp *http.Response, v any) {
 	}
 }
 
+// seedIssue 在数据库中预置一条 issue 记录。
 func seedIssue(db *sql.DB, repo string, number int, status, sessionID, claimedAt string) {
 	db.Exec(
 		`INSERT INTO issue_claims (repo_full_name, issue_number, status, session_id, claimed_at, updated_at)
@@ -84,7 +91,7 @@ func seedIssue(db *sql.DB, repo string, number int, status, sessionID, claimedAt
 	)
 }
 
-// claimIssue calls the claim API and returns (statusCode, success, claimed_by).
+// claimIssue 调用 claim API 并返回 (statusCode, success, claimed_by)。
 func claimIssue(t *testing.T, e *env, repo string, number int, sessionID string) (int, bool, string) {
 	t.Helper()
 
@@ -108,6 +115,7 @@ func claimIssue(t *testing.T, e *env, repo string, number int, sessionID string)
 	return resp.StatusCode, result.Success, claimedBy
 }
 
+// nilIfEmpty 将空字符串转为 nil，用于数据库插入。
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil
@@ -115,7 +123,7 @@ func nilIfEmpty(s string) any {
 	return s
 }
 
-// checkStatuses queries the check API and returns a map of issue_number → status.
+// checkStatuses 调用 check API 并返回 issue_number → status 的映射。
 func checkStatuses(t *testing.T, e *env, repo string, numbers []int) map[int]string {
 	t.Helper()
 
@@ -149,6 +157,7 @@ func checkStatuses(t *testing.T, e *env, repo string, numbers []int) map[int]str
 //   - 已合并/打回的 issue 不被释放
 //   - 无领取记录的 session 不报错
 
+// TestSessionEndHook 验证 SessionEnd hook 调用 release-session 的完整流程。
 func TestSessionEndHook(t *testing.T) {
 	t.Run("session_end_releases_claimed_issues", func(t *testing.T) {
 		// 验收：session 正常结束时，领取的 issue 被自动释放
@@ -342,6 +351,7 @@ func TestSessionEndHook(t *testing.T) {
 //   - 首次出现的 issue 自动创建记录后领取
 //   - 并发领取时只有一个成功（原子性）
 
+// TestClaimAPI 验证 Issue 领取 API。
 func TestClaimAPI(t *testing.T) {
 	t.Run("claim_idle_issue_success", func(t *testing.T) {
 		// 验收：空闲 issue 可被成功领取
@@ -473,6 +483,7 @@ func TestClaimAPI(t *testing.T) {
 //   - fixing 状态的 issue 可被 session end 正常释放
 //   - 完整技能流程：claim → fixing → session end 释放
 
+// TestIssueFixFlow 验证 issue-fix 技能的完整流程。
 func TestIssueFixFlow(t *testing.T) {
 	t.Run("claim_then_fixing", func(t *testing.T) {
 		// D2 核心验收：claim → fixing 状态流转
@@ -647,6 +658,7 @@ func TestIssueFixFlow(t *testing.T) {
 //   - ready-for-pr 状态在 session end 时被释放
 //   - 完整技能流程：claim → fixing → ready-for-pr → session end
 
+// TestIssueDoneFlow 验证 issue-done 技能的完整流程。
 func TestIssueDoneFlow(t *testing.T) {
 	t.Run("fixing_to_ready_for_pr", func(t *testing.T) {
 		e := setup(t)
@@ -740,6 +752,7 @@ func TestIssueDoneFlow(t *testing.T) {
 //   - pr-created 状态在 session end 时被释放
 //   - 完整技能流程：claim → fixing → ready-for-pr → pr-created
 
+// TestIssuePRFlow 验证 issue-pr 技能的完整流程。
 func TestIssuePRFlow(t *testing.T) {
 	t.Run("ready_for_pr_to_pr_created", func(t *testing.T) {
 		e := setup(t)
@@ -834,6 +847,7 @@ func TestIssuePRFlow(t *testing.T) {
 //   - testing 状态在 session end 时被释放
 //   - 完整技能流程：claim → fixing → ready-for-pr → pr-created → testing
 
+// TestIssueTestFlow 验证 issue-test 技能的完整流程。
 func TestIssueTestFlow(t *testing.T) {
 	t.Run("pr_created_to_testing", func(t *testing.T) {
 		e := setup(t)
@@ -932,6 +946,7 @@ func TestIssueTestFlow(t *testing.T) {
 //   - rejected 终态不被 session end 释放
 //   - rejected issue 释放后可被重新 claim
 
+// TestIssueReviewFlow 验证 issue-review 技能的完整流程。
 func TestIssueReviewFlow(t *testing.T) {
 	t.Run("merge_full_flow", func(t *testing.T) {
 		e := setup(t)
@@ -998,6 +1013,7 @@ func TestIssueReviewFlow(t *testing.T) {
 		var result struct {
 			Success        bool   `json:"success"`
 			PreviousStatus string `json:"previous_status"`
+			NewStatus      string `json:"new_status"`
 		}
 		readJSON(t, resp, &result)
 		if !result.Success {
@@ -1114,6 +1130,7 @@ func TestIssueReviewFlow(t *testing.T) {
 //   - 无领取记录的 session 不报错
 //   - 释放后 issue 可被重新 claim
 
+// TestSessionEndRelease 验证 SessionEnd 自动释放的边界条件。
 func TestSessionEndRelease(t *testing.T) {
 	t.Run("releases_fixing_ready_for_pr_pr_created_testing_reviewing", func(t *testing.T) {
 		// 验收：所有非终态（fixing/ready-for-pr/pr-created/testing/reviewing）都被释放

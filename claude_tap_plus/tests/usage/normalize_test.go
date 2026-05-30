@@ -1,3 +1,5 @@
+// Package usage_test 包含 token 用量标准化函数的单元测试。
+// 测试覆盖 Anthropic、OpenAI、Google 等不同厂商的用量字段映射。
 package usage_test
 
 import (
@@ -6,6 +8,7 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/usage"
 )
 
+// TestNormalizeUsageAnthropicFields 验证：Anthropic 字段（input_tokens/output_tokens/cache_read_input_tokens/cache_creation_input_tokens）被正确标准化。
 func TestNormalizeUsageAnthropicFields(t *testing.T) {
 	raw := map[string]any{
 		"input_tokens":                float64(100),
@@ -29,6 +32,7 @@ func TestNormalizeUsageAnthropicFields(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageOpenAIFields 验证：OpenAI 字段（prompt_tokens/completion_tokens/cached_tokens）被映射为标准字段。
 func TestNormalizeUsageOpenAIFields(t *testing.T) {
 	raw := map[string]any{
 		"prompt_tokens":     float64(200),
@@ -48,6 +52,7 @@ func TestNormalizeUsageOpenAIFields(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageGoogleFields 验证：Google Gemini 字段（promptTokenCount/candidatesTokenCount/cachedContentTokenCount）被映射为标准字段。
 func TestNormalizeUsageGoogleFields(t *testing.T) {
 	raw := map[string]any{
 		"promptTokenCount":        float64(300),
@@ -67,6 +72,7 @@ func TestNormalizeUsageGoogleFields(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageNil 验证：nil 输入返回 nil。
 func TestNormalizeUsageNil(t *testing.T) {
 	result := usage.NormalizeUsage(nil)
 	if result != nil {
@@ -74,6 +80,7 @@ func TestNormalizeUsageNil(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageEmpty 验证：空 map 输入返回包含默认值 0 的结果。
 func TestNormalizeUsageEmpty(t *testing.T) {
 	result := usage.NormalizeUsage(map[string]any{})
 	if len(result) == 0 {
@@ -86,6 +93,7 @@ func TestNormalizeUsageEmpty(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageAnthropicInputTokensDetails 验证：Anthropic input_tokens_details.cached_tokens 被提取为 cache_read_input_tokens。
 func TestNormalizeUsageAnthropicInputTokensDetails(t *testing.T) {
 	raw := map[string]any{
 		"input_tokens":  float64(100),
@@ -104,6 +112,7 @@ func TestNormalizeUsageAnthropicInputTokensDetails(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageOpenAIPromptTokensDetails 验证：OpenAI prompt_tokens_details.cached_tokens 被提取为 cache_read_input_tokens。
 func TestNormalizeUsageOpenAIPromptTokensDetails(t *testing.T) {
 	raw := map[string]any{
 		"prompt_tokens":     float64(200),
@@ -119,6 +128,7 @@ func TestNormalizeUsageOpenAIPromptTokensDetails(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsagePriorityFirstWins 验证：当同时存在多个同义字段时，先出现的字段优先。
 func TestNormalizeUsagePriorityFirstWins(t *testing.T) {
 	raw := map[string]any{
 		"input_tokens":  float64(100),
@@ -131,6 +141,7 @@ func TestNormalizeUsagePriorityFirstWins(t *testing.T) {
 	}
 }
 
+// TestNormalizeUsageIntTypes 验证：不同整数类型（float64/int/int64）都能被正确转换。
 func TestNormalizeUsageIntTypes(t *testing.T) {
 	tests := []struct {
 		name string
