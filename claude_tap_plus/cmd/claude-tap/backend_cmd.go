@@ -54,7 +54,7 @@ func runBackend(args []string) {
 	if cfg.DBPath != "" && cfg.DBPath != "backend.db" {
 		logDir = filepath.Dir(cfg.DBPath)
 	}
-	if err := logger.Init(logDir, false, logger.DEBUG); err != nil {
+	if err := logger.Init(logDir, true, logger.DEBUG); err != nil {
 		log.Printf("warning: logger init failed: %v", err)
 	}
 	defer logger.Close()
