@@ -80,4 +80,91 @@ ensure_skill_checks() {
 
 ensure_skill_checks
 
+# 5. 初始化代理 trace 路径（通过 ANTHROPIC_BASE_URL 告知代理）
+init_trace_path() {
+  local proxy_url="${ANTHROPIC_BASE_URL:-}"
+  [ -z "$proxy_url" ] && return 0
+
+  local sid
+  sid=$(json_get '.session_id')
+  [ -z "$sid" ] && return 0
+
+  local machine_id
+  machine_id="$(whoami 2>/dev/null || echo unknown)@$(hostname 2>/dev/null || echo unknown)"
+
+  local transcript_path
+  transcript_path=$(json_get '.transcript_path')
+
+  local project_slug
+  project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
+  [ -z "$project_slug" ] && project_slug=$(basename "$(json_get '.cwd')" 2>/dev/null)
+
+  local result
+  result=$(curl -s --max-time 3 -X POST "$proxy_url/_internal/trace-init" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"session_id\":\"$sid\",
+      \"machine_id\":\"$machine_id\",
+      \"project_slug\":\"$project_slug\",
+      \"transcript_path\":\"$transcript_path\"
+    }" 2>/dev/null)
+
+  if [ -n "$result" ]; then
+    log "INFO" "Trace initialized: $(echo "$result" | jq -r '.trace_path // "unknown"' 2>/dev/null)"
+  else
+    log "DEBUG" "Trace init skipped (proxy unreachable)"
+  fi
+}
+
+init_trace_path
+
+# 6. 注册会话到后端（SR-2）
+register_session() {
+  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
+  _load_backend_url
+  [ -z "$BACKEND_URL" ] && return 0
+
+  if ! _backend_available; then
+    log "DEBUG" "Backend unreachable, skipping session registration"
+    return 0
+  fi
+
+  local session_id transcript_path cwd model source_type os_type machine_id project_slug
+
+  session_id=$(json_get '.session_id')
+  [ -z "$session_id" ] && return 0
+
+  transcript_path=$(json_get '.transcript_path')
+  cwd=$(json_get '.cwd')
+  model=$(json_get '.model')
+  source_type=$(json_get '.source')
+
+  machine_id="$(whoami 2>/dev/null || echo unknown)@$(hostname 2>/dev/null || echo unknown)"
+
+  case "$(uname -s)" in
+    Linux*)   os_type="linux" ;;
+    Darwin*)  os_type="macos" ;;
+    MINGW*|MSYS*|CYGWIN*) os_type="windows" ;;
+    *)        os_type="unknown" ;;
+  esac
+
+  project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
+  [ -z "$project_slug" ] && project_slug=$(basename "$cwd" 2>/dev/null)
+
+  _call_backend "/api/session/register" "{
+    \"session_id\":\"$session_id\",
+    \"machine_id\":\"$machine_id\",
+    \"os\":\"$os_type\",
+    \"project_slug\":\"$project_slug\",
+    \"project_cwd\":\"$cwd\",
+    \"transcript_path\":\"$transcript_path\",
+    \"model\":\"$model\",
+    \"source\":\"$source_type\"
+  }" > /dev/null 2>&1
+
+  log "INFO" "Session registered to backend: $session_id"
+}
+
+register_session
+
 hook_output 0 '{}'

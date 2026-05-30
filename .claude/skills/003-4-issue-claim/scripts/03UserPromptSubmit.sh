@@ -43,7 +43,7 @@ claim_issue_backend() {
   local issue_title="$2"
 
   _load_backend_url
-  [ -z "$BACKEND_URL" ] && return 0
+  [ -z "$BACKEND_URL" ] && return 0  # 未配置后端，跳过（单 agent 模式）
 
   local session_id
   session_id=$(_get_session_id)
@@ -53,6 +53,14 @@ claim_issue_backend() {
   repo=$(_get_repo)
   [ -z "$repo" ] && return 0
 
+  # 后端已配置但不可达 → 阻止领取（防多 agent 冲突）
+  if ! _backend_available; then
+    skill_log "ERROR" "Backend unreachable, BLOCKING claim for #$issue_num"
+    echo "ERROR: Backend server is unreachable. Cannot safely claim issue #$issue_num (risk of multi-agent conflict)."
+    echo "Please ensure the backend is running at $BACKEND_URL and try again."
+    return 1
+  fi
+
   local result
   result=$(_call_backend "/api/issue/claim" "{
     \"repo_full_name\":\"$repo\",
@@ -60,6 +68,12 @@ claim_issue_backend() {
     \"session_id\":\"$session_id\",
     \"issue_title\":\"$issue_title\"
   }")
+
+  if [ -z "$result" ]; then
+    skill_log "ERROR" "Backend claim call returned empty for #$issue_num"
+    echo "ERROR: Backend claim call failed unexpectedly for issue #$issue_num."
+    return 1
+  fi
 
   if ! echo "$result" | jq -e '.success' > /dev/null 2>&1; then
     local claimed_by

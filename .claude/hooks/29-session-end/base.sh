@@ -16,15 +16,19 @@ release_session_issues() {
   sid=$(json_get '.session_id')
   [ -z "$sid" ] && return 0
 
-  local backend_url
-  backend_url=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null \
-    | grep '^BACKEND_URL=' | cut -d= -f2)
-  [ -z "$backend_url" ] && return 0
+  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
+  _load_backend_url
+  [ -z "$BACKEND_URL" ] && return 0
+
+  if ! _backend_available; then
+    log "INFO" "Backend unreachable, skipping session release for $sid"
+    return 0
+  fi
 
   local result
-  result=$(curl -s --max-time 5 -X POST "$backend_url/api/issue/release-session" \
+  result=$(curl -s --max-time 5 -X POST "$BACKEND_URL/api/issue/release-session" \
     -H "Content-Type: application/json" \
-    -d "{\"session_id\":\"$sid\"}")
+    -d "{\"session_id\":\"$sid\"}" 2>/dev/null) || return 0
 
   local count
   count=$(echo "$result" | jq -r '.count // 0' 2>/dev/null)
@@ -32,5 +36,27 @@ release_session_issues() {
 }
 
 release_session_issues
+
+# SR-3: 注销会话
+unregister_session() {
+  local sid reason
+  sid=$(json_get '.session_id')
+  reason=$(json_get '.reason')
+  [ -z "$sid" ] && return 0
+
+  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
+  _load_backend_url
+  [ -z "$BACKEND_URL" ] && return 0
+
+  if ! _backend_available; then
+    log "DEBUG" "Backend unreachable, skipping session close for $sid"
+    return 0
+  fi
+
+  _call_backend "/api/session/close" "{\"session_id\":\"$sid\",\"reason\":\"$reason\"}" > /dev/null 2>&1
+  log "INFO" "Session unregistered from backend: $sid"
+}
+
+unregister_session
 
 hook_output 0 '{}'
