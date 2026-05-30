@@ -6,6 +6,8 @@ import "strings"
 // AllowedPathPrefixes 定义代理将转发的 API 路径前缀白名单。
 // 未知路径（如扫描器、爬虫请求）将被拒绝并返回 404。
 var AllowedPathPrefixes = []string{
+	// Claude Code IDE 连接（VS Code / JetBrains 扩展）
+	"/ide",
 	// Anthropic API
 	"/v1/messages",
 	"/v1/complete",

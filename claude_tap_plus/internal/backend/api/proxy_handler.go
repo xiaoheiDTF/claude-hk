@@ -4,6 +4,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -141,12 +142,13 @@ func relayTraceInit(proxyURL string, body []byte) (map[string]any, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, err
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("proxy returned %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var result map[string]any
-	if json.NewDecoder(resp.Body).Decode(&result) != nil {
-		return nil, err
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode proxy response: %w", err)
 	}
 	return result, nil
 }
