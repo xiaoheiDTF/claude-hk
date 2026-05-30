@@ -8,20 +8,21 @@ import (
 
 // ResolvedConfig 包含按优先级链解析后的最终配置。
 type ResolvedConfig struct {
-	BaseURL string // 最终的上游 API 地址
-	APIKey  string // 最终的 API Key（可能为空）
+	BaseURL   string // 最终的上游 API 地址
+	APIKey    string // 最终的 API Key（可能为空）
+	AuthToken string // 最终的 OAuth Token（可能为空）
 }
 
 // ResolveTargetConfig 按优先级解析最终的上游 API 配置。
 //
 // 优先级（从高到低）：
 //
-//	1. cliBaseURL / cliAPIKey（命令行直接指定）
+//	1. cliBaseURL / cliAPIKey / cliAuthToken（命令行直接指定）
 //	2. profileName（读取 profiles.json）
-//	3. 环境变量（ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL）
+//	3. 环境变量（ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL）
 //	4. ~/.claude.json（Claude Code 配置文件）
 //	5. 默认值
-func ResolveTargetConfig(cliBaseURL, cliAPIKey, profileName string, cfg *ClientConfig) (*ResolvedConfig, error) {
+func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string, cfg *ClientConfig) (*ResolvedConfig, error) {
 	result := &ResolvedConfig{}
 
 	// Level 2: 从 profiles.json 读取配置
@@ -32,6 +33,7 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, profileName string, cfg *ClientC
 		} else {
 			result.BaseURL = p.BaseURL
 			result.APIKey = p.APIKey
+			result.AuthToken = p.AuthToken
 		}
 	}
 
@@ -42,6 +44,9 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, profileName string, cfg *ClientC
 	if cliAPIKey != "" {
 		result.APIKey = cliAPIKey
 	}
+	if cliAuthToken != "" {
+		result.AuthToken = cliAuthToken
+	}
 
 	// Level 3: 环境变量（仅在仍为空时）
 	if result.BaseURL == "" {
@@ -50,10 +55,14 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, profileName string, cfg *ClientC
 			logger.Debug("config", "base_url from env %s", cfg.BaseURLEnv)
 		}
 	}
-	if result.APIKey == "" {
+	if result.APIKey == "" && result.AuthToken == "" {
 		if env := os.Getenv("ANTHROPIC_API_KEY"); env != "" {
 			result.APIKey = env
 			logger.Debug("config", "api_key from env ANTHROPIC_API_KEY")
+		}
+		if env := os.Getenv("ANTHROPIC_AUTH_TOKEN"); env != "" {
+			result.AuthToken = env
+			logger.Debug("config", "auth_token from env ANTHROPIC_AUTH_TOKEN")
 		}
 	}
 
@@ -73,6 +82,12 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, profileName string, cfg *ClientC
 		result.BaseURL = cfg.DefaultTarget
 	}
 
-	logger.Info("config", "resolved: base_url=%s api_key_set=%v", result.BaseURL, result.APIKey != "")
+	authType := "none"
+	if result.APIKey != "" {
+		authType = "api_key"
+	} else if result.AuthToken != "" {
+		authType = "auth_token"
+	}
+	logger.Info("config", "resolved: base_url=%s auth=%s", result.BaseURL, authType)
 	return result, nil
 }

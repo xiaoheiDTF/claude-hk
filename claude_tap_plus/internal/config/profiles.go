@@ -11,9 +11,10 @@ import (
 
 // ProfileConfig 表示 profiles.json 中单个配置的定义。
 type ProfileConfig struct {
-	BaseURL  string `json:"base_url"`            // 上游 API 地址
-	APIKey   string `json:"api_key"`             // API 密钥
-	Provider string `json:"provider,omitempty"`  // 供应商标识（anthropic/openai/gemini）
+	BaseURL   string `json:"base_url"`              // 上游 API 地址
+	APIKey    string `json:"api_key"`               // API 密钥
+	AuthToken string `json:"auth_token,omitempty"`  // OAuth Token
+	Provider  string `json:"provider,omitempty"`    // 供应商标识（anthropic/openai/gemini）
 }
 
 // ProfilesFile 表示 profiles.json 的完整结构。

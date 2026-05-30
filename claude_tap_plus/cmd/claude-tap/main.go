@@ -80,6 +80,7 @@ func printUsage() {
 	fmt.Println("  --tap-console          Output logs to console (requires --tap-verbose)")
 	fmt.Println("  --tap-profile NAME     Use named profile from profiles.json")
 	fmt.Println("  --tap-api-key KEY      Override API key (highest priority)")
+	fmt.Println("  --tap-auth-token TOKEN Override OAuth token (highest priority)")
 	fmt.Println("  --tap-base-url URL     Override upstream API URL (highest priority)")
 	fmt.Println("  --claude               Alias for -- (pass remaining args to claude)")
 	fmt.Println()
@@ -122,6 +123,7 @@ func runProxy(args []string) {
 		tapConsole   bool   // 是否输出日志到终端（需配合 --tap-verbose）
 		tapProfile   string // 配置名（读取 profiles.json）
 		tapAPIKey    string // 直接传入 API Key
+		tapAuthToken string // 直接传入 OAuth Token
 		tapBaseURL   string // 直接传入上游地址
 	)
 
@@ -168,14 +170,20 @@ func runProxy(args []string) {
 			tapAPIKey = args[i]
 		case strings.HasPrefix(arg, "--tap-api-key="):
 			tapAPIKey = arg[len("--tap-api-key="):]
+		// 解析 --tap-auth-token 参数（直接传入 OAuth Token）
+		case arg == "--tap-auth-token" && i+1 < len(args):
+			i++
+			tapAuthToken = args[i]
+		case strings.HasPrefix(arg, "--tap-auth-token="):
+			tapAuthToken = arg[len("--tap-auth-token="):]
 		// 解析 --tap-base-url 参数（直接传入上游地址，优先级高于 --tap-target）
 		case arg == "--tap-base-url" && i+1 < len(args):
 			i++
 			tapBaseURL = args[i]
 		case strings.HasPrefix(arg, "--tap-base-url="):
 			tapBaseURL = arg[len("--tap-base-url="):]
-		// -- 或 --claude 后的所有参数都传递给 Claude Code
-		case arg == "--", arg == "--claude":
+		// -- 或 --claude 或 claude 后的所有参数都传递给 Claude Code
+		case arg == "--", arg == "--claude", arg == "claude":
 			claudeArgs = append(claudeArgs, args[i+1:]...)
 			i = len(args) // 停止解析
 		// 未知的 --tap-* 标志，直接忽略
@@ -209,6 +217,7 @@ func runProxy(args []string) {
 	resolved, err := config.ResolveTargetConfig(
 		firstNonEmpty(tapBaseURL, tapTarget),
 		tapAPIKey,
+		tapAuthToken,
 		tapProfile,
 		&config.ClaudeClient,
 	)
@@ -243,9 +252,13 @@ func runProxy(args []string) {
 	// 构建子进程环境变量，将 API 请求指向本地代理
 	childEnv := config.BuildChildEnv(&config.ClaudeClient, proxyURL)
 
-	// 如果通过 profile 或 CLI 指定了 API Key，注入到子进程环境变量
+	// 注入认证信息：有 API Key 用 API Key，有 Token 用 Token，互斥避免冲突
 	if resolved.APIKey != "" {
+		childEnv = removeEnvVar(childEnv, "ANTHROPIC_AUTH_TOKEN")
 		childEnv = append(childEnv, "ANTHROPIC_API_KEY="+resolved.APIKey)
+	} else if resolved.AuthToken != "" {
+		childEnv = removeEnvVar(childEnv, "ANTHROPIC_API_KEY")
+		childEnv = append(childEnv, "ANTHROPIC_AUTH_TOKEN="+resolved.AuthToken)
 	}
 
 	// 对于需要注入 --settings 参数的客户端（如 Claude Code），自动添加
@@ -503,4 +516,16 @@ func shortenPath(path string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// removeEnvVar 从环境变量列表中移除指定名称的变量。
+func removeEnvVar(env []string, name string) []string {
+	prefix := name + "="
+	result := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			result = append(result, e)
+		}
+	}
+	return result
 }
