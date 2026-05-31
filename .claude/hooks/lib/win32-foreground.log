@@ -3959,3 +3959,391 @@
 [2026-05-31 11:22:20] SUCCESS: Window is now foreground!
 [2026-05-31 11:22:22] Foreground lock timeout restored to 0
 [2026-05-31 11:22:22] === done ===
+[2026-05-31 11:51:13] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 11:51:14] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 11:51:14] Current foreground lock timeout: 0
+[2026-05-31 11:51:14] Disable foreground lock: True
+[2026-05-31 11:51:15] COM AppActivate(title)=True
+[2026-05-31 11:51:15] SetForeground=True BringToTop=True
+[2026-05-31 11:51:15] SUCCESS: Window is now foreground!
+[2026-05-31 11:51:17] Foreground lock timeout restored to 0
+[2026-05-31 11:51:17] === done ===
+[2026-05-31 11:52:01] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 11:52:02] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 11:52:02] Current foreground lock timeout: 0
+[2026-05-31 11:52:02] Disable foreground lock: True
+[2026-05-31 11:52:02] COM AppActivate(title)=True
+[2026-05-31 11:52:02] SetForeground=True BringToTop=True
+[2026-05-31 11:52:02] SUCCESS: Window is now foreground!
+[2026-05-31 11:52:04] Foreground lock timeout restored to 0
+[2026-05-31 11:52:04] === done ===
+[2026-05-31 11:57:11] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 11:57:12] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? generate-hooks-architecture-docs'
+[2026-05-31 11:57:12] Current foreground lock timeout: 0
+[2026-05-31 11:57:12] Disable foreground lock: False
+[2026-05-31 11:57:12] COM AppActivate(title)=True
+[2026-05-31 11:57:12] SetForeground=True BringToTop=True
+[2026-05-31 11:57:12] SUCCESS: Window is now foreground!
+[2026-05-31 11:57:15] Foreground lock timeout restored to 0
+[2026-05-31 11:57:15] === done ===
+[2026-05-31 11:58:38] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 11:58:39] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? generate-hooks-architecture-docs'
+[2026-05-31 11:58:39] Current foreground lock timeout: 0
+[2026-05-31 11:58:39] Disable foreground lock: True
+[2026-05-31 11:58:39] COM AppActivate(title)=True
+[2026-05-31 11:58:39] SetForeground=True BringToTop=True
+[2026-05-31 11:58:39] SUCCESS: Window is now foreground!
+[2026-05-31 11:58:42] Foreground lock timeout restored to 0
+[2026-05-31 11:58:42] === done ===
+[2026-05-31 12:00:46] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:00:47] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:00:47] Current foreground lock timeout: 0
+[2026-05-31 12:00:47] Disable foreground lock: True
+[2026-05-31 12:00:47] COM AppActivate(title)=True
+[2026-05-31 12:00:47] SetForeground=True BringToTop=True
+[2026-05-31 12:00:47] SUCCESS: Window is now foreground!
+[2026-05-31 12:00:50] Foreground lock timeout restored to 0
+[2026-05-31 12:00:50] === done ===
+[2026-05-31 12:03:25] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:03:25] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:03:25] Current foreground lock timeout: 0
+[2026-05-31 12:03:25] Disable foreground lock: True
+[2026-05-31 12:03:26] COM AppActivate(title)=True
+[2026-05-31 12:03:26] SetForeground=True BringToTop=True
+[2026-05-31 12:03:26] SUCCESS: Window is now foreground!
+[2026-05-31 12:03:28] Foreground lock timeout restored to 0
+[2026-05-31 12:03:28] === done ===
+[2026-05-31 12:07:36] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:07:37] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='管理员: Windows PowerShell'
+[2026-05-31 12:07:37] Current foreground lock timeout: 0
+[2026-05-31 12:07:37] Disable foreground lock: True
+[2026-05-31 12:07:37] COM AppActivate(title)=True
+[2026-05-31 12:07:37] SetForeground=True BringToTop=True
+[2026-05-31 12:07:37] SUCCESS: Window is now foreground!
+[2026-05-31 12:07:40] Foreground lock timeout restored to 0
+[2026-05-31 12:07:40] === done ===
+[2026-05-31 12:09:20] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:09:21] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:09:21] Current foreground lock timeout: 0
+[2026-05-31 12:09:21] Disable foreground lock: True
+[2026-05-31 12:09:21] COM AppActivate(title)=True
+[2026-05-31 12:09:21] SetForeground=True BringToTop=True
+[2026-05-31 12:09:21] SUCCESS: Window is now foreground!
+[2026-05-31 12:09:23] Foreground lock timeout restored to 0
+[2026-05-31 12:09:23] === done ===
+[2026-05-31 12:09:43] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:09:44] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='管理员: Windows PowerShell'
+[2026-05-31 12:09:44] Current foreground lock timeout: 0
+[2026-05-31 12:09:44] Disable foreground lock: True
+[2026-05-31 12:09:44] COM AppActivate(title)=True
+[2026-05-31 12:09:44] SetForeground=True BringToTop=True
+[2026-05-31 12:09:44] SUCCESS: Window is now foreground!
+[2026-05-31 12:09:46] Foreground lock timeout restored to 0
+[2026-05-31 12:09:46] === done ===
+[2026-05-31 12:10:06] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:10:07] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:10:07] Current foreground lock timeout: 0
+[2026-05-31 12:10:07] Disable foreground lock: True
+[2026-05-31 12:10:07] COM AppActivate(title)=True
+[2026-05-31 12:10:07] SetForeground=True BringToTop=True
+[2026-05-31 12:10:07] SUCCESS: Window is now foreground!
+[2026-05-31 12:10:10] Foreground lock timeout restored to 0
+[2026-05-31 12:10:10] === done ===
+[2026-05-31 12:11:24] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:11:25] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:11:25] Current foreground lock timeout: 0
+[2026-05-31 12:11:25] Disable foreground lock: True
+[2026-05-31 12:11:25] COM AppActivate(title)=True
+[2026-05-31 12:11:25] SetForeground=True BringToTop=True
+[2026-05-31 12:11:25] SUCCESS: Window is now foreground!
+[2026-05-31 12:11:27] Foreground lock timeout restored to 0
+[2026-05-31 12:11:27] === done ===
+[2026-05-31 12:12:45] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:12:46] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:12:46] Current foreground lock timeout: 0
+[2026-05-31 12:12:46] Disable foreground lock: True
+[2026-05-31 12:12:46] COM AppActivate(title)=True
+[2026-05-31 12:12:46] SetForeground=True BringToTop=True
+[2026-05-31 12:12:46] SUCCESS: Window is now foreground!
+[2026-05-31 12:12:49] Foreground lock timeout restored to 0
+[2026-05-31 12:12:49] === done ===
+[2026-05-31 12:13:02] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:13:03] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:13:03] Current foreground lock timeout: 0
+[2026-05-31 12:13:03] Disable foreground lock: False
+[2026-05-31 12:13:03] COM AppActivate(title)=True
+[2026-05-31 12:13:03] SetForeground=True BringToTop=True
+[2026-05-31 12:13:03] SUCCESS: Window is now foreground!
+[2026-05-31 12:13:05] Foreground lock timeout restored to 0
+[2026-05-31 12:13:05] === done ===
+[2026-05-31 12:14:20] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:14:21] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:14:21] Current foreground lock timeout: 0
+[2026-05-31 12:14:21] Disable foreground lock: True
+[2026-05-31 12:14:21] COM AppActivate(title)=True
+[2026-05-31 12:14:21] SetForeground=True BringToTop=True
+[2026-05-31 12:14:21] SUCCESS: Window is now foreground!
+[2026-05-31 12:14:23] Foreground lock timeout restored to 0
+[2026-05-31 12:14:23] === done ===
+[2026-05-31 12:14:37] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:14:38] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:14:38] Current foreground lock timeout: 0
+[2026-05-31 12:14:38] Disable foreground lock: True
+[2026-05-31 12:14:38] COM AppActivate(title)=True
+[2026-05-31 12:14:38] SetForeground=True BringToTop=True
+[2026-05-31 12:14:38] SUCCESS: Window is now foreground!
+[2026-05-31 12:14:41] Foreground lock timeout restored to 0
+[2026-05-31 12:14:41] === done ===
+[2026-05-31 12:15:47] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:15:48] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:15:48] Current foreground lock timeout: 0
+[2026-05-31 12:15:48] Disable foreground lock: True
+[2026-05-31 12:15:48] COM AppActivate(title)=True
+[2026-05-31 12:15:48] SetForeground=True BringToTop=True
+[2026-05-31 12:15:48] SUCCESS: Window is now foreground!
+[2026-05-31 12:15:50] Foreground lock timeout restored to 0
+[2026-05-31 12:15:50] === done ===
+[2026-05-31 12:16:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:16:29] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:16:29] Current foreground lock timeout: 0
+[2026-05-31 12:16:29] Disable foreground lock: True
+[2026-05-31 12:16:29] COM AppActivate(title)=True
+[2026-05-31 12:16:29] SetForeground=True BringToTop=True
+[2026-05-31 12:16:29] SUCCESS: Window is now foreground!
+[2026-05-31 12:16:31] Foreground lock timeout restored to 0
+[2026-05-31 12:16:31] === done ===
+[2026-05-31 12:17:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:17:56] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:17:56] Current foreground lock timeout: 0
+[2026-05-31 12:17:56] Disable foreground lock: False
+[2026-05-31 12:17:56] COM AppActivate(title)=True
+[2026-05-31 12:17:56] SetForeground=True BringToTop=True
+[2026-05-31 12:17:56] SUCCESS: Window is now foreground!
+[2026-05-31 12:17:58] Foreground lock timeout restored to 0
+[2026-05-31 12:17:58] === done ===
+[2026-05-31 12:18:28] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:18:28] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:18:28] Current foreground lock timeout: 0
+[2026-05-31 12:18:28] Disable foreground lock: True
+[2026-05-31 12:18:28] COM AppActivate(title)=True
+[2026-05-31 12:18:28] SetForeground=True BringToTop=True
+[2026-05-31 12:18:29] SUCCESS: Window is now foreground!
+[2026-05-31 12:18:31] Foreground lock timeout restored to 0
+[2026-05-31 12:18:31] === done ===
+[2026-05-31 12:18:52] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:18:53] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:18:53] Current foreground lock timeout: 0
+[2026-05-31 12:18:53] Disable foreground lock: True
+[2026-05-31 12:18:53] COM AppActivate(title)=True
+[2026-05-31 12:18:53] SetForeground=True BringToTop=True
+[2026-05-31 12:18:53] SUCCESS: Window is now foreground!
+[2026-05-31 12:18:55] Foreground lock timeout restored to 0
+[2026-05-31 12:18:55] === done ===
+[2026-05-31 12:18:57] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:18:58] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:18:58] Current foreground lock timeout: 0
+[2026-05-31 12:18:58] Disable foreground lock: True
+[2026-05-31 12:18:58] COM AppActivate(title)=True
+[2026-05-31 12:18:58] SetForeground=True BringToTop=True
+[2026-05-31 12:18:58] SUCCESS: Window is now foreground!
+[2026-05-31 12:19:00] Foreground lock timeout restored to 0
+[2026-05-31 12:19:00] === done ===
+[2026-05-31 12:20:10] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:20:11] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Claude Code'
+[2026-05-31 12:20:11] Current foreground lock timeout: 0
+[2026-05-31 12:20:11] Disable foreground lock: True
+[2026-05-31 12:20:12] COM AppActivate(title)=True
+[2026-05-31 12:20:12] SetForeground=True BringToTop=True
+[2026-05-31 12:20:12] SUCCESS: Window is now foreground!
+[2026-05-31 12:20:14] Foreground lock timeout restored to 0
+[2026-05-31 12:20:14] === done ===
+[2026-05-31 12:20:50] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:20:51] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:20:51] Current foreground lock timeout: 0
+[2026-05-31 12:20:51] Disable foreground lock: True
+[2026-05-31 12:20:51] COM AppActivate(title)=True
+[2026-05-31 12:20:51] SetForeground=True BringToTop=True
+[2026-05-31 12:20:51] SUCCESS: Window is now foreground!
+[2026-05-31 12:20:53] Foreground lock timeout restored to 0
+[2026-05-31 12:20:53] === done ===
+[2026-05-31 12:23:03] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:23:04] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:23:04] Current foreground lock timeout: 0
+[2026-05-31 12:23:04] Disable foreground lock: True
+[2026-05-31 12:23:04] COM AppActivate(title)=True
+[2026-05-31 12:23:04] SetForeground=True BringToTop=True
+[2026-05-31 12:23:04] SUCCESS: Window is now foreground!
+[2026-05-31 12:23:07] Foreground lock timeout restored to 0
+[2026-05-31 12:23:07] === done ===
+[2026-05-31 12:25:46] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:25:47] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:25:47] Current foreground lock timeout: 0
+[2026-05-31 12:25:47] Disable foreground lock: True
+[2026-05-31 12:25:47] COM AppActivate(title)=True
+[2026-05-31 12:25:47] SetForeground=True BringToTop=True
+[2026-05-31 12:25:47] SUCCESS: Window is now foreground!
+[2026-05-31 12:25:49] Foreground lock timeout restored to 0
+[2026-05-31 12:25:49] === done ===
+[2026-05-31 12:26:37] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:26:38] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? Create test issues for feature testing'
+[2026-05-31 12:26:38] Current foreground lock timeout: 0
+[2026-05-31 12:26:38] Disable foreground lock: True
+[2026-05-31 12:26:38] COM AppActivate(title)=True
+[2026-05-31 12:26:38] SetForeground=True BringToTop=True
+[2026-05-31 12:26:38] SUCCESS: Window is now foreground!
+[2026-05-31 12:26:41] Foreground lock timeout restored to 0
+[2026-05-31 12:26:41] === done ===
+[2026-05-31 12:30:08] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:30:09] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:30:09] Current foreground lock timeout: 0
+[2026-05-31 12:30:09] Disable foreground lock: True
+[2026-05-31 12:30:10] COM AppActivate(title)=True
+[2026-05-31 12:30:10] SetForeground=True BringToTop=True
+[2026-05-31 12:30:10] SUCCESS: Window is now foreground!
+[2026-05-31 12:30:12] Foreground lock timeout restored to 0
+[2026-05-31 12:30:12] === done ===
+[2026-05-31 12:30:27] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:30:29] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? unify-label-definitions'
+[2026-05-31 12:30:29] Current foreground lock timeout: 0
+[2026-05-31 12:30:29] Disable foreground lock: True
+[2026-05-31 12:30:29] COM AppActivate(title)=True
+[2026-05-31 12:30:29] SetForeground=True BringToTop=True
+[2026-05-31 12:30:29] SUCCESS: Window is now foreground!
+[2026-05-31 12:30:31] Foreground lock timeout restored to 0
+[2026-05-31 12:30:31] === done ===
+[2026-05-31 12:30:57] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:30:58] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? unify-label-definitions'
+[2026-05-31 12:30:58] Current foreground lock timeout: 0
+[2026-05-31 12:30:58] Disable foreground lock: True
+[2026-05-31 12:30:59] COM AppActivate(title)=True
+[2026-05-31 12:30:59] SetForeground=True BringToTop=True
+[2026-05-31 12:30:59] SUCCESS: Window is now foreground!
+[2026-05-31 12:31:01] Foreground lock timeout restored to 0
+[2026-05-31 12:31:01] === done ===
+[2026-05-31 12:36:20] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:36:22] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:36:22] Current foreground lock timeout: 0
+[2026-05-31 12:36:22] Disable foreground lock: True
+[2026-05-31 12:36:22] COM AppActivate(title)=True
+[2026-05-31 12:36:22] SetForeground=True BringToTop=True
+[2026-05-31 12:36:22] SUCCESS: Window is now foreground!
+[2026-05-31 12:36:24] Foreground lock timeout restored to 0
+[2026-05-31 12:36:24] === done ===
+[2026-05-31 12:59:46] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 12:59:47] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 12:59:47] Current foreground lock timeout: 0
+[2026-05-31 12:59:47] Disable foreground lock: True
+[2026-05-31 12:59:47] COM AppActivate(title)=True
+[2026-05-31 12:59:47] SetForeground=True BringToTop=True
+[2026-05-31 12:59:48] SUCCESS: Window is now foreground!
+[2026-05-31 12:59:50] Foreground lock timeout restored to 0
+[2026-05-31 12:59:50] === done ===
+[2026-05-31 13:00:29] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:00:30] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? unify-label-definitions'
+[2026-05-31 13:00:30] Current foreground lock timeout: 0
+[2026-05-31 13:00:30] Disable foreground lock: True
+[2026-05-31 13:00:30] COM AppActivate(title)=True
+[2026-05-31 13:00:30] SetForeground=True BringToTop=True
+[2026-05-31 13:00:30] SUCCESS: Window is now foreground!
+[2026-05-31 13:00:33] Foreground lock timeout restored to 0
+[2026-05-31 13:00:33] === done ===
+[2026-05-31 13:29:22] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:29:24] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:29:24] Current foreground lock timeout: 0
+[2026-05-31 13:29:24] Disable foreground lock: True
+[2026-05-31 13:29:24] COM AppActivate(title)=True
+[2026-05-31 13:29:24] SetForeground=True BringToTop=True
+[2026-05-31 13:29:24] SUCCESS: Window is now foreground!
+[2026-05-31 13:29:26] Foreground lock timeout restored to 0
+[2026-05-31 13:29:26] === done ===
+[2026-05-31 13:32:30] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:32:32] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:32:32] Current foreground lock timeout: 0
+[2026-05-31 13:32:32] Disable foreground lock: True
+[2026-05-31 13:32:32] COM AppActivate(title)=True
+[2026-05-31 13:32:32] SetForeground=True BringToTop=True
+[2026-05-31 13:32:32] SUCCESS: Window is now foreground!
+[2026-05-31 13:32:34] Foreground lock timeout restored to 0
+[2026-05-31 13:32:34] === done ===
+[2026-05-31 13:33:46] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:33:47] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:33:47] Current foreground lock timeout: 0
+[2026-05-31 13:33:47] Disable foreground lock: True
+[2026-05-31 13:33:47] COM AppActivate(title)=True
+[2026-05-31 13:33:47] SetForeground=True BringToTop=True
+[2026-05-31 13:33:47] SUCCESS: Window is now foreground!
+[2026-05-31 13:33:50] Foreground lock timeout restored to 0
+[2026-05-31 13:33:50] === done ===
+[2026-05-31 13:34:13] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:34:15] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:34:15] Current foreground lock timeout: 0
+[2026-05-31 13:34:15] Disable foreground lock: True
+[2026-05-31 13:34:15] COM AppActivate(title)=True
+[2026-05-31 13:34:15] SetForeground=True BringToTop=True
+[2026-05-31 13:34:15] SUCCESS: Window is now foreground!
+[2026-05-31 13:34:18] Foreground lock timeout restored to 0
+[2026-05-31 13:34:18] === done ===
+[2026-05-31 13:34:54] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:34:56] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:34:56] Current foreground lock timeout: 0
+[2026-05-31 13:34:56] Disable foreground lock: False
+[2026-05-31 13:34:56] COM AppActivate(title)=True
+[2026-05-31 13:34:56] SetForeground=True BringToTop=True
+[2026-05-31 13:34:56] WARNING: Foreground is still 526356 (target 525558)
+[2026-05-31 13:34:58] Foreground lock timeout restored to 0
+[2026-05-31 13:34:58] === done ===
+[2026-05-31 13:35:23] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:35:24] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:35:24] Current foreground lock timeout: 0
+[2026-05-31 13:35:24] Disable foreground lock: True
+[2026-05-31 13:35:24] COM AppActivate(title)=True
+[2026-05-31 13:35:24] SetForeground=True BringToTop=True
+[2026-05-31 13:35:24] SUCCESS: Window is now foreground!
+[2026-05-31 13:35:27] Foreground lock timeout restored to 0
+[2026-05-31 13:35:27] === done ===
+[2026-05-31 13:36:11] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:36:13] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:36:13] Current foreground lock timeout: 0
+[2026-05-31 13:36:13] Disable foreground lock: False
+[2026-05-31 13:36:13] COM AppActivate(title)=True
+[2026-05-31 13:36:13] SetForeground=True BringToTop=True
+[2026-05-31 13:36:13] WARNING: Foreground is still 526356 (target 525558)
+[2026-05-31 13:36:15] Foreground lock timeout restored to 0
+[2026-05-31 13:36:15] === done ===
+[2026-05-31 13:37:55] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:37:56] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:37:56] Current foreground lock timeout: 0
+[2026-05-31 13:37:56] Disable foreground lock: True
+[2026-05-31 13:37:56] COM AppActivate(title)=True
+[2026-05-31 13:37:56] SetForeground=True BringToTop=True
+[2026-05-31 13:37:56] WARNING: Foreground is still 526356 (target 525558)
+[2026-05-31 13:37:59] Foreground lock timeout restored to 0
+[2026-05-31 13:37:59] === done ===
+[2026-05-31 13:38:34] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:38:35] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:38:35] Current foreground lock timeout: 0
+[2026-05-31 13:38:35] Disable foreground lock: False
+[2026-05-31 13:38:35] COM AppActivate(title)=True
+[2026-05-31 13:38:35] SetForeground=True BringToTop=True
+[2026-05-31 13:38:35] SUCCESS: Window is now foreground!
+[2026-05-31 13:38:38] Foreground lock timeout restored to 0
+[2026-05-31 13:38:38] === done ===
+[2026-05-31 13:58:21] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 13:58:22] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 13:58:22] Current foreground lock timeout: 0
+[2026-05-31 13:58:22] Disable foreground lock: True
+[2026-05-31 13:58:22] COM AppActivate(title)=True
+[2026-05-31 13:58:22] SetForeground=True BringToTop=True
+[2026-05-31 13:58:22] SUCCESS: Window is now foreground!
+[2026-05-31 13:58:24] Foreground lock timeout restored to 0
+[2026-05-31 13:58:24] === done ===
+[2026-05-31 14:02:39] === win32-foreground started (hint='claude-hk') ===
+[2026-05-31 14:02:40] Target: WindowsTerminal.exe PID=33152 hwnd=525558 title='? create-hooks-backend-lib'
+[2026-05-31 14:02:40] Current foreground lock timeout: 0
+[2026-05-31 14:02:40] Disable foreground lock: True
+[2026-05-31 14:02:40] COM AppActivate(title)=False
+[2026-05-31 14:02:40] COM AppActivate(name)=False
+[2026-05-31 14:02:40] SetForeground=True BringToTop=True
+[2026-05-31 14:02:40] SUCCESS: Window is now foreground!
+[2026-05-31 14:02:43] Foreground lock timeout restored to 0
+[2026-05-31 14:02:43] === done ===
