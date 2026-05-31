@@ -40,6 +40,7 @@ Hooks + Skills 是一套基于 Shell 的 **Claude Code 生命周期事件处理�
 │   ├── platform.sh                     # 平台检测与 Python 路径解析
 │   ├── json_get.py                     # Python JSON 解析 fallback
 │   ├── lib/                            # 辅助库
+│   │   ├── backend.sh                  # ★ Hooks 统一后端调用模块
 │   │   └── win32-foreground.log        # Windows 前台控制日志
 │   ├── logs/                           # 统一日志目录
 │   │   └── YYYY-MM-DD.log             # 按日期滚动的日志文件
@@ -141,6 +142,7 @@ Hooks + Skills 是一套基于 Shell 的 **Claude Code 生命周期事件处理�
 | 分类 | 数量 | 说明 |
 |------|------|------|
 | 共享基础设施 | 3 个 | base.sh, platform.sh, json_get.py |
+| Hooks 辅助库 | 1 个 | hooks/lib/backend.sh（统一后端调用） |
 | Skill 共享模块 | 5 个 | active.sh, lock.sh, log.sh, backend.sh, enforce_boundary.sh |
 | 有业务逻辑的 Hook | 6 个 | 01, 03, 05, 06, 16, 29 |
 | 纯日志转发的 Hook | 23 个 | 02, 04, 07-15, 17-28 |
@@ -291,9 +293,35 @@ uname -s 匹配：
 - 逐层解析字典，找不到则返回空字符串
 - list/dict 类型输出 JSON 字符串，其他类型直接输出值
 
-### 3.4 skills/ 共享模块
+### 3.4 hooks/lib/backend.sh — Hooks 统一后端调用模块
 
-#### 3.4.1 active.sh — .active 文件 CRUD
+**职责**：为 hooks 脚本提供统一的后端 API 调用封装，与 `skills/backend.sh` 功能相同但独立维护，避免 hooks 依赖 skills 目录。
+
+**依赖**：`source` `.claude/lib/config.sh` 获取后端地址配置。
+
+| 函数 | 参数 | 返回 | 说明 |
+|------|------|------|------|
+| `_load_backend_url()` | 无 | 设置 `BACKEND_URL` 变量 | 委托 `lib/config.sh` 的 `load_backend_config()` |
+| `_backend_available()` | 无 | 0=可用, 非0=不可用 | GET `/health` 健康检查 |
+| `_require_backend()` | 无 | 0=可用, 1=不可达, 2=未配置 | 检查后端是否必须可用 |
+| `_call_backend(endpoint, data)` | API 路径, JSON 数据 | 响应体或空 | POST 调用后端 API（失败静默返回空） |
+| `_get_session_id()` | 无 | session_id 字符串 | 从 `$CLAUDE_SESSION_ID` 或 stdin JSON 获取 |
+
+**使用方式**：在 hook 脚本顶部 source 一次即可：
+
+```bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../base.sh"
+source "$HOOKS_DIR/lib/backend.sh"
+```
+
+**调用者**：
+- `01-session-start/base.sh` — `init_trace_path()`, `register_session()`
+- `29-session-end/base.sh` — `release_session_issues()`, `unregister_session()`
+
+### 3.5 skills/ 共享模块
+
+#### 3.5.1 active.sh — .active 文件 CRUD
 
 **职责**：管理 `.active` 文件的读写操作，文件格式为每行一条 `session_id|skill_name`。
 
@@ -308,7 +336,7 @@ uname -s 匹配：
 
 **并发安全**：所有写操作通过 `lock.sh` 获取文件锁。
 
-#### 3.4.2 lock.sh — 文件锁模块
+#### 3.5.2 lock.sh — 文件锁模块
 
 **职责**：基于 `mkdir` 原子操作实现跨平台文件锁。
 
@@ -319,7 +347,7 @@ uname -s 匹配：
 
 **僵尸锁清理**：超时后检查锁目录创建时间，超过 60 秒的视为僵尸锁，自动清理。
 
-#### 3.4.3 log.sh — 双写日志模块
+#### 3.5.3 log.sh — 双写日志模块
 
 **职责**：同时写入统一日志和模块日志。
 
@@ -342,9 +370,9 @@ source "$CLAUDE_PROJECT_DIR/.claude/skills/log.sh"
 [2026-05-31 10:30:05] [INFO] [003-4-issue-claim] 内容
 ```
 
-#### 3.4.4 backend.sh — 后端 API 调用封装
+#### 3.5.4 backend.sh — 后端 API 调用封装（Skills 专用）
 
-**职责**：封装与 Go 后端服务的 HTTP 通信。
+**职责**：封装与 Go 后端服务的 HTTP 通信，仅供 skills 脚本使用。hooks 脚本使用独立的 `hooks/lib/backend.sh`（见 §3.4）。
 
 依赖：`~/.claude-tap-plus/backend.json`（由 Go 后端启动时写入）。
 
@@ -373,7 +401,7 @@ source "$CLAUDE_PROJECT_DIR/.claude/skills/log.sh"
 
 **降级策略**：所有后端调用都是静默失败——后端不可达时跳过，不影响本地功能。
 
-#### 3.4.5 enforce_boundary.sh — 工具白名单拦截
+#### 3.5.5 enforce_boundary.sh — 工具白名单拦截
 
 **职责**：在 `05-pre-tool-use` 中作为 A 层拦截，解析当前 Skill 的 `SKILL.md` frontmatter `allowed-tools` 列表，比对 `tool_name`。
 
@@ -447,6 +475,8 @@ hook_output 0 '{}'
 
 ```
 01-session-start/base.sh
+├── source hooks/base.sh（共享基础设施）
+├── source hooks/lib/backend.sh（统一后端调用）
 ├── 1. 首次运行检查
 │   └── [! -f .initialized] → 执行 .claude/init.sh
 ├── 2. ensure_utf8()          — 设置 UTF-8 编码
@@ -454,12 +484,12 @@ hook_output 0 '{}'
 ├── 4. ensure_dirs()          — 目录完整性检查
 ├── 5. ensure_skill_checks()  — 各 Skill 的 init_check.sh 巡检
 ├── 6. init_trace_path()      — 初始化代理 Trace 路径
-│   └── POST /api/proxy/trace-init → Go 后端转发到代理
+│   └── _backend_available() + _call_backend("/api/proxy/trace-init")
 └── 7. register_session()     — 注册会话到后端
-    └── POST /api/session/register
+    └── _backend_available() + _call_backend("/api/session/register")
 ```
 
-**降级策略**：步骤 6、7 在后端不可达时静默跳过。
+**降级策略**：步骤 6、7 通过 `_backend_available()` 检查后端可达性，不可达时静默跳过。
 
 **首次初始化（`.claude/init.sh`）**：
 1. 读取 `dirs.conf` 创建必要目录
@@ -598,17 +628,22 @@ Claude 完成每轮响应后触发。
 
 ```
 29-session-end/base.sh
+├── source hooks/base.sh（共享基础设施）
+├── source hooks/lib/backend.sh（统一后端调用）
+│
 ├── 1. dispatch_to_skill("29") → Skill 的会话结束处理
 │
 ├── 2. release_session_issues() — 释放该 session 领取的所有 Issue
-│   ├── POST /api/issue/release-session
+│   ├── _backend_available() 检查可达性
+│   ├── _call_backend("/api/issue/release-session", ...)
 │   └── 日志记录释放数量
 │
 └── 3. unregister_session() — 注销会话
-    └── POST /api/session/close
+    ├── _backend_available() 检查可达性
+    └── _call_backend("/api/session/close", ...)
 ```
 
-**降级策略**：后端不可达时跳过 API 调用。
+**降级策略**：通过 `_backend_available()` 检查后端可达性，不可达时跳过 API 调用。所有后端调用统一通过 `hooks/lib/backend.sh` 的 `_call_backend()` 函数。
 
 ---
 
