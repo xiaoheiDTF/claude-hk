@@ -3,6 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../base.sh"
+source "$HOOKS_DIR/lib/backend.sh"
 
 session_id=$(json_get '.session_id')
 reason=$(json_get '.reason')
@@ -16,19 +17,13 @@ release_session_issues() {
   sid=$(json_get '.session_id')
   [ -z "$sid" ] && return 0
 
-  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
-  _load_backend_url
-  [ -z "$BACKEND_URL" ] && return 0
-
   if ! _backend_available; then
     log "INFO" "Backend unreachable, skipping session release for $sid"
     return 0
   fi
 
   local result
-  result=$(curl -s --max-time 5 -X POST "$BACKEND_URL/api/issue/release-session" \
-    -H "Content-Type: application/json" \
-    -d "{\"session_id\":\"$sid\"}" 2>/dev/null) || return 0
+  result=$(_call_backend "/api/issue/release-session" "{\"session_id\":\"$sid\"}") || return 0
 
   local count
   count=$(echo "$result" | jq -r '.count // 0' 2>/dev/null)
@@ -43,10 +38,6 @@ unregister_session() {
   sid=$(json_get '.session_id')
   reason=$(json_get '.reason')
   [ -z "$sid" ] && return 0
-
-  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
-  _load_backend_url
-  [ -z "$BACKEND_URL" ] && return 0
 
   if ! _backend_available; then
     log "DEBUG" "Backend unreachable, skipping session close for $sid"

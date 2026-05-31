@@ -3,6 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../base.sh"
+source "$HOOKS_DIR/lib/backend.sh"
 
 source_type=$(json_get '.source')
 log "INFO" "source=$source_type"
@@ -82,8 +83,10 @@ ensure_skill_checks
 
 # 5. 初始化代理 trace 路径（通过后端 8080 转发到代理）
 init_trace_path() {
-  source "$CLAUDE_PROJECT_DIR/.claude/lib/config.sh"
-  load_backend_config || return 0
+  if ! _backend_available; then
+    log "DEBUG" "Trace init skipped (backend/proxy unreachable)"
+    return 0
+  fi
 
   local sid
   sid=$(json_get '.session_id')
@@ -104,19 +107,17 @@ init_trace_path() {
 
   # 通过后端转发 trace-init 到代理
   local result
-  result=$(curl -s --max-time 3 -X POST "$BACKEND_URL/api/proxy/trace-init" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"session_id\":\"$sid\",
-      \"machine_id\":\"$machine_id\",
-      \"project_slug\":\"$project_slug\",
-      \"transcript_path\":\"$safe_transcript_path\"
-    }" 2>/dev/null)
+  result=$(_call_backend "/api/proxy/trace-init" "{
+    \"session_id\":\"$sid\",
+    \"machine_id\":\"$machine_id\",
+    \"project_slug\":\"$project_slug\",
+    \"transcript_path\":\"$safe_transcript_path\"
+  }")
 
   if [ -n "$result" ]; then
     log "INFO" "Trace initialized: $(echo "$result" | jq -r '.trace_path // "unknown"' 2>/dev/null)"
   else
-    log "DEBUG" "Trace init skipped (backend/proxy unreachable)"
+    log "DEBUG" "Trace init failed (backend call returned empty)"
   fi
 }
 
@@ -124,10 +125,6 @@ init_trace_path
 
 # 6. 注册会话到后端（SR-2）
 register_session() {
-  source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
-  _load_backend_url
-  [ -z "$BACKEND_URL" ] && return 0
-
   if ! _backend_available; then
     log "DEBUG" "Backend unreachable, skipping session registration"
     return 0
