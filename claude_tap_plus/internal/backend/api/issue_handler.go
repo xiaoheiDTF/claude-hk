@@ -3,9 +3,12 @@ package api
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/service"
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/store"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
@@ -248,3 +251,81 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 
 // boolPtr 返回 bool 的指针，用于 JSON 响应中区分零值和未设置。
 func boolPtr(b bool) *bool { return &b }
+
+// ListIssues 处理获取 Issue 列表的请求。
+// 接收 GET 请求，支持按仓库、状态、session_id 过滤和分页。
+func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use GET")
+		return
+	}
+
+	// 解析查询参数
+	var filter store.IssueFilter
+	if v := r.URL.Query().Get("repo"); v != "" {
+		filter.RepoFullName = &v
+	}
+	if v := r.URL.Query().Get("status"); v != "" {
+		filter.Status = &v
+	}
+	if v := r.URL.Query().Get("session_id"); v != "" {
+		filter.SessionID = &v
+	}
+	if v := r.URL.Query().Get("page"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			filter.Page = n
+		}
+	}
+	if v := r.URL.Query().Get("page_size"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			filter.PageSize = n
+		}
+	}
+
+	logger.Debug("api.issue", "GET /api/issues filter=%+v", filter)
+
+	items, total, err := h.svc.List(r.Context(), filter)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to list issues")
+		return
+	}
+
+	// 确保返回空数组而非 null
+	if items == nil {
+		items = []store.IssueListItem{}
+	}
+
+	// 分页参数
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := filter.PageSize
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+
+	// 转换为响应格式
+	respItems := make([]IssueListItem, len(items))
+	for i, item := range items {
+		respItems[i] = IssueListItem{
+			ID:           item.ID,
+			RepoFullName: item.RepoFullName,
+			IssueNumber:  item.IssueNumber,
+			IssueTitle:   item.IssueTitle,
+			Status:       item.Status,
+			SessionID:    item.SessionID,
+			ClaimedAt:    item.ClaimedAt,
+			UpdatedAt:    item.UpdatedAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, IssuesListResponse{
+		Issues:     respItems,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	})
+}

@@ -49,9 +49,13 @@ func setupTest(t *testing.T) *testEnv {
 
 	issueSvc := service.NewIssueService(s.Issues())
 	sessionSvc := service.NewSessionService(s.Sessions())
+	machineSvc := service.NewMachineService(s.Machines())
+	projectSvc := service.NewProjectService(s.Projects())
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
-		Session: api.NewSessionHandler(sessionSvc),
+		Session: api.NewSessionHandler(sessionSvc, issueSvc, service.NewTokenService(s.Sessions()), service.NewTraceService(s.Sessions())),
+		Machine: api.NewMachineHandler(machineSvc),
+		Project: api.NewProjectHandler(projectSvc),
 	})
 
 	srv := httptest.NewServer(router)

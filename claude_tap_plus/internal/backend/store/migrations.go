@@ -70,6 +70,13 @@ func runMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_issue_claims_repo ON issue_claims(repo_full_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_issue_claims_session ON issue_claims(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_issue_claims_status ON issue_claims(status)`,
+
+		// config 表：存储系统运行时配置
+		`CREATE TABLE IF NOT EXISTS config (
+			key        TEXT PRIMARY KEY,
+			value      TEXT NOT NULL,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	logger.Debug("store", "running %d migration statements", len(stmts))

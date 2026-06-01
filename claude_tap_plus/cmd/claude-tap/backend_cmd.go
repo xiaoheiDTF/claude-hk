@@ -58,6 +58,7 @@ func runBackend(args []string) {
 		log.Printf("warning: logger init failed: %v", err)
 	}
 	defer logger.Close()
+	cfg.LogDir = logDir
 	logger.Info("backend.cmd", "backend starting: host=%s port=%d db=%s", cfg.Host, cfg.Port, cfg.DBPath)
 
 	// 写入 backend.json，让代理进程知道后端在哪里

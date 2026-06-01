@@ -44,11 +44,21 @@ func (s *Server) Start() error {
 	// 初始化业务服务和处理器
 	issueSvc := service.NewIssueService(s.store.Issues())
 	sessionSvc := service.NewSessionService(s.store.Sessions())
+	machineSvc := service.NewMachineService(s.store.Machines())
+	projectSvc := service.NewProjectService(s.store.Projects())
+	tokenSvc := service.NewTokenService(s.store.Sessions())
+	traceSvc := service.NewTraceService(s.store.Sessions())
+	logSvc := service.NewLogService(s.cfg.LogDir)
+	configSvc := service.NewConfigService(s.store.Configs())
 
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
-		Session: api.NewSessionHandler(sessionSvc),
+		Session: api.NewSessionHandler(sessionSvc, issueSvc, tokenSvc, traceSvc),
 		Proxy:   api.NewProxyHandler(),
+		Machine: api.NewMachineHandler(machineSvc),
+		Project: api.NewProjectHandler(projectSvc),
+		Log:     api.NewLogHandler(logSvc),
+		Config:  api.NewConfigHandler(configSvc),
 	})
 
 	// 创建 HTTP 服务器

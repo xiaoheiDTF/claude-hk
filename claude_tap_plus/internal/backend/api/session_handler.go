@@ -4,6 +4,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/service"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/store"
@@ -12,12 +13,15 @@ import (
 
 // SessionHandler 处理 Session 相关的 HTTP 请求。
 type SessionHandler struct {
-	svc *service.SessionService // Session 业务逻辑服务
+	svc      *service.SessionService // Session 业务逻辑服务
+	issueSvc *service.IssueService   // Issue 业务逻辑服务（用于获取会话关联 Issue）
+	tokenSvc *service.TokenService   // Token 统计服务
+	traceSvc *service.TraceService   // Trace 文件服务
 }
 
 // NewSessionHandler 创建新的 SessionHandler 实例。
-func NewSessionHandler(svc *service.SessionService) *SessionHandler {
-	return &SessionHandler{svc: svc}
+func NewSessionHandler(svc *service.SessionService, issueSvc *service.IssueService, tokenSvc *service.TokenService, traceSvc *service.TraceService) *SessionHandler {
+	return &SessionHandler{svc: svc, issueSvc: issueSvc, tokenSvc: tokenSvc, traceSvc: traceSvc}
 }
 
 // Register 处理注册新会话的请求。
@@ -217,4 +221,182 @@ func toSessionDetail(s store.Session) SessionDetail {
 		d.CloseReason = s.CloseReason
 	}
 	return d
+}
+
+// GetIssues 处理获取会话关联 Issue 的请求。
+// 接收 GET 请求，路径格式: /api/session/{id}/issues
+func (h *SessionHandler) GetIssues(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use GET")
+		return
+	}
+
+	// 从 URL 路径中提取 session_id
+	// 路径格式: /api/session/{id}/issues
+	path := r.URL.Path
+	prefix := "/api/session/"
+	suffix := "/issues"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid path")
+		return
+	}
+	sessionID := path[len(prefix) : len(path)-len(suffix)]
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "session_id is required")
+		return
+	}
+
+	logger.Debug("api.session", "GET /api/session/%s/issues", sessionID)
+
+	// 先检查会话是否存在
+	sess, err := h.svc.Get(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to get session")
+		return
+	}
+	if sess == nil {
+		writeError(w, http.StatusNotFound, "not_found", "session not found")
+		return
+	}
+
+	// 获取该会话的 Issue 列表
+	items, err := h.issueSvc.ListBySession(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to list issues")
+		return
+	}
+
+	// 确保返回空数组而非 null
+	if items == nil {
+		items = []store.IssueListItem{}
+	}
+
+	// 转换为响应格式
+	respItems := make([]IssueListItem, len(items))
+	for i, item := range items {
+		respItems[i] = IssueListItem{
+			ID:           item.ID,
+			RepoFullName: item.RepoFullName,
+			IssueNumber:  item.IssueNumber,
+			IssueTitle:   item.IssueTitle,
+			Status:       item.Status,
+			SessionID:    item.SessionID,
+			ClaimedAt:    item.ClaimedAt,
+			UpdatedAt:    item.UpdatedAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, SessionIssuesResponse{Issues: respItems})
+}
+
+// GetTokens 处理获取会话 Token 统计的请求。
+// 接收 GET 请求，路径格式: /api/session/{id}/tokens
+func (h *SessionHandler) GetTokens(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use GET")
+		return
+	}
+
+	// 从 URL 路径中提取 session_id
+	path := r.URL.Path
+	prefix := "/api/session/"
+	suffix := "/tokens"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid path")
+		return
+	}
+	sessionID := path[len(prefix) : len(path)-len(suffix)]
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "session_id is required")
+		return
+	}
+
+	logger.Debug("api.session", "GET /api/session/%s/tokens", sessionID)
+
+	// 检查会话是否存在
+	sess, err := h.svc.Get(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to get session")
+		return
+	}
+	if sess == nil {
+		writeError(w, http.StatusNotFound, "not_found", "session not found")
+		return
+	}
+
+	// 获取 Token 统计
+	stats, err := h.tokenSvc.GetSessionTokens(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to get tokens")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, SessionTokensResponse{
+		SessionID:    sessionID,
+		APICalls:     stats.APICalls,
+		InputTokens:  stats.InputTokens,
+		OutputTokens: stats.OutputTokens,
+		CacheRead:    stats.CacheRead,
+		CacheCreate:  stats.CacheCreate,
+		TotalTokens:  stats.Total(),
+	})
+}
+
+// GetTraces 处理获取会话 Trace 文件列表的请求。
+// 接收 GET 请求，路径格式: /api/session/{id}/traces
+func (h *SessionHandler) GetTraces(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use GET")
+		return
+	}
+
+	// 从 URL 路径中提取 session_id
+	path := r.URL.Path
+	prefix := "/api/session/"
+	suffix := "/traces"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid path")
+		return
+	}
+	sessionID := path[len(prefix) : len(path)-len(suffix)]
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "session_id is required")
+		return
+	}
+
+	logger.Debug("api.session", "GET /api/session/%s/traces", sessionID)
+
+	// 检查会话是否存在
+	sess, err := h.svc.Get(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to get session")
+		return
+	}
+	if sess == nil {
+		writeError(w, http.StatusNotFound, "not_found", "session not found")
+		return
+	}
+
+	// 获取 Trace 文件列表
+	traces, err := h.traceSvc.GetSessionTraces(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to get traces")
+		return
+	}
+
+	items := make([]TraceItem, len(traces))
+	for i, t := range traces {
+		items[i] = TraceItem{
+			Path:      t.Path,
+			SizeBytes: t.SizeBytes,
+			LineCount: t.LineCount,
+			Date:      t.Date,
+			Filename:  t.Filename,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, SessionTracesResponse{
+		SessionID: sessionID,
+		Traces:    items,
+	})
 }

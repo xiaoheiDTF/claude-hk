@@ -59,7 +59,7 @@ func setupSR5(t *testing.T) *sr5Env {
 	sessionSvc := service.NewSessionService(s.Sessions())
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
-		Session: api.NewSessionHandler(sessionSvc),
+		Session: api.NewSessionHandler(sessionSvc, service.NewIssueService(s.Issues()), service.NewTokenService(s.Sessions()), service.NewTraceService(s.Sessions())),
 	})
 
 	srv := httptest.NewServer(router)
@@ -331,7 +331,7 @@ func TestSR5_StatePreservedAcrossRestart(t *testing.T) {
 	sessionSvc := service.NewSessionService(s.Sessions())
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
-		Session: api.NewSessionHandler(sessionSvc),
+		Session: api.NewSessionHandler(sessionSvc, service.NewIssueService(s.Issues()), service.NewTokenService(s.Sessions()), service.NewTraceService(s.Sessions())),
 	})
 	srv := httptest.NewServer(router)
 
@@ -361,7 +361,7 @@ func TestSR5_StatePreservedAcrossRestart(t *testing.T) {
 	sessionSvc2 := service.NewSessionService(s2.Sessions())
 	router2 := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(service.NewIssueService(s2.Issues())),
-		Session: api.NewSessionHandler(sessionSvc2),
+		Session: api.NewSessionHandler(sessionSvc2, service.NewIssueService(s2.Issues()), service.NewTokenService(s2.Sessions()), service.NewTraceService(s2.Sessions())),
 	})
 	srv2 := httptest.NewServer(router2)
 	t.Cleanup(srv2.Close)

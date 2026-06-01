@@ -12,6 +12,7 @@ type Config struct {
 	Host   string // HTTP 监听地址
 	Port   int    // HTTP 监听端口
 	DBPath string // SQLite 数据库文件路径
+	LogDir string // 日志文件存放目录
 }
 
 // Addr 返回 HTTP 监听地址的字符串表示，格式为 "host:port"。

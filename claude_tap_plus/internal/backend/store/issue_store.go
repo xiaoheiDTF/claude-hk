@@ -277,3 +277,102 @@ func (s *sqliteIssueStore) ReleaseSessionIssues(ctx context.Context, sessionID s
 	logger.Info("store.issue", "released %d issues for session %s", len(numbers), sessionID)
 	return numbers, nil
 }
+
+// ListIssues 获取 Issue 列表，支持过滤和分页。
+// 返回 Issue 列表、总数量和错误信息。
+func (s *sqliteIssueStore) ListIssues(ctx context.Context, filter IssueFilter) ([]IssueListItem, int, error) {
+	// 构建 WHERE 条件
+	where := "WHERE 1=1"
+	args := []any{}
+
+	if filter.RepoFullName != nil {
+		where += " AND repo_full_name = ?"
+		args = append(args, *filter.RepoFullName)
+	}
+	if filter.Status != nil {
+		where += " AND status = ?"
+		args = append(args, *filter.Status)
+	}
+	if filter.SessionID != nil {
+		where += " AND session_id = ?"
+		args = append(args, *filter.SessionID)
+	}
+
+	// 查询总数
+	var total int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM issue_claims "+where, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count issues: %w", err)
+	}
+
+	// 分页参数
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := filter.PageSize
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	// 查询数据
+	query := fmt.Sprintf(
+		`SELECT id, repo_full_name, issue_number, issue_title, status,
+		        session_id, claimed_at, updated_at
+		   FROM issue_claims %s
+		  ORDER BY updated_at DESC
+		  LIMIT ? OFFSET ?`, where)
+	queryArgs := append(args, pageSize, offset)
+
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list issues: %w", err)
+	}
+	defer rows.Close()
+
+	var items []IssueListItem
+	for rows.Next() {
+		var item IssueListItem
+		if err := rows.Scan(
+			&item.ID, &item.RepoFullName, &item.IssueNumber, &item.IssueTitle,
+			&item.Status, &item.SessionID, &item.ClaimedAt, &item.UpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan issue: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	logger.Debug("store.issue", "list issues: total=%d page=%d pageSize=%d", total, page, pageSize)
+	return items, total, rows.Err()
+}
+
+// ListIssuesBySession 获取指定 session 领取的所有 Issue。
+func (s *sqliteIssueStore) ListIssuesBySession(ctx context.Context, sessionID string) ([]IssueListItem, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, repo_full_name, issue_number, issue_title, status,
+		        session_id, claimed_at, updated_at
+		   FROM issue_claims
+		  WHERE session_id = ?
+		  ORDER BY updated_at DESC`,
+		sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list issues by session: %w", err)
+	}
+	defer rows.Close()
+
+	var items []IssueListItem
+	for rows.Next() {
+		var item IssueListItem
+		if err := rows.Scan(
+			&item.ID, &item.RepoFullName, &item.IssueNumber, &item.IssueTitle,
+			&item.Status, &item.SessionID, &item.ClaimedAt, &item.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan issue: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	logger.Debug("store.issue", "list issues by session: session=%s found %d", sessionID, len(items))
+	return items, rows.Err()
+}

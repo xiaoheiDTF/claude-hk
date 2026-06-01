@@ -50,3 +50,16 @@ func (svc *IssueService) ReleaseSession(ctx context.Context, sessionID string) (
 	logger.Debug("svc.issue", "ReleaseSession: session=%s", sessionID)
 	return svc.store.ReleaseSessionIssues(ctx, sessionID)
 }
+
+// List 获取 Issue 列表，支持过滤和分页。
+// 返回 Issue 列表和总数量。
+func (svc *IssueService) List(ctx context.Context, filter store.IssueFilter) ([]store.IssueListItem, int, error) {
+	logger.Debug("svc.issue", "List: filter applied")
+	return svc.store.ListIssues(ctx, filter)
+}
+
+// ListBySession 获取指定 session 的 Issue 列表。
+func (svc *IssueService) ListBySession(ctx context.Context, sessionID string) ([]store.IssueListItem, error) {
+	logger.Debug("svc.issue", "ListBySession: session=%s", sessionID)
+	return svc.store.ListIssuesBySession(ctx, sessionID)
+}

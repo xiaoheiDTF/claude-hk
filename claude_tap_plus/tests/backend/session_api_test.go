@@ -53,7 +53,7 @@ func setupSessionTest(t *testing.T) *sessionTestEnv {
 	sessionSvc := service.NewSessionService(s.Sessions())
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
-		Session: api.NewSessionHandler(sessionSvc),
+		Session: api.NewSessionHandler(sessionSvc, issueSvc, service.NewTokenService(s.Sessions()), service.NewTraceService(s.Sessions())),
 	})
 
 	srv := httptest.NewServer(router)
