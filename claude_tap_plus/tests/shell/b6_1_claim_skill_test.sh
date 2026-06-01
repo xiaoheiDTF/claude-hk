@@ -1,5 +1,5 @@
 #!/bin/bash
-# B6-1: 003-4-issue-claim 技能改造 — Shell 集成测试
+# B6-1: 001-4-issue-claim 技能改造 — Shell 集成测试
 # 验收标准：
 #   1. 后端可用时，只展示空闲 issue（check API 过滤非 idle）
 #   2. 后端可用时，领取操作是原子的（先锁后 gh）
@@ -299,7 +299,7 @@ test_claim_sets_claimed_status() {
 
 # --- Main ---
 
-echo "=== B6-1: 003-4-issue-claim 技能改造 — Shell 集成测试 ==="
+echo "=== B6-1: 001-4-issue-claim 技能改造 — Shell 集成测试 ==="
 echo "Project: $PROJECT_DIR"
 echo ""
 

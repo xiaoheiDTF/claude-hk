@@ -1,5 +1,5 @@
 #!/bin/bash
-# B6-2: 003-5 ~ 003-9 技能改造 — Shell 集成测试
+# B6-2: 001-5 ~ 001-9 技能改造 — Shell 集成测试
 # 验收标准：
 #   1. 每个技能在关键节点调用正确的 status 值
 #   2. 后端可用时，状态流转后 GitHub label 自动同步
@@ -215,32 +215,32 @@ test_backend_up_status_flow() {
   }" > /dev/null
   if [ $? -ne 0 ]; then echo "FAIL: claim"; return 1; fi
 
-  # 2. fixing（模拟 003-5）
+  # 2. fixing（模拟 001-5）
   _update_status "$url" 500 "$sid" "fixing"
   local s=$(_check_status "$url" 500)
   if [ "$s" != "fixing" ]; then echo "FAIL: expected fixing, got $s"; return 1; fi
 
-  # 3. ready-for-pr（模拟 003-6）
+  # 3. ready-for-pr（模拟 001-6）
   _update_status "$url" 500 "$sid" "ready-for-pr"
   s=$(_check_status "$url" 500)
   if [ "$s" != "ready-for-pr" ]; then echo "FAIL: expected ready-for-pr, got $s"; return 1; fi
 
-  # 4. pr-created（模拟 003-7）
+  # 4. pr-created（模拟 001-7）
   _update_status "$url" 500 "$sid" "pr-created"
   s=$(_check_status "$url" 500)
   if [ "$s" != "pr-created" ]; then echo "FAIL: expected pr-created, got $s"; return 1; fi
 
-  # 5. testing（模拟 003-8）
+  # 5. testing（模拟 001-8）
   _update_status "$url" 500 "$sid" "testing"
   s=$(_check_status "$url" 500)
   if [ "$s" != "testing" ]; then echo "FAIL: expected testing, got $s"; return 1; fi
 
-  # 6. reviewing（模拟 003-9 开始）
+  # 6. reviewing（模拟 001-9 开始）
   _update_status "$url" 500 "$sid" "reviewing"
   s=$(_check_status "$url" 500)
   if [ "$s" != "reviewing" ]; then echo "FAIL: expected reviewing, got $s"; return 1; fi
 
-  # 7. merged（模拟 003-9 merge）
+  # 7. merged（模拟 001-9 merge）
   _update_status "$url" 500 "$sid" "merged"
   s=$(_check_status "$url" 500)
   if [ "$s" != "merged" ]; then echo "FAIL: expected merged, got $s"; return 1; fi
@@ -288,7 +288,7 @@ test_backend_up_reject_flow() {
 
 # --- Main ---
 
-echo "=== B6-2: 003-5 ~ 003-9 技能改造 — Shell 集成测试 ==="
+echo "=== B6-2: 001-5 ~ 001-9 技能改造 — Shell 集成测试 ==="
 echo "Project: $PROJECT_DIR"
 echo ""
 

@@ -474,8 +474,8 @@ func TestClaimAPI(t *testing.T) {
 	})
 }
 
-// --- D2: 003-5-issue-fix 技能集成测试 ---
-// 模拟 003-5-issue-fix 技能调用后端的完整流程
+// --- D2: 001-5-issue-fix 技能集成测试 ---
+// 模拟 001-5-issue-fix 技能调用后端的完整流程
 // 验收标准：
 //   - claim 后调 status API 可将状态更新为 fixing
 //   - 非 owner session 无法标记 fixing
@@ -487,7 +487,7 @@ func TestClaimAPI(t *testing.T) {
 func TestIssueFixFlow(t *testing.T) {
 	t.Run("claim_then_fixing", func(t *testing.T) {
 		// D2 核心验收：claim → fixing 状态流转
-		// 模拟 /003-4-issue-claim 后，/003-5-issue-fix 标记 fixing
+		// 模拟 /001-4-issue-claim 后，/001-5-issue-fix 标记 fixing
 		e := setup(t)
 
 		// 1. check 创建 idle
@@ -498,13 +498,13 @@ func TestIssueFixFlow(t *testing.T) {
 			t.Fatalf("step 1: expected idle, got %s", s[10])
 		}
 
-		// 2. claim（模拟 003-4-issue-claim）
+		// 2. claim（模拟 001-4-issue-claim）
 		code, ok, _ := claimIssue(t, e, "xiaoheiDTF/claude-hk", 10, "sess_fix_001")
 		if code != http.StatusOK || !ok {
 			t.Fatalf("step 2: claim failed: code=%d ok=%v", code, ok)
 		}
 
-		// 3. 标记 fixing（模拟 003-5-issue-fix 调用 update_issue_status）
+		// 3. 标记 fixing（模拟 001-5-issue-fix 调用 update_issue_status）
 		resp := e.post(t, "/api/issue/status",
 			`{"repo_full_name":"xiaoheiDTF/claude-hk","issue_number":10,"session_id":"sess_fix_001","status":"fixing"}`)
 		var result struct {
@@ -652,7 +652,7 @@ func TestIssueFixFlow(t *testing.T) {
 	})
 }
 
-// --- D3: 003-6-issue-done 技能集成测试 ---
+// --- D3: 001-6-issue-done 技能集成测试 ---
 // 验收标准：
 //   - fixing → ready-for-pr 状态更新
 //   - ready-for-pr 状态在 session end 时被释放
@@ -746,7 +746,7 @@ func TestIssueDoneFlow(t *testing.T) {
 	})
 }
 
-// --- D4: 003-7-issue-pr 技能集成测试 ---
+// --- D4: 001-7-issue-pr 技能集成测试 ---
 // 验收标准：
 //   - ready-for-pr → pr-created 状态更新
 //   - pr-created 状态在 session end 时被释放
@@ -841,7 +841,7 @@ func TestIssuePRFlow(t *testing.T) {
 	})
 }
 
-// --- D5: 003-8-issue-test 技能集成测试 ---
+// --- D5: 001-8-issue-test 技能集成测试 ---
 // 验收标准：
 //   - pr-created → testing 状态更新
 //   - testing 状态在 session end 时被释放
@@ -939,7 +939,7 @@ func TestIssueTestFlow(t *testing.T) {
 	})
 }
 
-// --- D6: 003-9-issue-review 技能集成测试 ---
+// --- D6: 001-9-issue-review 技能集成测试 ---
 // 验收标准：
 //   - testing → reviewing → merged 完整流程
 //   - merged 终态不被 session end 释放

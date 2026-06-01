@@ -215,7 +215,7 @@ func TestSR5_EndToEndSessionWithIssueOps(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// 2. 领取 issue（模拟 003-4-issue-claim）
+	// 2. 领取 issue（模拟 001-4-issue-claim）
 	resp = env.post(t, "/api/issue/claim", `{
 		"repo_full_name": "test/sr5",
 		"issue_number": 1,
@@ -229,7 +229,7 @@ func TestSR5_EndToEndSessionWithIssueOps(t *testing.T) {
 		t.Fatal("step 2 claim: expected success")
 	}
 
-	// 3. 更新状态（模拟 003-5-issue-fix）
+	// 3. 更新状态（模拟 001-5-issue-fix）
 	resp = env.post(t, "/api/issue/status", `{
 		"repo_full_name": "test/sr5",
 		"issue_number": 1,
