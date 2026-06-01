@@ -255,9 +255,9 @@ API：
 
 | Skill/命令 | 集成点 |
 | --- | --- |
-| `003-4-issue-claim` | claim 前查 `/issues/{id}` 和 `/sessions`，成功后绑定 session |
-| `003-5-issue-fix` | 开始前查依赖，done 时更新 issue last_activity 和 session 状态 |
-| `003-6-issue-pr` | PR 前查 issue 状态、rebase 状态、Test Plan |
+| `001-4-issue-claim` | claim 前查 `/issues/{id}` 和 `/sessions`，成功后绑定 session |
+| `001-5-issue-fix` | 开始前查依赖，done 时更新 issue last_activity 和 session 状态 |
+| `001-6-issue-pr` | PR 前查 issue 状态、rebase 状态、Test Plan |
 | `/session-bind` | 显式绑定当前 Session 到 Issue |
 | `/session-unbind` | 显式解绑 |
 | `/session-status` | 查询当前 Session |

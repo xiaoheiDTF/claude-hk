@@ -72,24 +72,24 @@ Script names follow hook event numbers: `02Setup.sh`, `05PreToolUse.sh`, `08Post
 The 003 series is a complete issue-driven development pipeline:
 
 ```
-/003-1-issue-init → /003-2-issue → /003-3-issue-discuss
+/001-1-issue-init → /001-2-issue → /001-3-issue-discuss
                                        |
-/003-9-issue-review <- /003-8-issue-test <- /003-7-issue-pr <- /003-6-issue-done <- /003-5-issue-fix <- /003-4-issue-claim
+/001-9-issue-review <- /001-8-issue-test <- /001-7-issue-pr <- /001-6-issue-done <- /001-5-issue-fix <- /001-4-issue-claim
 ```
 
-- `/003-1-issue-init` — initialize labels (one-time), reads `labels.conf`
-- `/003-4-issue-claim` — atomic claim via backend API (`POST /api/issue/claim`), falls back to label-based claim if backend unavailable
-- `/003-5-issue-fix` — generates branch name from issue labels (bug→fix, enhancement→feat), creates branch
-- `/003-7-issue-pr` — creates PR; **must include `## Test plan` section** (each item as `- [ ]` checkbox)
-- `/003-8-issue-test` — executes Test Plan items, checks off `- [x]`
-- `/003-9-issue-review merge/reject` — **blocks merge if any Test Plan item is unchecked `[ ]`**
+- `/001-1-issue-init` — initialize labels (one-time), reads `labels.conf`
+- `/001-4-issue-claim` — atomic claim via backend API (`POST /api/issue/claim`), falls back to label-based claim if backend unavailable
+- `/001-5-issue-fix` — generates branch name from issue labels (bug→fix, enhancement→feat), creates branch
+- `/001-7-issue-pr` — creates PR; **must include `## Test plan` section** (each item as `- [ ]` checkbox)
+- `/001-8-issue-test` — executes Test Plan items, checks off `- [x]`
+- `/001-9-issue-review merge/reject` — **blocks merge if any Test Plan item is unchecked `[ ]`**
 
 ### Backend Integration
 
 Skills communicate with the Go backend service via `skills/backend.sh` shared module:
 
 - `~/.claude-tap-plus/backend.json` — stores backend host/port (written by Go backend on startup, auto-deleted on exit)
-- `003-4-issue-claim` calls `/api/issue/claim` for atomic claims
+- `001-4-issue-claim` calls `/api/issue/claim` for atomic claims
 - `29-session-end` hook calls `/api/issue/release-session` to release all issues held by the ending session
 - All backend calls are silent-fail (degrade gracefully when backend is down)
 
@@ -108,19 +108,19 @@ Every session: re-checks UTF-8, Python, directory integrity, and each skill's `i
 
 | Skill | Output Directory | Purpose |
 |-------|-----------------|---------|
-| `001-testcode-python` | `doc/testcode/python/{api,other}/` | Python test scripts and utilities |
-| `002-otherdoc` | `doc/otherDoc/YYYY-MM-DD/` | General documentation by date |
-| `003-1-issue-init` | — | Initialize issue label system (one-time) |
-| `003-2-issue` | `doc/issues/{drafts,templates}/` | Create GitHub Issue |
-| `003-3-issue-discuss` | — | Pull issue content for discussion |
-| `003-4-issue-claim` | — | Atomically claim issue (backend API or label fallback) |
-| `003-5-issue-fix` | — | Create branch from issue and start development |
-| `003-6-issue-done` | — | Mark development complete, ready for PR |
-| `003-7-issue-pr` | — | Create PR linked to issue |
-| `003-8-issue-test` | — | Execute PR's Test Plan |
-| `003-9-issue-review` | — | Review PR: merge or reject |
-| `004-git-push` | — | Commit (grouped, Chinese messages) + push |
-| `005-git-commit` | — | Commit only (grouped, Chinese messages), no push |
+| `002-2-doc-testcode-python` | `doc/testcode/python/{api,other}/` | Python test scripts and utilities |
+| `002-1-doc-otherdoc` | `doc/otherDoc/YYYY-MM-DD/` | General documentation by date |
+| `001-1-issue-init` | — | Initialize issue label system (one-time) |
+| `001-2-issue` | `doc/issues/{drafts,templates}/` | Create GitHub Issue |
+| `001-3-issue-discuss` | — | Pull issue content for discussion |
+| `001-4-issue-claim` | — | Atomically claim issue (backend API or label fallback) |
+| `001-5-issue-fix` | — | Create branch from issue and start development |
+| `001-6-issue-done` | — | Mark development complete, ready for PR |
+| `001-7-issue-pr` | — | Create PR linked to issue |
+| `001-8-issue-test` | — | Execute PR's Test Plan |
+| `001-9-issue-review` | — | Review PR: merge or reject |
+| `999-2-git-push` | — | Commit (grouped, Chinese messages) + push |
+| `999-1-git-commit` | — | Commit only (grouped, Chinese messages), no push |
 | `999-other-110-requirement-planning` | `requirement/prds/` | Requirement planning: generate PRD page docs and domain module docs |
 
 ## claude_tap_plus (Go Project)

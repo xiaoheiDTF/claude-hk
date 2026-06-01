@@ -20,7 +20,7 @@
 ### 2.1 当前问题
 
 - 只有一个 GitHub 账号，多个 Agent（不同机器/不同会话）共用
-- `003-4-issue-claim` 用 `gh issue edit --add-assignee @me` 领取，但所有 Agent 都是同一个 "me"
+- `001-4-issue-claim` 用 `gh issue edit --add-assignee @me` 领取，但所有 Agent 都是同一个 "me"
 - 导致多个 Agent 可能同时领取同一个 issue，产生冲突
 
 ### 2.2 解决思路
@@ -174,12 +174,12 @@ gh repo view --json url,nameWithOwner
 ┌─────────────────────────────────────────────────────────────┐
 │                     Agent (Claude Code)                      │
 │                                                              │
-│  003-4-issue-claim ──→ 调用后端 API 去重/领取               │
-│  003-5-issue-fix   ──→ 调用后端 API 标记 fixing             │
-│  003-6-issue-done  ──→ 调用后端 API 标记 ready-for-pr       │
-│  003-7-issue-pr    ──→ 调用后端 API 标记 pr-created         │
-│  003-8-issue-test  ──→ 调用后端 API 标记 testing            │
-│  003-9-issue-review ──→ 调用后端 API 标记 merged/rejected   │
+│  001-4-issue-claim ──→ 调用后端 API 去重/领取               │
+│  001-5-issue-fix   ──→ 调用后端 API 标记 fixing             │
+│  001-6-issue-done  ──→ 调用后端 API 标记 ready-for-pr       │
+│  001-7-issue-pr    ──→ 调用后端 API 标记 pr-created         │
+│  001-8-issue-test  ──→ 调用后端 API 标记 testing            │
+│  001-9-issue-review ──→ 调用后端 API 标记 merged/rejected   │
 │                                                              │
 │  SessionEnd hook   ──→ 调用后端 API 释放该 session 的 issue │
 └──────────────────────┬──────────────────────────────────────┘
@@ -228,7 +228,7 @@ gh repo view --json url,nameWithOwner
 }
 ```
 
-**003-4-issue-claim 脚本中的使用**：
+**001-4-issue-claim 脚本中的使用**：
 
 ```bash
 # 1. 从 gh 获取 open issues 列表
@@ -254,7 +254,7 @@ idle_issues=$(echo "$available_issues" | jq '.issues[] | select(.status == "idle
 与 B1 是同一个 API，在脚本中组合使用：
 
 ```bash
-# 完整去重流程（在 003-4-issue-claim 脚本中）
+# 完整去重流程（在 001-4-issue-claim 脚本中）
 
 # Step 1: 获取 GitHub 上的 open issues
 gh_issues=$(gh issue list --state open --json number,title,labels)
@@ -303,7 +303,7 @@ echo "$gh_issues" | jq --argjson idle "$idle_numbers" '[.[] | select(.number | I
 
 > **注**：`merged` 和 `rejected` 状态的 issue 也返回 `already_claimed` 错误；`rejected` 状态的 issue 被 SessionEnd 释放后可重新领取；`issue_title` 为非必填字段。
 
-**003-4-issue-claim 脚本中的使用**：
+**001-4-issue-claim 脚本中的使用**：
 
 ```bash
 # 用户确认领取 #10 后
@@ -366,15 +366,15 @@ fi
 
 | 技能 | 调用时机 | status 值 | GitHub 操作 | 自动同步 label |
 |------|----------|-----------|------------|----------------|
-| 003-5-issue-fix | 创建分支后 | `fixing` | gh issue comment | gh issue edit --add-label "fixing" |
-| 003-6-issue-done | 开发完成后 | `ready-for-pr` | gh issue edit --remove-label "in-progress" --add-label "ready-for-pr" | —（已有手动操作） |
-| 003-7-issue-pr | PR 创建后 | `pr-created` | — | gh issue edit --add-label "pr-created" |
-| 003-8-issue-test | 开始测试 | `testing` | — | gh issue edit --add-label "testing" |
-| 003-9-issue-review（开始审核时） | 审核开始 | `reviewing` | — | gh issue edit --add-label "reviewing" |
-| 003-9-issue-review merge | 合并后 | `merged` | gh issue close | —（终态） |
-| 003-9-issue-review reject | 打回后 | `rejected` | gh issue edit --add-label "rejected" | —（已有手动操作）；状态回到 `fixing` |
+| 001-5-issue-fix | 创建分支后 | `fixing` | gh issue comment | gh issue edit --add-label "fixing" |
+| 001-6-issue-done | 开发完成后 | `ready-for-pr` | gh issue edit --remove-label "in-progress" --add-label "ready-for-pr" | —（已有手动操作） |
+| 001-7-issue-pr | PR 创建后 | `pr-created` | — | gh issue edit --add-label "pr-created" |
+| 001-8-issue-test | 开始测试 | `testing` | — | gh issue edit --add-label "testing" |
+| 001-9-issue-review（开始审核时） | 审核开始 | `reviewing` | — | gh issue edit --add-label "reviewing" |
+| 001-9-issue-review merge | 合并后 | `merged` | gh issue close | —（终态） |
+| 001-9-issue-review reject | 打回后 | `rejected` | gh issue edit --add-label "rejected" | —（已有手动操作）；状态回到 `fixing` |
 
-**003-5-issue-fix 脚本示例**：
+**001-5-issue-fix 脚本示例**：
 
 ```bash
 # 创建分支后，向后端更新状态
@@ -450,9 +450,9 @@ release_session_issues
 
 | 接口 | 方法 | 说明 | 调用方 |
 |------|------|------|--------|
-| `/api/issue/check` | POST | 批量查询 issue 状态（idle/claimed/merged 等） | 003-4-issue-claim |
-| `/api/issue/claim` | POST | 领取 issue，绑定 session_id | 003-4-issue-claim |
-| `/api/issue/status` | POST | 更新 issue 状态（fixing/pr-created/testing 等） | 003-5 至 003-9 |
+| `/api/issue/check` | POST | 批量查询 issue 状态（idle/claimed/merged 等） | 001-4-issue-claim |
+| `/api/issue/claim` | POST | 领取 issue，绑定 session_id | 001-4-issue-claim |
+| `/api/issue/status` | POST | 更新 issue 状态（fixing/pr-created/testing 等） | 001-5 至 001-9 |
 | `/api/issue/release` | POST | 手动释放单个 issue | 异常放弃时 |
 | `/api/issue/release-session` | POST | SessionEnd 时释放该 session 所有 issue | SessionEnd hook |
 | `/health` | GET | 健康检查，返回 `{"status":"ok"}` | `_backend_available()` |
@@ -480,12 +480,12 @@ release_session_issues
 
 | 技能 | 改造内容 |
 |------|----------|
-| 003-4-issue-claim | 获取 issue 列表后调 `/api/issue/check` 去重；用户确认后调 `/api/issue/claim` 原子领取 |
-| 003-5-issue-fix | 创建分支后调 `/api/issue/status` 标记 `fixing` |
-| 003-6-issue-done | 标记完成后调 `/api/issue/status` 标记 `ready-for-pr` |
-| 003-7-issue-pr | PR 创建后调 `/api/issue/status` 标记 `pr-created` |
-| 003-8-issue-test | 开始测试时调 `/api/issue/status` 标记 `testing` |
-| 003-9-issue-review | merge 后调 `/api/issue/status` 标记 `merged`；reject 后标记 `rejected` |
+| 001-4-issue-claim | 获取 issue 列表后调 `/api/issue/check` 去重；用户确认后调 `/api/issue/claim` 原子领取 |
+| 001-5-issue-fix | 创建分支后调 `/api/issue/status` 标记 `fixing` |
+| 001-6-issue-done | 标记完成后调 `/api/issue/status` 标记 `ready-for-pr` |
+| 001-7-issue-pr | PR 创建后调 `/api/issue/status` 标记 `pr-created` |
+| 001-8-issue-test | 开始测试时调 `/api/issue/status` 标记 `testing` |
+| 001-9-issue-review | merge 后调 `/api/issue/status` 标记 `merged`；reject 后标记 `rejected` |
 | SessionEnd hook | 调 `/api/issue/release-session` 自动释放 |
 
 ---
@@ -493,7 +493,7 @@ release_session_issues
 ## 八、数据流总结
 
 ```
-用户执行 /003-4-issue-claim
+用户执行 /001-4-issue-claim
   │
   ├─ 1. gh issue list → 获取 GitHub 上的 open issues
   ├─ 2. POST /api/issue/check → 后端过滤掉已被领取的
@@ -503,11 +503,11 @@ release_session_issues
   ├─ 6. gh issue edit #10 --add-assignee @me --add-label "in-progress"
   │
   └─ 后续状态流转：
-       ├─ /003-5-issue-fix → POST /api/issue/status (fixing)
-       ├─ /003-6-issue-done → POST /api/issue/status (ready-for-pr)
-       ├─ /003-7-issue-pr → POST /api/issue/status (pr-created)
-       ├─ /003-8-issue-test → POST /api/issue/status (testing)
-       └─ /003-9-issue-review merge → POST /api/issue/status (merged)
+       ├─ /001-5-issue-fix → POST /api/issue/status (fixing)
+       ├─ /001-6-issue-done → POST /api/issue/status (ready-for-pr)
+       ├─ /001-7-issue-pr → POST /api/issue/status (pr-created)
+       ├─ /001-8-issue-test → POST /api/issue/status (testing)
+       └─ /001-9-issue-review merge → POST /api/issue/status (merged)
 
 SessionEnd hook 触发
   │
@@ -662,9 +662,9 @@ GROUP BY status;
 
 | 现有技能 | 当前做法 | 改造后做法 |
 |----------|----------|-----------|
-| 003-4-issue-claim | `gh issue edit --add-assignee @me` | 先调后端 claim，成功后再 gh assign |
-| 003-5-issue-fix | 直接创建分支 | claim 后调后端标记 fixing |
-| 003-6-issue-done | `gh issue edit --remove-label "in-progress" --add-label "ready-for-pr"` | 先调后端更新状态，再操作 GitHub |
-| 003-7-issue-pr | `gh pr create` | PR 创建后调后端标记 pr-created |
-| 003-8-issue-test | 本地执行测试 | 开始测试时调后端标记 testing |
-| 003-9-issue-review | `gh pr merge` / `gh issue edit --add-label "rejected"` | 调后端标记 merged/rejected，再操作 GitHub |
+| 001-4-issue-claim | `gh issue edit --add-assignee @me` | 先调后端 claim，成功后再 gh assign |
+| 001-5-issue-fix | 直接创建分支 | claim 后调后端标记 fixing |
+| 001-6-issue-done | `gh issue edit --remove-label "in-progress" --add-label "ready-for-pr"` | 先调后端更新状态，再操作 GitHub |
+| 001-7-issue-pr | `gh pr create` | PR 创建后调后端标记 pr-created |
+| 001-8-issue-test | 本地执行测试 | 开始测试时调后端标记 testing |
+| 001-9-issue-review | `gh pr merge` / `gh issue edit --add-label "rejected"` | 调后端标记 merged/rejected，再操作 GitHub |

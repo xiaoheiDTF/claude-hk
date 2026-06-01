@@ -1,4 +1,4 @@
-# D5: 003-8-issue-test 改造
+# D5: 001-8-issue-test 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D5
@@ -8,13 +8,13 @@
 
 ## 目标
 
-在 `003-8-issue-test` 技能中，找到关联 PR 并开始测试前调用后端更新 `testing`。
+在 `001-8-issue-test` 技能中，找到关联 PR 并开始测试前调用后端更新 `testing`。
 
 ## 改造文件
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-8-issue-test/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-8-issue-test/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

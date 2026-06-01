@@ -1,4 +1,4 @@
-# D2: 003-5-issue-fix 改造
+# D2: 001-5-issue-fix 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D2
@@ -8,13 +8,13 @@
 
 ## 目标
 
-在 `003-5-issue-fix` 技能中，创建分支后调用后端标记 `fixing` 状态。
+在 `001-5-issue-fix` 技能中，创建分支后调用后端标记 `fixing` 状态。
 
 ## 改造文件
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-5-issue-fix/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-5-issue-fix/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

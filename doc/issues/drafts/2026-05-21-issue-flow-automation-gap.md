@@ -35,7 +35,7 @@ Issue 列表存在编号断层：
 
 ```
 #1  CLOSED  16-stop 事件 .active 清理
-#2  CLOSED  优化 003-issues Skill，补全生命周期
+#2  CLOSED  优化 001-issues Skill，补全生命周期
 #3  CLOSED  Skill 级初始化与巡检
 #4  CLOSED  Hook Skill 感知调度
        ↓ 缺失 #5 ~ #8
@@ -44,11 +44,11 @@ Issue 列表存在编号断层：
 #11 CLOSED  SKILL_TAG 和 16Stop.sh 补全
 ```
 
-虽然 003-5-issue-fix 和 003-6-issue-pr 的 SKILL.md 文件在 PR #8 中一并创建了，但：
-- **缺少 Issue #5**：003-5-issue-fix 的"创建分支 + 解决问题"拆分（fix 阶段细化）
-- **缺少 Issue #6**：003-6-issue-pr 的"提交PR + 测试 + 合并"拆分（pr 阶段细化）
-- **缺少 Issue #7**：003-7-issue-pr-test（执行 Test Plan）
-- **缺少 Issue #8**：003-8-issue-pr-merge（合并前 Test Plan 检查）
+虽然 001-5-issue-fix 和 001-6-issue-pr 的 SKILL.md 文件在 PR #8 中一并创建了，但：
+- **缺少 Issue #5**：001-5-issue-fix 的"创建分支 + 解决问题"拆分（fix 阶段细化）
+- **缺少 Issue #6**：001-6-issue-pr 的"提交PR + 测试 + 合并"拆分（pr 阶段细化）
+- **缺少 Issue #7**：001-7-issue-pr-test（执行 Test Plan）
+- **缺少 Issue #8**：001-8-issue-pr-merge（合并前 Test Plan 检查）
 
 这些缺失导致 issue 流程中最关键的 **fix → pr → merge** 阶段没有独立的实现分支和跟踪 issue，流程自动化无从谈起。
 
@@ -58,11 +58,11 @@ Issue 列表存在编号断层：
 
 ```
 当前实际流程：
-  issue 创建 → [人工判断] → /003-3-issue-discuss
-  discuss → [人工判断] → /003-4-issue-claim
-  claim → [人工判断] → /003-5-issue-fix
-  fix → [人工判断] → git commit → git push → /003-6-issue-pr
-  pr → [人工判断] → /003-6-issue-pr review #N → merge
+  issue 创建 → [人工判断] → /001-3-issue-discuss
+  discuss → [人工判断] → /001-4-issue-claim
+  claim → [人工判断] → /001-5-issue-fix
+  fix → [人工判断] → git commit → git push → /001-6-issue-pr
+  pr → [人工判断] → /001-6-issue-pr review #N → merge
 
 期望的自动流程：
   issue 创建 → 自动标记 ready-for-discuss
@@ -84,8 +84,8 @@ Issue 列表存在编号断层：
 
 ## 待修复
 
-- [ ] 补充 Issue #5：003-5-issue-fix 阶段拆分（创建分支 → 解决问题完成）
-- [ ] 补充 Issue #6：003-6-issue-pr 阶段拆分（提交PR → 执行测试 → 合并）
+- [ ] 补充 Issue #5：001-5-issue-fix 阶段拆分（创建分支 → 解决问题完成）
+- [ ] 补充 Issue #6：001-6-issue-pr 阶段拆分（提交PR → 执行测试 → 合并）
 - [ ] 定义 discuss → claim 的"讨论完成"判定条件
 - [ ] 定义 claim → fix 的自动触发规则（claim 成功后是否立即创建分支？）
 - [ ] 定义 fix → pr 的自动触发规则（开发完成后是否自动提醒提 PR？）
@@ -96,8 +96,8 @@ Issue 列表存在编号断层：
 
 | 文件 | 改动说明 |
 |------|---------|
-| `.claude/skills/003-5-issue-fix/SKILL.md` | 增加"解决问题完成"标记和自动流转逻辑 |
-| `.claude/skills/003-6-issue-pr/SKILL.md` | 拆分 PR 阶段，增加自动合并规则 |
+| `.claude/skills/001-5-issue-fix/SKILL.md` | 增加"解决问题完成"标记和自动流转逻辑 |
+| `.claude/skills/001-6-issue-pr/SKILL.md` | 拆分 PR 阶段，增加自动合并规则 |
 | `.claude/settings.json` | 增加阶段流转 Hooks（PostToolUse 自动标记） |
 | 新增 issue #5 / #6 / #7 / #8 | 补充缺失的实现跟踪 issue |
 

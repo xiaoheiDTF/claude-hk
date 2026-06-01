@@ -12,12 +12,12 @@
 2. B5: 释放机制 API ✅
 3. B6-3: SessionEnd Hook 改造 ✅
 4. claude-tap-plus 会话管理 — 子需求拆分总览 ✅
-5. D1: 003-4-issue-claim 改造 ✅
-6. D2: 003-5-issue-fix 改造 ✅
-7. D3: 003-6-issue-done 改造 ✅
-8. D4: 003-7-issue-pr 改造 ✅
-9. D5: 003-8-issue-test 改造 ✅
-10. D6: 003-9-issue-review 改造 ✅
+5. D1: 001-4-issue-claim 改造 ✅
+6. D2: 001-5-issue-fix 改造 ✅
+7. D3: 001-6-issue-done 改造 ✅
+8. D4: 001-7-issue-pr 改造 ✅
+9. D5: 001-8-issue-test 改造 ✅
+10. D6: 001-9-issue-review 改造 ✅
 11. D7: SessionEnd hook 自动释放 ✅
 12. 降级策略与测试验证 ✅
 13. SR-1: Trace 存储路径重构 ✅
@@ -28,8 +28,8 @@
 18. D0: 公共后端调用基础设施 ✅
 19. B7: 公共后端调用模块与服务启动 ✅
 20. B4: 状态流转 API ✅
-21. B6-2: 003-5 ~ 003-9 技能改造 ✅
-22. B6-1: 003-4-issue-claim 技能改造 ✅
+21. B6-2: 001-5 ~ 001-9 技能改造 ✅
+22. B6-1: 001-4-issue-claim 技能改造 ✅
 23. B1: 数据库表与数据模型 ✅
 24. B8: 统一降级策略 ✅
 25. SR-2: SessionStart Hook 会话注册 ✅

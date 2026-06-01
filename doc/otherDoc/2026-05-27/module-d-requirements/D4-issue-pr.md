@@ -1,4 +1,4 @@
-# D4: 003-7-issue-pr 改造
+# D4: 001-7-issue-pr 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D4
@@ -8,13 +8,13 @@
 
 ## 目标
 
-在 `003-7-issue-pr` 技能中，PR 创建成功后调用后端更新 `pr-created`。
+在 `001-7-issue-pr` 技能中，PR 创建成功后调用后端更新 `pr-created`。
 
 ## 改造文件
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-7-issue-pr/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-7-issue-pr/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

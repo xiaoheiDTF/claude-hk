@@ -416,47 +416,47 @@ Go 后端之外，还需要脚本侧结构稳定。以下为当前实际结构�
 ├── registry.conf                     # Skill 注册表
 ├── .active                           # 运行时 session-skill 映射文件
 │
-├── 001-testcode-python/
+├── 002-2-doc-testcode-python/
 │   ├── SKILL.md
 │   └── scripts/{init,init_check,03UserPromptSubmit,16Stop}.sh
-├── 002-otherdoc/
+├── 002-1-doc/
 │   ├── SKILL.md
 │   └── scripts/{init,init_check,03UserPromptSubmit,16Stop}.sh
 │
-├── 003-1-issue-init/                 # 【无需修改】标签初始化（一次性）
+├── 001-1-issue-init/                 # 【无需修改】标签初始化（一次性）
 │   ├── SKILL.md
 │   ├── labels.conf
 │   └── scripts/{init,init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-2-issue/                      # 【无需修改】创建 issue
+├── 001-2-issue/                      # 【无需修改】创建 issue
 │   ├── SKILL.md
 │   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-3-issue-discuss/              # 【无需修改】讨论 issue
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-│
-├── 003-4-issue-claim/                # 【修改】新增 backend.sh 集成
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-5-issue-fix/                  # 【修改】新增 backend.sh 集成
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-6-issue-done/                 # 【修改】新增 backend.sh 集成
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-7-issue-pr/                   # 【修改】新增 backend.sh 集成
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-8-issue-test/                 # 【修改】新增 backend.sh 集成
-│   ├── SKILL.md
-│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
-├── 003-9-issue-review/               # 【修改】新增 backend.sh 集成
+├── 001-3-issue-discuss/              # 【无需修改】讨论 issue
 │   ├── SKILL.md
 │   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
 │
-├── 004-git-push/
+├── 001-4-issue-claim/                # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+├── 001-5-issue-fix/                  # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+├── 001-6-issue-done/                 # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+├── 001-7-issue-pr/                   # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+├── 001-8-issue-test/                 # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+├── 001-9-issue-review/               # 【修改】新增 backend.sh 集成
+│   ├── SKILL.md
+│   └── scripts/{init_check,03UserPromptSubmit,16Stop}.sh
+│
+├── 999-2-git-push/
 │   ├── SKILL.md
 │   └── scripts/{init,init_check,03UserPromptSubmit,16Stop}.sh
-├── 005-git-commit/
+├── 999-1-git-commit/
 │   ├── SKILL.md
 │   └── scripts/{init,init_check,03UserPromptSubmit,16Stop}.sh
 └── 999-other-110-requirement-planning/
@@ -481,16 +481,16 @@ Go 后端之外，还需要脚本侧结构稳定。以下为当前实际结构�
 | `hooks/29-session-end/base.sh` | 修改 | 会话结束时先 curl `/api/issue/release-session`，再 curl `/api/session/close` |
 | `skills/backend.sh` | 新增 | 统一后端调用封装：`backend_call "POST" "/api/issue/claim" '{"repo":"...","issue_number":5}'` |
 | `.claude/backend.conf` | 新增 | `BACKEND_URL=http://127.0.0.1:8080` |
-| `skills/003-4-issue-claim/scripts/03UserPromptSubmit.sh` | 修改 | claim 时调用 `backend.sh` 做 backend 状态检查 + 写入 |
-| `skills/003-5-issue-fix/scripts/03UserPromptSubmit.sh` | 修改 | fix 时调用 `backend.sh` 更新 issue status → `fixing` |
-| `skills/003-6-issue-done/scripts/03UserPromptSubmit.sh` | 修改 | done 时调用 `backend.sh` 更新 issue status → `ready-for-pr` |
-| `skills/003-7-issue-pr/scripts/03UserPromptSubmit.sh` | 修改 | pr 时调用 `backend.sh` 更新 issue status → `pr-created` |
-| `skills/003-8-issue-test/scripts/03UserPromptSubmit.sh` | 修改 | test 时调用 `backend.sh` 更新 issue status → `testing` |
-| `skills/003-9-issue-review/scripts/03UserPromptSubmit.sh` | 修改 | review 时调用 `backend.sh` 更新 issue status → `reviewing`/`merged`/`rejected` |
+| `skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh` | 修改 | claim 时调用 `backend.sh` 做 backend 状态检查 + 写入 |
+| `skills/001-5-issue-fix/scripts/03UserPromptSubmit.sh` | 修改 | fix 时调用 `backend.sh` 更新 issue status → `fixing` |
+| `skills/001-6-issue-done/scripts/03UserPromptSubmit.sh` | 修改 | done 时调用 `backend.sh` 更新 issue status → `ready-for-pr` |
+| `skills/001-7-issue-pr/scripts/03UserPromptSubmit.sh` | 修改 | pr 时调用 `backend.sh` 更新 issue status → `pr-created` |
+| `skills/001-8-issue-test/scripts/03UserPromptSubmit.sh` | 修改 | test 时调用 `backend.sh` 更新 issue status → `testing` |
+| `skills/001-9-issue-review/scripts/03UserPromptSubmit.sh` | 修改 | review 时调用 `backend.sh` 更新 issue status → `reviewing`/`merged`/`rejected` |
 
 ### 脚本调用约束
 
-1. 003-4 到 003-9 统一 `source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"`。
+1. 001-4 到 001-9 统一 `source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"`。
 2. `backend.sh` 从 `backend.conf` 读取 `BACKEND_URL`，封装 `backend_call(method, path, body)` 函数。
 3. SessionEnd hook（事件 29）独立运行，直接 curl `/api/issue/release-session` 和 `/api/session/close`，不依赖 active skill。
 4. `claim` 后端不可用时应阻止领取或明确提示，避免多 Agent 冲突。
@@ -581,7 +581,7 @@ claude_tap_plus/tests/
 ### Phase 4: 技能集成
 
 1. 新增 `.claude/skills/backend.sh`。
-2. 改造 003-4 到 003-9。
+2. 改造 001-4 到 001-9。
 3. SessionEnd hook 先 release issue，再 close session。
 
 ### Phase 5: 代理与 trace 补强

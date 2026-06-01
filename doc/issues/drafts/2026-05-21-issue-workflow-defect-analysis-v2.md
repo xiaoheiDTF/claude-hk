@@ -47,7 +47,7 @@ created: 2026-05-21
 
 #### #1 PR 合并后无分支清理 ❌ → ✅ 可通过 PostToolUse 解决
 
-**当前缺陷**：003-6-issue-pr merge 后直接结束，不清理分支。
+**当前缺陷**：001-6-issue-pr merge 后直接结束，不清理分支。
 
 **Hooks 方案**：
 ```json
@@ -115,7 +115,7 @@ created: 2026-05-21
         "hooks": [
           {
             "type": "command",
-            "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Cannot edit files on main branch. Create a feature branch first via 003-5-issue-fix.\"}}' >&2; exit 2; }",
+            "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Cannot edit files on main branch. Create a feature branch first via 001-5-issue-fix.\"}}' >&2; exit 2; }",
             "timeout": 5
           }
         ]
@@ -156,7 +156,7 @@ created: 2026-05-21
 
 #### #5 issue 创建前重复检测 ❌ → ✅ 可通过 PreToolUse 提醒
 
-**当前缺陷**：003-2-issue 直接创建，不检查相似 issue。
+**当前缺陷**：001-2-issue 直接创建，不检查相似 issue。
 
 **Hooks 方案**：在 `gh issue create` 执行前搜索相似标题：
 ```json
@@ -225,7 +225,7 @@ jobs:
 
 #### #8 claim 前不检查 issue 状态
 
-**改进**：在 003-4-issue-claim 的 SKILL.md 中增加前置检查步骤：
+**改进**：在 001-4-issue-claim 的 SKILL.md 中增加前置检查步骤：
 ```bash
 # 新增步骤
 ght issue view <N> --json state,labels --jq '.state'  # 必须为 open
@@ -234,7 +234,7 @@ gh issue view <N> --json labels --jq '.labels[].name' | grep -q resolved && exit
 
 #### #9 claim 失败后的回退指引
 
-**改进**：003-4-issue-claim 验证失败后：
+**改进**：001-4-issue-claim 验证失败后：
 ```bash
 # 当前：仅输出领取结果
 # 改进：输出当前 assignee → 列出 "ready-for-claim" 标签的 issue → 建议切换
@@ -242,11 +242,11 @@ gh issue view <N> --json labels --jq '.labels[].name' | grep -q resolved && exit
 
 #### #10 fix 无"解决问题完成"标记
 
-**改进**：003-5-issue-fix 增加子命令 `done`，已在 #15 中规划。
+**改进**：001-5-issue-fix 增加子命令 `done`，已在 #15 中规划。
 
 #### #11 PR 打回后的分支处理规则
 
-**改进**：003-6-issue-pr 打回流程中明确：
+**改进**：001-6-issue-pr 打回流程中明确：
 - 保留原分支继续修改（推荐）
 - 删除后重建（如需要重新设计）
 
@@ -325,9 +325,9 @@ gh issue view <N> --json labels --jq '.labels[].name' | grep -q resolved && exit
 | `.claude/hooks/check-rebase.sh` | PR 前 rebase 提醒 |
 | `.claude/hooks/check-duplicate-issue.sh` | issue 重复检测 |
 | `.github/workflows/stale-issue.yml` | 超时释放 + stale 清理 |
-| `.claude/skills/003-4-issue-claim/SKILL.md` | 增加前置状态检查、失败回退 |
-| `.claude/skills/003-5-issue-fix/SKILL.md` | 增加 done 子命令（#15） |
-| `.claude/skills/003-6-issue-pr/SKILL.md` | 明确打回分支处理规则 |
+| `.claude/skills/001-4-issue-claim/SKILL.md` | 增加前置状态检查、失败回退 |
+| `.claude/skills/001-5-issue-fix/SKILL.md` | 增加 done 子命令（#15） |
+| `.claude/skills/001-6-issue-pr/SKILL.md` | 明确打回分支处理规则 |
 
 ## 验收标准
 

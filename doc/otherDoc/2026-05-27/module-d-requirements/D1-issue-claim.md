@@ -1,4 +1,4 @@
-# D1: 003-4-issue-claim 改造
+# D1: 001-4-issue-claim 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D1
@@ -8,7 +8,7 @@
 
 ## 目标
 
-在 `003-4-issue-claim` 技能中：
+在 `001-4-issue-claim` 技能中：
 1. list 后调后端过滤已被其他 Agent 领取的 issue
 2. 用户选择后先调后端原子领取，成功再操作 GitHub
 
@@ -16,7 +16,7 @@
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-4-issue-claim/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

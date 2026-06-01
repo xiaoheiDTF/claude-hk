@@ -1,4 +1,4 @@
-# B6-1: 003-4-issue-claim 技能改造
+# B6-1: 001-4-issue-claim 技能改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / Issue 管理 / 技能改造
@@ -8,7 +8,7 @@
 
 ## 需求描述
 
-改造 `003-4-issue-claim` 技能脚本，在现有的 `gh issue list` + `gh issue edit` 流程中插入后端 API 调用，实现：
+改造 `001-4-issue-claim` 技能脚本，在现有的 `gh issue list` + `gh issue edit` 流程中插入后端 API 调用，实现：
 1. 展示 issue 列表前，过滤已被其他 session 领取的 issue
 2. 用户确认领取时，先调后端原子领取，成功后再操作 GitHub
 

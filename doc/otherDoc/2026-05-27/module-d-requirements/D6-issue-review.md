@@ -1,4 +1,4 @@
-# D6: 003-9-issue-review 改造
+# D6: 001-9-issue-review 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D6
@@ -8,7 +8,7 @@
 
 ## 目标
 
-在 `003-9-issue-review` 技能中：
+在 `001-9-issue-review` 技能中：
 - 审核开始时先标记 `reviewing`
 - merge 成功后标记 `merged`
 - reject 后标记 `rejected`
@@ -17,7 +17,7 @@
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-9-issue-review/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-9-issue-review/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

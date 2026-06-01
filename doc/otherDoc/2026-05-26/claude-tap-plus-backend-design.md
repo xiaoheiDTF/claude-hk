@@ -16,12 +16,12 @@
 - 注册内容：机器 ID、OS、文件夹路径、session 信息
 - 存储方式参考 Claude Code 的本地存储（文件夹 → session）
 
-**功能2：适配 003-4-issue-claim 技能，提供 Issue 领取的全局信息**
+**功能2：适配 001-4-issue-claim 技能，提供 Issue 领取的全局信息**
 - 不可以通过 git 获取对应的 issue 来完成，因为只有一个 GitHub 账号，容易导致 issue 被同一个 agent 获取到
 - 实现思路：
   1. `claude-tap-plus claude` 启动时通过 session_id 向后端服务器注册唯一 ID
   2. 调用需要修改 issue 状态的技能时，都去后端服务器查询
-  3. `003-4-issue-claim` 技能获取 issue 列表后，需要去后台查询这些 issue 的实际状态
+  3. `001-4-issue-claim` 技能获取 issue 列表后，需要去后台查询这些 issue 的实际状态
   4. 不存在或已被其他会话领取的 issue 会被去重过滤
   5. 服务器内部只支持通过 issue 技能提交上来的数据进行去重
   6. issue-claim 脚本中需要写入访问后端服务的脚本，将 issue 唯一编号、项目 GitHub 地址、项目名字传入后端
@@ -29,8 +29,8 @@
   8. 用户确认后，AI 调用脚本发送请求到后端，后端记录被领取的 issue 唯一 ID
   9. 后续技能根据技能不同，标记对应 issue 进行对应更改
 
-**功能2 补充方案：升级 003-5-issue-fix 技能为 worktree 模式**（此补充方案暂不纳入当前实现，留作未来迭代）
-- 将 003-5-issue-fix 升级为创建 worktree
+**功能2 补充方案：升级 001-5-issue-fix 技能为 worktree 模式**（此补充方案暂不纳入当前实现，留作未来迭代）
+- 将 001-5-issue-fix 升级为创建 worktree
 - 创建 worktree 后，将当前领取的 issue 信息注入到该 worktree 的 CLAUDE.md 中
 - 用户主动 cd 到 worktree 中启动 Claude 去完成任务
 

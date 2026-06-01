@@ -120,17 +120,17 @@ Hooks + Skills 是一套基于 Shell 的 **Claude Code 生命周期事件处理�
 │   ├── enforce_boundary.sh             # 工具白名单拦截
 │   │
 │   ├── log/                            # 模块日志目录
-│   │   ├── 001-testcode-python/
-│   │   ├── 002-otherdoc/
-│   │   ├── 003-1-issue-init/ ~ 003-9-issue-review/
-│   │   ├── 004-git-push/
-│   │   └── 005-git-commit/
+│   │   ├── 002-2-doc-testcode-python/
+│   │   ├── 002-1-doc-otherdoc/
+│   │   ├── 001-1-issue-init/ ~ 001-9-issue-review/
+│   │   ├── 999-2-git-push/
+│   │   └── 999-1-git-commit/
 │   │
-│   ├── 001-testcode-python/           # Python 测试脚本生成
-│   ├── 002-otherdoc/                   # 文档归档
-│   ├── 003-1-issue-init/ ~ 003-9-issue-review/  # Issue 工作流（9 个）
-│   ├── 004-git-push/                   # Git 提交 + 推送
-│   ├── 005-git-commit/                 # Git 仅提交
+│   ├── 002-2-doc-testcode-python/           # Python 测试脚本生成
+│   ├── 002-1-doc-otherdoc/                   # 文档归档
+│   ├── 001-1-issue-init/ ~ 001-9-issue-review/  # Issue 工作流（9 个）
+│   ├── 999-2-git-push/                   # Git 提交 + 推送
+│   ├── 999-1-git-commit/                 # Git 仅提交
 │   └── 999-other-110-requirement-planning/  # 需求规划
 │
 └── lib/
@@ -367,7 +367,7 @@ source "$CLAUDE_PROJECT_DIR/.claude/skills/log.sh"
 
 日志格式：
 ```
-[2026-05-31 10:30:05] [INFO] [003-4-issue-claim] 内容
+[2026-05-31 10:30:05] [INFO] [001-4-issue-claim] 内容
 ```
 
 #### 3.5.4 backend.sh — 后端 API 调用封装（Skills 专用）
@@ -526,8 +526,8 @@ base.sh 将 CONTEXT 注入到 hook_output
 | 规则 | 说明 |
 |------|------|
 | 首字符必须是 `/` | 否则不是 skill 调用 |
-| skill 名到第一个空格结束 | `/003-4-issue-claim #42` → skill=`003-4-issue-claim` |
-| 后续内容作为参数 | `/003-4-issue-claim #42` → args=`#42` |
+| skill 名到第一个空格结束 | `/001-4-issue-claim #42` → skill=`001-4-issue-claim` |
+| 后续内容作为参数 | `/001-4-issue-claim #42` → args=`#42` |
 | 纯 ASCII 匹配 | registry.conf 中精确匹配 |
 
 **输出格式**：
@@ -687,9 +687,9 @@ Claude 完成每轮响应后触发。
 # skills registry
 # skill-inject.sh reads this file for matching
 # one skill name per line, no chinese, no description
-001-testcode-python
-002-otherdoc
-003-1-issue-init
+002-2-doc-testcode-python
+002-1-doc-otherdoc
+001-1-issue-init
 ...
 ```
 
@@ -741,36 +741,36 @@ XXX-skill-name/
 
 | Skill | 触发命令 | 描述 | allowed-tools |
 |-------|---------|------|---------------|
-| 001-testcode-python | `/001-testcode-python` | 在 doc/testcode/python 目录下编写和管理 Python 测试脚本 | Bash, Read, Write, Edit, Glob, Grep |
-| 002-otherdoc | `/002-otherdoc` | 将内容以 Markdown 存储到 doc/otherDoc，按日期归档 | Bash, Read, Write, Edit, Glob, Grep |
-| 003-1-issue-init | `/003-1-issue-init` | 初始化 GitHub 项目的 issue 标签体系（一次性） | Bash, Read, Write |
-| 003-2-issue | `/003-2-issue` | 创建 GitHub Issue，支持本地草稿、模板和发布 | Bash, Read, Write, Glob, Grep |
-| 003-3-issue-discuss | `/003-3-issue-discuss` | 拉取 Issue 内容进行讨论，支持评论互动 | Bash, Read, Write |
-| 003-4-issue-claim | `/003-4-issue-claim` | 原子领取 Issue，防止多 Agent 冲突 | Bash, Read |
-| 003-5-issue-fix | `/003-5-issue-fix` | 根据 Issue 创建分支并开始开发 | Bash, Read, Edit, Write, Glob, Grep |
-| 003-6-issue-done | `/003-6-issue-done` | 标记开发完成，准备提 PR | Bash, Read |
-| 003-7-issue-pr | `/003-7-issue-pr` | 创建 PR 关联 Issue | Bash, Read, Edit, Write, Glob, Grep |
-| 003-8-issue-test | `/003-8-issue-test` | 执行 PR 的 Test Plan 并更新 checkbox | Bash, Read, Edit, Glob, Grep |
-| 003-9-issue-review | `/003-9-issue-review` | 审核 PR：合并或打回 | Bash, Read |
-| 004-git-push | `/004-git-push` | 按规范格式提交代码并推送到远程（commit + push） | Bash, Read, Glob, Grep |
-| 005-git-commit | `/005-git-commit` | 按规范格式提交代码到本地（仅 commit） | Bash, Read, Edit, Glob, Grep |
+| 002-2-doc-testcode-python | `/002-2-doc-testcode-python` | 在 doc/testcode/python 目录下编写和管理 Python 测试脚本 | Bash, Read, Write, Edit, Glob, Grep |
+| 002-1-doc-otherdoc | `/002-1-doc-otherdoc` | 将内容以 Markdown 存储到 doc/otherDoc，按日期归档 | Bash, Read, Write, Edit, Glob, Grep |
+| 001-1-issue-init | `/001-1-issue-init` | 初始化 GitHub 项目的 issue 标签体系（一次性） | Bash, Read, Write |
+| 001-2-issue | `/001-2-issue` | 创建 GitHub Issue，支持本地草稿、模板和发布 | Bash, Read, Write, Glob, Grep |
+| 001-3-issue-discuss | `/001-3-issue-discuss` | 拉取 Issue 内容进行讨论，支持评论互动 | Bash, Read, Write |
+| 001-4-issue-claim | `/001-4-issue-claim` | 原子领取 Issue，防止多 Agent 冲突 | Bash, Read |
+| 001-5-issue-fix | `/001-5-issue-fix` | 根据 Issue 创建分支并开始开发 | Bash, Read, Edit, Write, Glob, Grep |
+| 001-6-issue-done | `/001-6-issue-done` | 标记开发完成，准备提 PR | Bash, Read |
+| 001-7-issue-pr | `/001-7-issue-pr` | 创建 PR 关联 Issue | Bash, Read, Edit, Write, Glob, Grep |
+| 001-8-issue-test | `/001-8-issue-test` | 执行 PR 的 Test Plan 并更新 checkbox | Bash, Read, Edit, Glob, Grep |
+| 001-9-issue-review | `/001-9-issue-review` | 审核 PR：合并或打回 | Bash, Read |
+| 999-2-git-push | `/999-2-git-push` | 按规范格式提交代码并推送到远程（commit + push） | Bash, Read, Glob, Grep |
+| 999-1-git-commit | `/999-1-git-commit` | 按规范格式提交代码到本地（仅 commit） | Bash, Read, Edit, Glob, Grep |
 | 999-other-110-requirement-planning | `/999-other-110-requirement-planning` | 将功能需求拆解为 PRD 页面文档和领域模块文档 | Bash, Read, Write, Edit, Glob, Grep |
 
 ---
 
 ## §6 003 Issue 工作流详解
 
-> 详细状态转换图见 [hooks-skills-diagrams.md](hooks-skills-diagrams.md#8-003-issue-工作流状态图)
+> 详细状态转换图见 [hooks-skills-diagrams.md](hooks-skills-diagrams.md#8-001-issue-工作流状态图)
 
 ### 6.1 流水线关系
 
 9 个子 Skill 构成完整的 Issue 驱动开发流水线：
 
 ```
-/003-1-issue-init → /003-2-issue → /003-3-issue-discuss
+/001-1-issue-init → /001-2-issue → /001-3-issue-discuss
                                          │
                                          ↓
-/003-9-issue-review ← /003-8-issue-test ← /003-7-issue-pr ← /003-6-issue-done ← /003-5-issue-fix ← /003-4-issue-claim
+/001-9-issue-review ← /001-8-issue-test ← /001-7-issue-pr ← /001-6-issue-done ← /001-5-issue-fix ← /001-4-issue-claim
 ```
 
 ### 6.2 状态转换
@@ -778,15 +778,15 @@ XXX-skill-name/
 | 状态 | 触发 Skill | GitHub Label | 说明 |
 |------|-----------|-------------|------|
 | Uninitialized | — | — | 项目未初始化 |
-| Created | 003-2-issue | — | Issue 已创建 |
-| Claimed | 003-4-issue-claim | in-progress | 被 Agent 领取 |
-| Fixing | 003-5-issue-fix | fixing | 开始开发 |
-| Ready-for-PR | 003-6-issue-done | ready-for-pr | 开发完成 |
-| PR-Created | 003-7-issue-pr | pr-created | PR 已创建 |
-| Testing | 003-8-issue-test | testing | 测试中 |
-| Reviewing | 003-9-issue-review | reviewing | 审核中 |
-| Merged | 003-9-issue-review merge | （Issue 关闭） | 已合并（终态） |
-| Rejected | 003-9-issue-review reject | rejected | 被打回 |
+| Created | 001-2-issue | — | Issue 已创建 |
+| Claimed | 001-4-issue-claim | in-progress | 被 Agent 领取 |
+| Fixing | 001-5-issue-fix | fixing | 开始开发 |
+| Ready-for-PR | 001-6-issue-done | ready-for-pr | 开发完成 |
+| PR-Created | 001-7-issue-pr | pr-created | PR 已创建 |
+| Testing | 001-8-issue-test | testing | 测试中 |
+| Reviewing | 001-9-issue-review | reviewing | 审核中 |
+| Merged | 001-9-issue-review merge | （Issue 关闭） | 已合并（终态） |
+| Rejected | 001-9-issue-review reject | rejected | 被打回 |
 
 **状态同步机制**：后端 API 状态 ↔ GitHub Label 双向同步（通过 `backend.sh` 的 `_sync_github_label()` 实现）。
 
@@ -798,11 +798,11 @@ XXX-skill-name/
 | GitHub Label | 状态标签同步 | Claim/Fix/Done/PR/Test/Review |
 | 后端 API 状态 | POST /api/issue/status | 所有状态变更 |
 | 文件系统 | `.active`, `.initialized` | Skill 激活状态 |
-| 分支名 | `fix/NNN-xxx` 或 `feat/NNN-xxx` | 003-5 创建分支 |
+| 分支名 | `fix/NNN-xxx` 或 `feat/NNN-xxx` | 001-5 创建分支 |
 
 ### 6.4 各 Skill 详解
 
-#### 003-1-issue-init（初始化）
+#### 001-1-issue-init（初始化）
 
 | 项目 | 内容 |
 |------|------|
@@ -811,7 +811,7 @@ XXX-skill-name/
 | 关键操作 | 读取 `labels.conf` → `gh label create` 创建标准化标签 → 写入 `.github/.issue-initialized` |
 | 标签类型 | 类型标签（bug/enhancement/...）、流程标签（in-progress/rejected）、优先级标签（P0-P3） |
 
-#### 003-2-issue（创建 Issue）
+#### 001-2-issue（创建 Issue）
 
 | 项目 | 内容 |
 |------|------|
@@ -819,7 +819,7 @@ XXX-skill-name/
 | 输出 | 创建 GitHub Issue |
 | 关键操作 | 支持模板系统（`doc/issues/templates/`）、支持本地草稿（`doc/issues/drafts/`） |
 
-#### 003-3-issue-discuss（讨论）
+#### 001-3-issue-discuss（讨论）
 
 | 项目 | 内容 |
 |------|------|
@@ -827,7 +827,7 @@ XXX-skill-name/
 | 输出 | Issue 详情 + 评论历史 |
 | 关键操作 | `gh issue view` + `gh issue comments` → 注入上下文到 Claude |
 
-#### 003-4-issue-claim（领取）
+#### 001-4-issue-claim（领取）
 
 | 项目 | 内容 |
 |------|------|
@@ -836,7 +836,7 @@ XXX-skill-name/
 | 关键操作 | **原子性领取**：POST `/api/issue/claim` → 后端验证 → 成功后添加 `in-progress` Label |
 | 安全机制 | 后端不可达 → 阻止领取（不会降级） |
 
-#### 003-5-issue-fix（修复）
+#### 001-5-issue-fix（修复）
 
 | 项目 | 内容 |
 |------|------|
@@ -844,7 +844,7 @@ XXX-skill-name/
 | 输出 | 创建分支并切换 |
 | 关键操作 | 从 Issue labels 推断分支名（bug→fix, enhancement→feat） → `git checkout -b` → 更新后端状态为 `fixing` |
 
-#### 003-6-issue-done（完成）
+#### 001-6-issue-done（完成）
 
 | 项目 | 内容 |
 |------|------|
@@ -852,7 +852,7 @@ XXX-skill-name/
 | 输出 | 标记开发完成 |
 | 关键操作 | 检查未提交变更 → 更新后端状态为 `ready-for-pr` → 添加 `ready-for-pr` Label |
 
-#### 003-7-issue-pr（提 PR）
+#### 001-7-issue-pr（提 PR）
 
 | 项目 | 内容 |
 |------|------|
@@ -860,7 +860,7 @@ XXX-skill-name/
 | 输出 | 创建 PR |
 | 关键操作 | 检查是否已有 PR → `gh pr create`（关联 "Closes #N"）→ 更新后端状态为 `pr-created` |
 
-#### 003-8-issue-test（测试）
+#### 001-8-issue-test（测试）
 
 | 项目 | 内容 |
 |------|------|
@@ -868,7 +868,7 @@ XXX-skill-name/
 | 输出 | 执行 Test Plan |
 | 关键操作 | 查找关联 PR → 解析 Test Plan（`- [ ]` checkbox）→ 执行测试 → 更新 `- [x]` → 更新后端状态为 `testing` |
 
-#### 003-9-issue-review（审核）
+#### 001-9-issue-review（审核）
 
 | 项目 | 内容 |
 |------|------|
@@ -886,10 +886,10 @@ XXX-skill-name/
 ```
 skill_log("INFO", "message")
     ├── 统一日志: .claude/hooks/logs/YYYY-MM-DD.log
-    │   └── [2026-05-31 10:30:05] [INFO] [003-4-issue-claim] message
+    │   └── [2026-05-31 10:30:05] [INFO] [001-4-issue-claim] message
     │
     └── 模块日志: .claude/skills/log/{tag}/YYYY-MM-DD.log
-        └── [2026-05-31 10:30:05] [INFO] [003-4-issue-claim] message
+        └── [2026-05-31 10:30:05] [INFO] [001-4-issue-claim] message
 ```
 
 ### 日志级别

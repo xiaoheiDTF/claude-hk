@@ -8,7 +8,7 @@
 
 ## 需求描述
 
-提供一个 API 端点，让 Agent 脚本传入一组 issue 编号，返回每个 issue 的当前状态。主要用于 `003-4-issue-claim` 技能中过滤已被其他 session 领取的 issue。
+提供一个 API 端点，让 Agent 脚本传入一组 issue 编号，返回每个 issue 的当前状态。主要用于 `001-4-issue-claim` 技能中过滤已被其他 session 领取的 issue。
 
 ## API 定义
 

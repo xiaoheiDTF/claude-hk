@@ -215,14 +215,14 @@ $ curl http://localhost:8080/board
 ## 与现有 Skill 体系的集成点
 
 ```
-003-4-issue-claim
+001-4-issue-claim
   → 调用 POST /issues/:id/claim
   → 查询 GET /issues/ready（失败时返回其他可领取 issue）
 
-003-5-issue-fix
+001-5-issue-fix
   → 查询 GET /issues/:id/dependencies（检查依赖是否已解决）
 
-003-6-issue-pr
+001-6-issue-pr
   → 查询 GET /issues/:id（确认 issue 当前状态）
 
 Hooks (PreToolUse)
@@ -254,8 +254,8 @@ Hooks (PreToolUse)
 - [ ] 定时检查阻塞/解除阻塞
 
 ### Phase 4：Skill 集成（0.5 天）
-- [ ] 003-4-issue-claim 调用外部 API
-- [ ] 003-5-issue-fix 检查依赖
+- [ ] 001-4-issue-claim 调用外部 API
+- [ ] 001-5-issue-fix 检查依赖
 - [ ] Hooks 配置中添加查询调用
 
 **总计**：约 3 天可完成 MVP。
@@ -279,7 +279,7 @@ Hooks (PreToolUse)
 - [ ] 本地运行服务，能接收 GitHub Webhook 并同步 issue 状态到 SQLite
 - [ ] 访问 `/board` 能看到当前进行中的 issue 列表
 - [ ] 模拟一个 issue 被 claim 后 7 天无活动，服务自动释放并 comment
-- [ ] 003-4-issue-claim 能查询 `/issues/ready` 获取可领取列表
+- [ ] 001-4-issue-claim 能查询 `/issues/ready` 获取可领取列表
 - [ ] 服务部署文档（本地运行 + ngrok 暴露）
 
 ## 发布记录

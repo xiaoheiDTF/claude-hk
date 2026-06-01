@@ -8,7 +8,7 @@
 
 ## 需求描述
 
-提供状态更新接口，供 003-5 至 003-9 各技能在对应阶段调用，更新 issue 在后端的状态。后端只记录状态变更，不主动操作 GitHub。
+提供状态更新接口，供 001-5 至 001-9 各技能在对应阶段调用，更新 issue 在后端的状态。后端只记录状态变更，不主动操作 GitHub。
 
 ## API 定义
 
@@ -65,13 +65,13 @@
 
 | 技能 | 调用时机 | status 值 | GitHub Label 变更（自动） |
 |------|----------|-----------|--------------------------|
-| 003-5-issue-fix | 创建分支后 | `fixing` | 移除 `in-progress`，添加 `fixing` |
-| 003-6-issue-done | 开发完成后 | `ready-for-pr` | 移除 `fixing`，添加 `ready-for-pr` |
-| 003-7-issue-pr | PR 创建后 | `pr-created` | 移除 `ready-for-pr`，添加 `pr-created` |
-| 003-8-issue-test | 开始测试 | `testing` | 移除 `pr-created`，添加 `testing` |
-| 003-9-issue-review | 审核开始 | `reviewing` | 移除 `testing`，添加 `reviewing` |
-| 003-9-issue-review merge | 合并后 | `merged` | 移除 `reviewing`，关闭 issue |
-| 003-9-issue-review reject | 打回后 | `rejected` | 移除 `reviewing`，添加 `rejected` |
+| 001-5-issue-fix | 创建分支后 | `fixing` | 移除 `in-progress`，添加 `fixing` |
+| 001-6-issue-done | 开发完成后 | `ready-for-pr` | 移除 `fixing`，添加 `ready-for-pr` |
+| 001-7-issue-pr | PR 创建后 | `pr-created` | 移除 `ready-for-pr`，添加 `pr-created` |
+| 001-8-issue-test | 开始测试 | `testing` | 移除 `pr-created`，添加 `testing` |
+| 001-9-issue-review | 审核开始 | `reviewing` | 移除 `testing`，添加 `reviewing` |
+| 001-9-issue-review merge | 合并后 | `merged` | 移除 `reviewing`，关闭 issue |
+| 001-9-issue-review reject | 打回后 | `rejected` | 移除 `reviewing`，添加 `rejected` |
 
 > 技能脚本只需调用 `update_issue_status "$ISSUE_NUM" "fixing"`，不需要手动执行 `gh issue edit` label 操作。
 
@@ -105,7 +105,7 @@ reviewing → fixing    (reject 回退)
 ## 技能脚本调用示例
 
 ```bash
-# 003-5-issue-fix 中
+# 001-5-issue-fix 中
 session_id=$(json_get '.session_id')
 repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
 

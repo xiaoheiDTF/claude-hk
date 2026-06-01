@@ -23,8 +23,8 @@ cd claude-hk
 claude
 
 # 3. 使用内置 Skill
-/003-2-issue #              # 创建 GitHub Issue
-/004-git-push                # 规范化提交并推送
+/001-2-issue #              # 创建 GitHub Issue
+/999-2-git-push                # 规范化提交并推送
 ```
 
 ## 安装要求

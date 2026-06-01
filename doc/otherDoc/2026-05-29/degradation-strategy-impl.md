@@ -8,7 +8,7 @@
 
 ## 一、需求背景
 
-技能脚本（003-4 ~ 003-9）通过 `backend.sh` 调用 Go 后端管理 Issue 状态。后端不可用时需要统一的降级行为：
+技能脚本（001-4 ~ 001-9）通过 `backend.sh` 调用 Go 后端管理 Issue 状态。后端不可用时需要统一的降级行为：
 
 - 非关键操作（status 更新、release-session）→ 静默跳过
 - claim 操作 → **必须阻止**（防多 agent 冲突）
@@ -141,13 +141,13 @@ ${CLAUDE_SESSION_ID:-}
 
 原因：Shell 测试脚本使用 `set -u` 时，未设置的变量会触发 `unbound variable` 错误。改为 `${VAR:-}` 后变量未设置时展开为空字符串，不再报错。
 
-**影响范围：** 所有 source `backend.sh` 的技能脚本（003-4 ~ 003-9）在实际执行时 `SKILL_TAG` 和 `CLAUDE_SESSION_ID` 都已由各自的 `03UserPromptSubmit.sh` 设置，因此 `${VAR:-}` 与 `$VAR` 行为一致。此改动对正常运行无影响。
+**影响范围：** 所有 source `backend.sh` 的技能脚本（001-4 ~ 001-9）在实际执行时 `SKILL_TAG` 和 `CLAUDE_SESSION_ID` 都已由各自的 `03UserPromptSubmit.sh` 设置，因此 `${VAR:-}` 与 `$VAR` 行为一致。此改动对正常运行无影响。
 
 **未经端到端测试验证的改动项。**
 
 ---
 
-### 2.2 `.claude/skills/003-4-issue-claim/scripts/03UserPromptSubmit.sh`
+### 2.2 `.claude/skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh`
 
 **改动性质：** 安全增强
 
@@ -242,7 +242,7 @@ claim_issue_backend() {
 | 后端配置但不可达 | `_call_backend` 静默返回空，jq 解析空字符串报错但函数行为不确定 | **阻止 claim**，输出错误提示，return 1 |
 | API 返回空响应 | jq 解析失败，函数行为不确定 | **阻止 claim**，输出错误提示，return 1 |
 
-**未经端到端测试验证的改动项。** 需通过 `/003-4-issue-claim #N` 实际执行验证。
+**未经端到端测试验证的改动项。** 需通过 `/001-4-issue-claim #N` 实际执行验证。
 
 ---
 
@@ -413,7 +413,7 @@ Results: 6/6 passed, 0 failed
 | 改动 | 验证方式 |
 |------|---------|
 | `backend.sh` 的 `${SKILL_TAG:-}` / `${CLAUDE_SESSION_ID:-}` | 需实际执行任一 003 技能确认无报错 |
-| `003-4-issue-claim` 的 `claim_issue_backend()` 阻止逻辑 | 需后端不可达时执行 `/003-4-issue-claim #N` 确认阻止 |
+| `001-4-issue-claim` 的 `claim_issue_backend()` 阻止逻辑 | 需后端不可达时执行 `/001-4-issue-claim #N` 确认阻止 |
 | `29-session-end` 的 `release_session_issues()` 重构 | 需真实会话结束事件确认释放正常 |
 | Shell 测试的 `test_backend_up_works` / `test_recovery_no_conflict` | 需安装 jq 后带后端运行 |
 

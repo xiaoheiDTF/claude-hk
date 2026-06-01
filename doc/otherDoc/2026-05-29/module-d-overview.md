@@ -2,7 +2,7 @@
 
 > 创建时间：2026-05-29
 > 模块：claude-tap-plus / 模块 D
-> 简述：汇总 003-x-issue 系列技能接入后端服务的实现与测试状态
+> 简述：汇总 001-x-issue 系列技能接入后端服务的实现与测试状态
 
 ---
 
@@ -20,12 +20,12 @@
 | 子需求 | 改造文件 | 后端调用 | 状态 |
 |--------|----------|----------|------|
 | D0: 公共基础设施 | `.claude/skills/backend.sh` | `_backend_available()`, `_call_backend()`, `_get_session_id()`, `update_issue_status()` | ✅ |
-| D1: issue-claim | `.claude/skills/003-4-issue-claim/scripts/03UserPromptSubmit.sh` | `/api/issue/check` 去重 + `/api/issue/claim` 原子领取 | ✅ |
-| D2: issue-fix | `.claude/skills/003-5-issue-fix/scripts/03UserPromptSubmit.sh` | `update_issue_status("fixing")` | ✅ |
-| D3: issue-done | `.claude/skills/003-6-issue-done/scripts/03UserPromptSubmit.sh` | `update_issue_status("ready-for-pr")` | ✅ |
-| D4: issue-pr | `.claude/skills/003-7-issue-pr/scripts/03UserPromptSubmit.sh` | `update_issue_status("pr-created")` | ✅ |
-| D5: issue-test | `.claude/skills/003-8-issue-test/scripts/03UserPromptSubmit.sh` | `update_issue_status("testing")` | ✅ |
-| D6: issue-review | `.claude/skills/003-9-issue-review/scripts/03UserPromptSubmit.sh` | `update_issue_status("reviewing"/"merged"/"rejected")` | ✅ |
+| D1: issue-claim | `.claude/skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh` | `/api/issue/check` 去重 + `/api/issue/claim` 原子领取 | ✅ |
+| D2: issue-fix | `.claude/skills/001-5-issue-fix/scripts/03UserPromptSubmit.sh` | `update_issue_status("fixing")` | ✅ |
+| D3: issue-done | `.claude/skills/001-6-issue-done/scripts/03UserPromptSubmit.sh` | `update_issue_status("ready-for-pr")` | ✅ |
+| D4: issue-pr | `.claude/skills/001-7-issue-pr/scripts/03UserPromptSubmit.sh` | `update_issue_status("pr-created")` | ✅ |
+| D5: issue-test | `.claude/skills/001-8-issue-test/scripts/03UserPromptSubmit.sh` | `update_issue_status("testing")` | ✅ |
+| D6: issue-review | `.claude/skills/001-9-issue-review/scripts/03UserPromptSubmit.sh` | `update_issue_status("reviewing"/"merged"/"rejected")` | ✅ |
 | D7: SessionEnd | `.claude/hooks/29-session-end/base.sh` | `/api/issue/release-session` 自动释放 | ✅ |
 
 ---
@@ -50,14 +50,14 @@
 ## 数据流
 
 ```
-/003-4-issue-claim → gh issue list → POST /api/issue/check 过滤 idle
+/001-4-issue-claim → gh issue list → POST /api/issue/check 过滤 idle
                   → 用户选择 → POST /api/issue/claim 原子领取 → gh issue edit
 
-/003-5-issue-fix  → 创建分支后 → POST /api/issue/status (fixing)
-/003-6-issue-done → 标记完成 → POST /api/issue/status (ready-for-pr)
-/003-7-issue-pr   → PR 创建后 → POST /api/issue/status (pr-created)
-/003-8-issue-test → 开始测试 → POST /api/issue/status (testing)
-/003-9-issue-review → 审核 → POST /api/issue/status (reviewing/merged/rejected)
+/001-5-issue-fix  → 创建分支后 → POST /api/issue/status (fixing)
+/001-6-issue-done → 标记完成 → POST /api/issue/status (ready-for-pr)
+/001-7-issue-pr   → PR 创建后 → POST /api/issue/status (pr-created)
+/001-8-issue-test → 开始测试 → POST /api/issue/status (testing)
+/001-9-issue-review → 审核 → POST /api/issue/status (reviewing/merged/rejected)
 
 SessionEnd hook → POST /api/issue/release-session 自动释放
 ```

@@ -78,7 +78,7 @@
 ```
 GitHub ── gh CLI ──→ Agent (Claude Code 技能脚本) ── HTTP ──→ claude-tap-plus 后端
                          │                                        │
-                    003-4 ~ 003-9 技能                        SQLite DB
+                    001-4 ~ 001-9 技能                        SQLite DB
                     SessionEnd hook                         issue_claims 表
 ```
 

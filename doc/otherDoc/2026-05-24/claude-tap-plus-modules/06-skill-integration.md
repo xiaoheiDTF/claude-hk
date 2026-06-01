@@ -10,9 +10,9 @@
 
 | Skill | 集成点 |
 |-------|--------|
-| `003-4-issue-claim` | claim 前查 issue 确认状态，成功后更新 last_activity |
-| `003-5-issue-fix` | 开始前查依赖，done 时更新 last_activity |
-| `003-6-issue-pr` | PR 前查 issue 状态、rebase 状态、Test Plan |
+| `001-4-issue-claim` | claim 前查 issue 确认状态，成功后更新 last_activity |
+| `001-5-issue-fix` | 开始前查依赖，done 时更新 last_activity |
+| `001-6-issue-pr` | PR 前查 issue 状态、rebase 状态、Test Plan |
 
 ## 功能
 

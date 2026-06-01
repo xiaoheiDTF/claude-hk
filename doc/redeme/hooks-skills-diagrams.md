@@ -170,13 +170,13 @@ sequenceDiagram
     participant Active as .active
     participant Skill as {skill}/scripts/<br/>03UserPromptSubmit.sh
 
-    User->>CC: 输入 /003-4-issue-claim #42
+    User->>CC: 输入 /001-4-issue-claim #42
     CC->>H03: UserPromptSubmit 事件
     H03->>SI: bash skill-inject.sh<br/>prompt + session_id
 
     Note over SI: 解析 prompt
     SI->>SI: 首字符是 / → 提取 skill 名
-    SI->>SI: skill = "003-4-issue-claim"<br/>args = "#42"
+    SI->>SI: skill = "001-4-issue-claim"<br/>args = "#42"
 
     SI->>Reg: 查找 skill 名
     Reg-->>SI: 匹配成功
@@ -348,22 +348,22 @@ graph LR
 stateDiagram-v2
     [*] --> Uninitialized
 
-    Uninitialized --> LabelsCreated: /003-1-issue-init
+    Uninitialized --> LabelsCreated: /001-1-issue-init
 
-    LabelsCreated --> IssueCreated: /003-2-issue
-    IssueCreated --> IssueCreated: /003-3-issue-discuss
+    LabelsCreated --> IssueCreated: /001-2-issue
+    IssueCreated --> IssueCreated: /001-3-issue-discuss
 
-    IssueCreated --> Claimed: /003-4-issue-claim<br/>POST /api/issue/claim
+    IssueCreated --> Claimed: /001-4-issue-claim<br/>POST /api/issue/claim
 
-    Claimed --> Fixing: /003-5-issue-fix<br/>创建分支
+    Claimed --> Fixing: /001-5-issue-fix<br/>创建分支
 
-    Fixing --> ReadyForPR: /003-6-issue-done<br/>开发完成
+    Fixing --> ReadyForPR: /001-6-issue-done<br/>开发完成
 
-    ReadyForPR --> PRCreated: /003-7-issue-pr<br/>创建 PR
+    ReadyForPR --> PRCreated: /001-7-issue-pr<br/>创建 PR
 
-    PRCreated --> Testing: /003-8-issue-test<br/>执行 Test Plan
+    PRCreated --> Testing: /001-8-issue-test<br/>执行 Test Plan
 
-    Testing --> Reviewing: /003-9-issue-review<br/>提交审核
+    Testing --> Reviewing: /001-9-issue-review<br/>提交审核
 
     Reviewing --> Merged: merge<br/>gh pr merge
     Reviewing --> Rejected: reject<br/>添加 rejected Label

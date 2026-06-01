@@ -91,7 +91,7 @@ Claude Code 会话启动时（SessionStart Hook），自动向注册中心上报
 # 显式绑定
 /session-bind #15
 # 或
-/003-4-issue-claim #15  # claim 时自动调用绑定
+/001-4-issue-claim #15  # claim 时自动调用绑定
 
 # 显式解绑
 /session-unbind
@@ -308,8 +308,8 @@ SessionEnd
 | `.claude/hooks/session-heartbeat.sh` | 心跳脚本 |
 | `claude-tap-plus/internal/session/` (新增) | Session 注册中心模块 |
 | `claude-tap-plus/internal/api/session.go` (新增) | Session HTTP API |
-| `003-4-issue-claim` | claim 时自动调用 `/session-bind` |
-| `003-5-issue-fix` | fix 完成后更新 Session 状态 |
+| `001-4-issue-claim` | claim 时自动调用 `/session-bind` |
+| `001-5-issue-fix` | fix 完成后更新 Session 状态 |
 
 ## 验收标准（总体）
 

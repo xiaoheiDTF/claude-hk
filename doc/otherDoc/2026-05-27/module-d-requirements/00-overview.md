@@ -2,7 +2,7 @@
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D
-> 简述：改造 003-x-issue 系列技能，接入后端 Issue 全局管理服务，实现单 GitHub 账号多 Agent 协作
+> 简述：改造 001-x-issue 系列技能，接入后端 Issue 全局管理服务，实现单 GitHub 账号多 Agent 协作
 
 ---
 
@@ -16,37 +16,37 @@
 ## Issue 工作流调用链
 
 ```
-003-2-issue (创建) → 003-3-issue-discuss (讨论)
+001-2-issue (创建) → 001-3-issue-discuss (讨论)
                            ↓
-              003-4-issue-claim (领取) ←──┐
+              001-4-issue-claim (领取) ←──┐
                            ↓              │
-              003-5-issue-fix (开发)       │
+              001-5-issue-fix (开发)       │
                            ↓              │ 拒绝后重新领取
-              003-6-issue-done (完成)      │
+              001-6-issue-done (完成)      │
                            ↓              │
-              003-7-issue-pr (提PR)        │
+              001-7-issue-pr (提PR)        │
                            ↓              │
-              003-8-issue-test (测试)      │
+              001-8-issue-test (测试)      │
                            ↓              │
-              003-9-issue-review (审核) ───┘
+              001-9-issue-review (审核) ───┘
                            ↓
                      merged / rejected
 ```
 
-> 003-2 和 003-3 不需要后端介入（创建新 issue 无冲突，讨论只读/评论不改变状态）。
+> 001-2 和 001-3 不需要后端介入（创建新 issue 无冲突，讨论只读/评论不改变状态）。
 
 ## 各技能现状与后端介入点
 
 | 技能 | 当前 GitHub 操作 | 需要后端介入 | 介入环节 |
 |------|------------------|-------------|----------|
-| 003-2-issue | `gh issue create` | 否 | — |
-| 003-3-issue-discuss | `gh issue view`, `gh issue comment` | 否 | — |
-| 003-4-issue-claim | `gh issue list` → `gh issue edit --add-assignee` | **是** | list 后去重，edit 前原子领取 |
-| 003-5-issue-fix | `gh issue view` → `git checkout -b` → `gh issue comment` | **是** | 标记 fixing 状态 |
-| 003-6-issue-done | `git status` → `gh issue edit` (改 label) | **是** | 标记 ready-for-pr 状态 |
-| 003-7-issue-pr | `gh pr create` | **是** | 标记 pr-created 状态 |
-| 003-8-issue-test | `gh pr view` → 测试 → `gh pr edit` | **是** | 标记 testing 状态 |
-| 003-9-issue-review | `gh pr merge` / `gh issue edit` | **是** | 标记 merged/rejected 状态 |
+| 001-2-issue | `gh issue create` | 否 | — |
+| 001-3-issue-discuss | `gh issue view`, `gh issue comment` | 否 | — |
+| 001-4-issue-claim | `gh issue list` → `gh issue edit --add-assignee` | **是** | list 后去重，edit 前原子领取 |
+| 001-5-issue-fix | `gh issue view` → `git checkout -b` → `gh issue comment` | **是** | 标记 fixing 状态 |
+| 001-6-issue-done | `git status` → `gh issue edit` (改 label) | **是** | 标记 ready-for-pr 状态 |
+| 001-7-issue-pr | `gh pr create` | **是** | 标记 pr-created 状态 |
+| 001-8-issue-test | `gh pr view` → 测试 → `gh pr edit` | **是** | 标记 testing 状态 |
+| 001-9-issue-review | `gh pr merge` / `gh issue edit` | **是** | 标记 merged/rejected 状态 |
 
 ## 各技能脚本中已有的数据源
 
@@ -76,12 +76,12 @@ backend_url=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null | grep 
 
 | 技能 | repo_full_name | issue_number | issue_title | session_id | status |
 |------|:-:|:-:|:-:|:-:|------|
-| D1: 003-4-issue-claim | ✓ | ✓ | ✓ | ✓ | — (claim API 自处理) |
-| D2: 003-5-issue-fix | ✓ | ✓ | — | ✓ | `fixing` |
-| D3: 003-6-issue-done | ✓ | ✓ | — | ✓ | `ready-for-pr` |
-| D4: 003-7-issue-pr | ✓ | ✓ | — | ✓ | `pr-created` |
-| D5: 003-8-issue-test | ✓ | ✓ | — | ✓ | `testing` |
-| D6: 003-9-issue-review | ✓ | ✓ | — | ✓ | `reviewing` → `merged` / `rejected` |
+| D1: 001-4-issue-claim | ✓ | ✓ | ✓ | ✓ | — (claim API 自处理) |
+| D2: 001-5-issue-fix | ✓ | ✓ | — | ✓ | `fixing` |
+| D3: 001-6-issue-done | ✓ | ✓ | — | ✓ | `ready-for-pr` |
+| D4: 001-7-issue-pr | ✓ | ✓ | — | ✓ | `pr-created` |
+| D5: 001-8-issue-test | ✓ | ✓ | — | ✓ | `testing` |
+| D6: 001-9-issue-review | ✓ | ✓ | — | ✓ | `reviewing` → `merged` / `rejected` |
 | D7: SessionEnd | — | — | — | ✓ | — (release-session API 自处理) |
 
 ## 整体架构
@@ -90,12 +90,12 @@ backend_url=$(cat "$CLAUDE_PROJECT_DIR/.claude/backend.conf" 2>/dev/null | grep 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Claude Code 会话                         │
 │                                                              │
-│  003-4-issue-claim ──┐                                       │
-│  003-5-issue-fix     │                                       │
-│  003-6-issue-done    ├──→ 后端调用函数 (backend.sh)          │
-│  003-7-issue-pr      │                                       │
-│  003-8-issue-test    │                                       │
-│  003-9-issue-review ─┘                                       │
+│  001-4-issue-claim ──┐                                       │
+│  001-5-issue-fix     │                                       │
+│  001-6-issue-done    ├──→ 后端调用函数 (backend.sh)          │
+│  001-7-issue-pr      │                                       │
+│  001-8-issue-test    │                                       │
+│  001-9-issue-review ─┘                                       │
 │                          ↓                                   │
 │                   .claude/backend.conf                        │
 │                          ↓                                   │
@@ -155,12 +155,12 @@ CREATE INDEX idx_issue_claims_status ON issue_claims(status);
 
 ```
 D0 (公共基础设施 backend.sh)
- ├── D1 (003-4-issue-claim 改造) — 最复杂，涉及 check + claim
- ├── D2 (003-5-issue-fix 改造) — 状态标记 fixing
- ├── D3 (003-6-issue-done 改造) — 状态标记 ready-for-pr
- ├── D4 (003-7-issue-pr 改造) — 状态标记 pr-created
- ├── D5 (003-8-issue-test 改造) — 状态标记 testing
- ├── D6 (003-9-issue-review 改造) — 状态标记 merged/rejected
+ ├── D1 (001-4-issue-claim 改造) — 最复杂，涉及 check + claim
+ ├── D2 (001-5-issue-fix 改造) — 状态标记 fixing
+ ├── D3 (001-6-issue-done 改造) — 状态标记 ready-for-pr
+ ├── D4 (001-7-issue-pr 改造) — 状态标记 pr-created
+ ├── D5 (001-8-issue-test 改造) — 状态标记 testing
+ ├── D6 (001-9-issue-review 改造) — 状态标记 merged/rejected
  └── D7 (SessionEnd 自动释放) — 会话结束时释放 issue
 ```
 
@@ -168,26 +168,26 @@ D0 (公共基础设施 backend.sh)
 
 | 时机 | 操作 | 调用方 |
 |------|------|--------|
-| claim 时 | INSERT OR IGNORE → UPDATE status='claimed' | D1: 003-4-issue-claim |
-| fixing 时 | UPDATE status='fixing' | D2: 003-5-issue-fix |
-| done 时 | UPDATE status='ready-for-pr' | D3: 003-6-issue-done |
-| pr 时 | UPDATE status='pr-created' | D4: 003-7-issue-pr |
-| test 时 | UPDATE status='testing' | D5: 003-8-issue-test |
-| 开始审核时 | UPDATE status='reviewing' | D6: 003-9-issue-review |
-| merge 时 | UPDATE status='merged' | D6: 003-9-issue-review |
-| reject 时 | UPDATE status='rejected' | D6: 003-9-issue-review |
+| claim 时 | INSERT OR IGNORE → UPDATE status='claimed' | D1: 001-4-issue-claim |
+| fixing 时 | UPDATE status='fixing' | D2: 001-5-issue-fix |
+| done 时 | UPDATE status='ready-for-pr' | D3: 001-6-issue-done |
+| pr 时 | UPDATE status='pr-created' | D4: 001-7-issue-pr |
+| test 时 | UPDATE status='testing' | D5: 001-8-issue-test |
+| 开始审核时 | UPDATE status='reviewing' | D6: 001-9-issue-review |
+| merge 时 | UPDATE status='merged' | D6: 001-9-issue-review |
+| reject 时 | UPDATE status='rejected' | D6: 001-9-issue-review |
 | SessionEnd | UPDATE status='idle', session_id=NULL, claimed_at=NULL (排除 merged/rejected) | D7: SessionEnd hook |
 
 ## 改造清单汇总
 
 | 技能 | 改造文件 | 改造内容 | 后端 API |
 |------|----------|----------|----------|
-| D1: 003-4-issue-claim | `scripts/03UserPromptSubmit.sh` | list 后过滤 + claim 前原子领取 | `/api/issue/check` + `/api/issue/claim` |
-| D2: 003-5-issue-fix | `scripts/03UserPromptSubmit.sh` | 创建分支后标记 fixing | `/api/issue/status` |
-| D3: 003-6-issue-done | `scripts/03UserPromptSubmit.sh` | 标记完成后更新 ready-for-pr | `/api/issue/status` |
-| D4: 003-7-issue-pr | `scripts/03UserPromptSubmit.sh` | PR 创建后标记 pr-created | `/api/issue/status` |
-| D5: 003-8-issue-test | `scripts/03UserPromptSubmit.sh` | 开始测试时标记 testing | `/api/issue/status` |
-| D6: 003-9-issue-review | `scripts/03UserPromptSubmit.sh` | 开始审核时标记 reviewing，merge/reject 后更新状态 | `/api/issue/status` |
+| D1: 001-4-issue-claim | `scripts/03UserPromptSubmit.sh` | list 后过滤 + claim 前原子领取 | `/api/issue/check` + `/api/issue/claim` |
+| D2: 001-5-issue-fix | `scripts/03UserPromptSubmit.sh` | 创建分支后标记 fixing | `/api/issue/status` |
+| D3: 001-6-issue-done | `scripts/03UserPromptSubmit.sh` | 标记完成后更新 ready-for-pr | `/api/issue/status` |
+| D4: 001-7-issue-pr | `scripts/03UserPromptSubmit.sh` | PR 创建后标记 pr-created | `/api/issue/status` |
+| D5: 001-8-issue-test | `scripts/03UserPromptSubmit.sh` | 开始测试时标记 testing | `/api/issue/status` |
+| D6: 001-9-issue-review | `scripts/03UserPromptSubmit.sh` | 开始审核时标记 reviewing，merge/reject 后更新状态 | `/api/issue/status` |
 | D7: SessionEnd | `hooks/29-session-end/base.sh` | 自动释放该 session 的 issue | `/api/issue/release-session` |
 
 ## 数据流总结
@@ -195,7 +195,7 @@ D0 (公共基础设施 backend.sh)
 ### claim 流程
 
 ```
-用户执行 /003-4-issue-claim
+用户执行 /001-4-issue-claim
   │
   ├─ 1. gh issue list → 获取 GitHub open issues
   ├─ 2. POST /api/issue/check → 后端过滤已领取的
@@ -209,7 +209,7 @@ D0 (公共基础设施 backend.sh)
 ### fix 流程
 
 ```
-用户执行 /003-5-issue-fix #10
+用户执行 /001-5-issue-fix #10
   │
   ├─ 1. 检查 assignee（原有逻辑）
   ├─ 2. git checkout -b fix/issue-10-xxx

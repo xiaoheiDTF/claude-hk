@@ -22,9 +22,9 @@
 |------|----------|----------|----------|
 | 未配置后端 | `backend.conf` 不存在或 `BACKEND_URL` 为空 | 所有后端调用跳过，走原有逻辑 | 全部技能 |
 | 后端不可用 | `GET /health` 超时或连接失败 | 所有后端调用跳过，走原有逻辑 | 全部技能 |
-| `/api/issue/check` 失败 | 请求超时或返回非 JSON | 返回完整 issue 列表（不过滤） | 003-4-issue-claim |
-| `/api/issue/claim` 失败 | 请求超时或返回失败 | **阻止领取**，提示用户 | 003-4-issue-claim |
-| `/api/issue/status` 失败 | 请求超时或返回失败 | 静默忽略，继续操作 GitHub | 003-5 ~ 003-9 |
+| `/api/issue/check` 失败 | 请求超时或返回非 JSON | 返回完整 issue 列表（不过滤） | 001-4-issue-claim |
+| `/api/issue/claim` 失败 | 请求超时或返回失败 | **阻止领取**，提示用户 | 001-4-issue-claim |
+| `/api/issue/status` 失败 | 请求超时或返回失败 | 静默忽略，继续操作 GitHub | 001-5 ~ 001-9 |
 | `/api/issue/release-session` 失败 | 请求超时或返回失败 | 静默忽略 | SessionEnd hook |
 
 ## 各 API 降级详细说明

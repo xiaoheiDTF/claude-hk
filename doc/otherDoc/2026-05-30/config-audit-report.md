@@ -25,7 +25,7 @@
 |----------|------|----------|------|------|----------|
 | `.claude/skills/.active` | 每行 `sid\|skill` | ✅ 正常 | `active.sh`, `enforce_boundary.sh`, `16-stop/base.sh` | `active.sh` (Hook 03 激活时写，Hook 16 清理时删) | 带 `.active.lock` 文件锁保护 |
 | `.claude/skills/registry.conf` | 每行一个 skill 名 | ✅ 正常 | `skill-inject.sh` | `skill-register.sh` (16-stop 时自动追加) | — |
-| `.claude/skills/003-1-issue-init/labels.conf` | 每行 `名\|颜色\|描述` | ✅ 正常 | `003-1-issue-init/scripts/init.sh` | 手动维护 | — |
+| `.claude/skills/001-1-issue-init/labels.conf` | 每行 `名\|颜色\|描述` | ✅ 正常 | `001-1-issue-init/scripts/init.sh` | 手动维护 | — |
 
 ### 1.3 用户家目录配置 — `~/.claude-tap-plus/`
 
@@ -70,7 +70,7 @@
 | 变量名 | 设置方 | 使用位置 | 说明 |
 |--------|--------|----------|------|
 | `BACKEND_URL` | `skills/backend.sh` (`_load_backend_url`) | `skills/backend.sh` (全部函数) | 后端 HTTP 地址，从 `~/.claude-tap-plus/backend.json` 解析拼接 |
-| `SKILL_TAG` | 各 skill 脚本自身 | `skills/log.sh` | 日志来源标记，如 `001-testcode-python` |
+| `SKILL_TAG` | 各 skill 脚本自身 | `skills/log.sh` | 日志来源标记，如 `002-2-doc-testcode-python` |
 | `PROJECT_DIR` | 各 skill 脚本 | skill 内部 | `$CLAUDE_PROJECT_DIR` 的局部别名 |
 | `CLAUSE_DIR` | `init.sh`, `ensure_dirs.sh` | 初始化脚本 | `$PROJECT_DIR/.claude` 的别名 |
 
@@ -214,7 +214,7 @@ Go 后端启动 ──► ~/.claude-tap-plus/backend.json ──► skills/backe
 | Skill 注册表 | `.claude/skills/registry.conf` | 同左 | 同左 |
 | 初始化标记 | `.claude/.initialized` | 同左 | `.claude/runtime/.initialized` |
 | 预创建目录列表 | `.claude/dirs.conf` | 同左 | 同左 |
-| Issue 标签定义 | `.claude/skills/003-1-issue-init/labels.conf` | 同左 | 同左 |
+| Issue 标签定义 | `.claude/skills/001-1-issue-init/labels.conf` | 同左 | 同左 |
 | 统一配置加载 | 不存在 | `.claude/lib/config.sh` | `.claude/lib/bootstrap.sh` |
 | Trace 存储目录 | `~/.claude-tap-plus/.traces/` | 同左 | 同左 |
 | SQLite 数据库 | 项目根目录 `backend.db` | 同左 | 同左 |

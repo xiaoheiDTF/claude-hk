@@ -45,7 +45,7 @@ CREATE INDEX idx_issue_claims_status ON issue_claims(status);
 | `merged` | 已合并（终态） | 关闭 issue |
 | `rejected` | 被打回 | `rejected` |
 
-> GitHub Label 需要在 `003-1-issue-init` 的 `labels.conf` 中定义：`in-progress`、`fixing`、`ready-for-pr`、`pr-created`、`testing`、`reviewing`、`rejected`。
+> GitHub Label 需要在 `001-1-issue-init` 的 `labels.conf` 中定义：`in-progress`、`fixing`、`ready-for-pr`、`pr-created`、`testing`、`reviewing`、`rejected`。
 
 ## 字段来源
 

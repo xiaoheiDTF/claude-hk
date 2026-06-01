@@ -9,21 +9,21 @@ created: 2026-05-21
 
 ## 描述
 
-通过对现有 8 个 skill（003-1 ~ 003-6、004、005）的完整流程梳理，发现当前 Issue 闭环机制在 **流程衔接、状态管理、异常处理、知识沉淀** 四个维度存在系统性缺陷。部分缺陷已被 #15、#17 覆盖，但仍有大量底层机制问题未解决。
+通过对现有 8 个 skill（001-1 ~ 001-6、004、005）的完整流程梳理，发现当前 Issue 闭环机制在 **流程衔接、状态管理、异常处理、知识沉淀** 四个维度存在系统性缺陷。部分缺陷已被 #15、#17 覆盖，但仍有大量底层机制问题未解决。
 
 ---
 
 ## 完整流程现状
 
 ```
-003-1 issue-init   →  初始化标签（一次性）
-003-2 issue        →  创建草稿 → 发布到 GitHub
-003-3 issue-discuss →  拉取内容 → 讨论 → 写回评论
-003-4 issue-claim  →  原子 assign + 加 in-progress 标签
-003-5 issue-fix    →  检查 assignee → 创建分支
+001-1 issue-init   →  初始化标签（一次性）
+001-2 issue        →  创建草稿 → 发布到 GitHub
+001-3 issue-discuss →  拉取内容 → 讨论 → 写回评论
+001-4 issue-claim  →  原子 assign + 加 in-progress 标签
+001-5 issue-fix    →  检查 assignee → 创建分支
 005 git-commit     →  本地提交（规范格式）
 004 git-push       →  推送到远程
-003-6 issue-pr     →  提 PR → 审核/合并 → 打回
+001-6 issue-pr     →  提 PR → 审核/合并 → 打回
 ```
 
 ---
@@ -63,8 +63,8 @@ created: 2026-05-21
 
 | # | 缺陷 | 影响 | 现状 | 期望 |
 |---|------|------|------|------|
-| 15 | **无 reviewer 分配机制** | PR 提完后无人 review | 003-6-issue-pr 无 reviewer 步骤 | 提 PR 时通过 `--reviewer` 指定，或维护轮询表 |
-| 16 | **无 issue 重复检测** | 可能创建重复 issue | 003-2-issue 直接创建 | 创建前 `gh issue list --search "关键词"` 提示相似 issue |
+| 15 | **无 reviewer 分配机制** | PR 提完后无人 review | 001-6-issue-pr 无 reviewer 步骤 | 提 PR 时通过 `--reviewer` 指定，或维护轮询表 |
+| 16 | **无 issue 重复检测** | 可能创建重复 issue | 001-2-issue 直接创建 | 创建前 `gh issue list --search "关键词"` 提示相似 issue |
 | 17 | **无 stale issue 清理机制** | 长期无活动草稿/ issue 堆积 | 无清理策略 | 超过 N 天无活动的草稿自动归档；超过 M 天无活动的 open issue 标记 `stale` |
 | 18 | **discuss 阶段缺少"共识"标记** | 讨论多轮后不知道哪个方案被采纳 | 所有评论平铺 | 支持用特定 comment 格式标记 `"✅ 共识: xxx"`，或在本地记录讨论结论 |
 | 19 | **无 issue 迭代/里程碑规划** | 所有 issue 平铺，无法按版本规划 | 无 milestone 概念 | 可选：按 `P0/P1/P2/P3` 标签分批，或关联 milestone |
@@ -121,14 +121,14 @@ created: 2026-05-21
 ## 建议改进路线
 
 ### 短期（立即）
-- 修复 #4：在 003-6-issue-pr merge 后增加 `git push origin --delete <branch>` 和 `git branch -d <branch>`
-- 修复 #10：在 003-4-issue-claim 中，验证失败时输出明确的回退指引
+- 修复 #4：在 001-6-issue-pr merge 后增加 `git push origin --delete <branch>` 和 `git branch -d <branch>`
+- 修复 #10：在 001-4-issue-claim 中，验证失败时输出明确的回退指引
 - 修复 #3：在 005-git-commit / 004-git-push 中，检测当前分支名是否含 `issue-<N>`，自动在 commit body 追加 `Refs #N`
 
 ### 中期（本轮迭代）
 - 修复 #2、#6：配合 #15 落地 fix 阶段拆分和标签状态机完善
-- 修复 #12：在 003-6-issue-pr 打回流程中明确分支处理规则
-- 修复 #13：在 003-6-issue-pr 提 PR 前增加 rebase 检查
+- 修复 #12：在 001-6-issue-pr 打回流程中明确分支处理规则
+- 修复 #13：在 001-6-issue-pr 提 PR 前增加 rebase 检查
 
 ### 长期（后续迭代）
 - 修复 #5、#20：新增 issue 关闭后的知识沉淀 skill
@@ -141,9 +141,9 @@ created: 2026-05-21
 
 | 文件 | 改动说明 |
 |------|---------|
-| `.claude/skills/003-4-issue-claim/SKILL.md` | 增加 claim 前状态检查、失败回退指引 |
-| `.claude/skills/003-5-issue-fix/SKILL.md` | 增加开发完成标记、ready-for-pr 标签 |
-| `.claude/skills/003-6-issue-pr/SKILL.md` | 增加合并后分支清理、打回分支处理规则、rebase 检查 |
+| `.claude/skills/001-4-issue-claim/SKILL.md` | 增加 claim 前状态检查、失败回退指引 |
+| `.claude/skills/001-5-issue-fix/SKILL.md` | 增加开发完成标记、ready-for-pr 标签 |
+| `.claude/skills/001-6-issue-pr/SKILL.md` | 增加合并后分支清理、打回分支处理规则、rebase 检查 |
 | `.claude/skills/004-git-push/SKILL.md` | 增加 commit 自动关联 issue 编号 |
 | `.claude/skills/005-git-commit/SKILL.md` | 同上 |
 | 新增 skill（可选） | issue 关闭摘要、stale 清理、重复检测、孤儿分支恢复 |

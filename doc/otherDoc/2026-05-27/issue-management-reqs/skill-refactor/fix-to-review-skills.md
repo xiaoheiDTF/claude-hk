@@ -1,4 +1,4 @@
-# B6-2: 003-5 ~ 003-9 技能改造
+# B6-2: 001-5 ~ 001-9 技能改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / Issue 管理 / 技能改造
@@ -8,7 +8,7 @@
 
 ## 需求描述
 
-在 003-5 至 003-9 五个技能的关键操作后，增加调用 `POST /api/issue/status` 更新后端状态。
+在 001-5 至 001-9 五个技能的关键操作后，增加调用 `POST /api/issue/status` 更新后端状态。
 
 ## 改造总览
 
@@ -16,13 +16,13 @@
 
 | 技能 | 关键操作 | status 值 | GitHub Label 变更（自动） |
 |------|----------|-----------|--------------------------|
-| 003-5-issue-fix | 创建分支后 | `fixing` | `in-progress` → `fixing` |
-| 003-6-issue-done | 标记完成后 | `ready-for-pr` | `fixing` → `ready-for-pr` |
-| 003-7-issue-pr | PR 创建后 | `pr-created` | `ready-for-pr` → `pr-created` |
-| 003-8-issue-test | 开始测试 | `testing` | `pr-created` → `testing` |
-| 003-9-issue-review | 审核开始 | `reviewing` | `testing` → `reviewing` |
-| 003-9-issue-review merge | 合并后 | `merged` | `reviewing` → 关闭 issue |
-| 003-9-issue-review reject | 打回后 | `rejected` | `reviewing` → `rejected` |
+| 001-5-issue-fix | 创建分支后 | `fixing` | `in-progress` → `fixing` |
+| 001-6-issue-done | 标记完成后 | `ready-for-pr` | `fixing` → `ready-for-pr` |
+| 001-7-issue-pr | PR 创建后 | `pr-created` | `ready-for-pr` → `pr-created` |
+| 001-8-issue-test | 开始测试 | `testing` | `pr-created` → `testing` |
+| 001-9-issue-review | 审核开始 | `reviewing` | `testing` → `reviewing` |
+| 001-9-issue-review merge | 合并后 | `merged` | `reviewing` → 关闭 issue |
+| 001-9-issue-review reject | 打回后 | `rejected` | `reviewing` → `rejected` |
 
 ## 前置依赖
 
@@ -34,7 +34,7 @@ source "$CLAUDE_PROJECT_DIR/.claude/skills/backend.sh"
 
 ## 各技能具体改动
 
-### 003-5-issue-fix
+### 001-5-issue-fix
 
 **位置**：创建分支成功后
 
@@ -49,7 +49,7 @@ update_issue_status "$ISSUE_NUM" "fixing"
 gh issue comment $ISSUE_NUM --body "开始开发，分支: $BRANCH_NAME"
 ```
 
-### 003-6-issue-done
+### 001-6-issue-done
 
 **位置**：开发完成标记后
 
@@ -60,7 +60,7 @@ update_issue_status "$ISSUE_NUM" "ready-for-pr"
 
 > 不再需要手动 `gh issue edit --remove-label/--add-label`，`update_issue_status` 内部自动处理。
 
-### 003-7-issue-pr
+### 001-7-issue-pr
 
 **位置**：PR 创建成功后
 
@@ -72,7 +72,7 @@ pr_url=$(gh pr create ...)
 update_issue_status "$ISSUE_NUM" "pr-created"
 ```
 
-### 003-8-issue-test
+### 001-8-issue-test
 
 **位置**：开始执行 Test Plan 时
 
@@ -81,7 +81,7 @@ update_issue_status "$ISSUE_NUM" "pr-created"
 update_issue_status "$ISSUE_NUM" "testing"
 ```
 
-### 003-9-issue-review
+### 001-9-issue-review
 
 **位置**：审核开始时标记 `reviewing`，合并或打回后标记终态
 

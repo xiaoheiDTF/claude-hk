@@ -62,12 +62,12 @@ store/migrations.go     → 建表（issue_claims + 4 张会话管理表）
 
 | 技能 | 后端调用 | 状态 |
 |------|----------|------|
-| 003-4-issue-claim | `_call_backend /api/issue/claim` + `check_issue_status()` | ✅ |
-| 003-5-issue-fix | `update_issue_status("fixing")` | ✅ |
-| 003-6-issue-done | `update_issue_status("ready-for-pr")` | ✅ |
-| 003-7-issue-pr | `update_issue_status("pr-created")` | ✅ |
-| 003-8-issue-test | `update_issue_status("testing")` | ✅ |
-| 003-9-issue-review | `update_issue_status("reviewing"/"merged"/"rejected")` | ✅ |
+| 001-4-issue-claim | `_call_backend /api/issue/claim` + `check_issue_status()` | ✅ |
+| 001-5-issue-fix | `update_issue_status("fixing")` | ✅ |
+| 001-6-issue-done | `update_issue_status("ready-for-pr")` | ✅ |
+| 001-7-issue-pr | `update_issue_status("pr-created")` | ✅ |
+| 001-8-issue-test | `update_issue_status("testing")` | ✅ |
+| 001-9-issue-review | `update_issue_status("reviewing"/"merged"/"rejected")` | ✅ |
 | SessionEnd hook | `_call_backend /api/issue/release-session` | ✅ |
 
 ### 2.5 公共基础设施
@@ -114,11 +114,11 @@ idle ──claim──→ claimed ──fix──→ fixing ──done──→ 
 ## 五、数据流
 
 ```
-/003-4-issue-claim
+/001-4-issue-claim
   → gh issue list → POST /api/issue/check 过滤 idle → 用户选择
   → POST /api/issue/claim 原子领取 → gh issue edit --add-assignee
 
-/003-5 ~ /003-9
+/001-5 ~ /001-9
   → POST /api/issue/status 更新后端状态 → 对应 gh 操作
 
 SessionEnd hook
@@ -136,8 +136,8 @@ SessionEnd hook
 | B3 | 原子领取 API | ✅ /api/issue/claim |
 | B4 | 状态流转 API | ✅ /api/issue/status |
 | B5 | 释放机制 API | ✅ /api/issue/release + release-session |
-| B6-1 | 003-4-issue-claim 改造 | ✅ claim_issue_backend() |
-| B6-2 | 003-5 ~ 003-9 改造 | ✅ update_issue_status() |
+| B6-1 | 001-4-issue-claim 改造 | ✅ claim_issue_backend() |
+| B6-2 | 001-5 ~ 001-9 改造 | ✅ update_issue_status() |
 | B6-3 | SessionEnd Hook 改造 | ✅ release_session_issues() |
 | B7 | 公共后端调用模块 | ✅ backend.sh |
 | D0 | 公共后端调用基础设施 | ✅ _call_backend / _backend_available |

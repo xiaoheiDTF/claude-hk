@@ -11,11 +11,11 @@ created: 2026-05-21
 
 当前 issue 闭环流程中，存在两个阶段的粒度问题：
 
-**1. Fix 阶段（`003-5-issue-fix`）只到创建分支，缺少"解决问题"的明确环节**
+**1. Fix 阶段（`001-5-issue-fix`）只到创建分支，缺少"解决问题"的明确环节**
 - 当前 fix 的终点是"创建分支并输出分支信息"，后续开发过程无 skill 覆盖
 - "解决问题"是一个黑盒过程，缺少明确的开始/结束标记
 
-**2. PR 阶段（`003-6-issue-pr`）过于粗放：提 PR → 审核/合并 一步完成**
+**2. PR 阶段（`001-6-issue-pr`）过于粗放：提 PR → 审核/合并 一步完成**
 - 缺少测试执行的独立环节
 - 没有对 PR 中 `Test Plan` 完成度的强制校验
 
@@ -46,7 +46,7 @@ created: 2026-05-21
 
 ### Fix 阶段拆分
 
-#### 1. 创建分支（003-5-issue-fix 现有）
+#### 1. 创建分支（001-5-issue-fix 现有）
 
 - 检查 assignee
 - 根据 label 判断分支类型（bug→fix / enhancement→feat / 其他→chore）
@@ -56,7 +56,7 @@ created: 2026-05-21
 #### 2. 解决问题（新增明确环节）
 
 - 在 fix skill 或独立 skill 中，增加「解决问题完成」的显式标记
-- 开发完成后，agent 可以执行一个命令（如 `/003-5-issue-fix done #N` 或 `/003-5-issue-done #N`）来：
+- 开发完成后，agent 可以执行一个命令（如 `/001-5-issue-fix done #N` 或 `/001-5-issue-done #N`）来：
   - 检查本地是否有未提交的变更
   - 执行基本的代码检查（如 lint、类型检查，如果项目支持）
   - 在 issue 中 comment："开发完成，等待提 PR"
@@ -99,35 +99,35 @@ gh pr view <PR> --json body
 #### Fix 阶段
 
 方案 A（推荐，改动小）：
-- 扩展 `003-5-issue-fix`，增加子命令：
-  - `/003-5-issue-fix #N` —— 创建分支（现有行为）
-  - `/003-5-issue-fix done #N` —— 标记"解决问题完成"，添加 `ready-for-pr` label
+- 扩展 `001-5-issue-fix`，增加子命令：
+  - `/001-5-issue-fix #N` —— 创建分支（现有行为）
+  - `/001-5-issue-fix done #N` —— 标记"解决问题完成"，添加 `ready-for-pr` label
 
 方案 B（职责更清）：
-- 保留 `003-5-issue-fix` 仅负责创建分支
-- 新增 `003-5-1-issue-resolve` 或类似 skill，负责开发完成标记和前置检查
+- 保留 `001-5-issue-fix` 仅负责创建分支
+- 新增 `001-5-1-issue-resolve` 或类似 skill，负责开发完成标记和前置检查
 
 #### PR 阶段
 
 方案 A（推荐，改动小）：
-- 在 `003-6-issue-pr` 中增加子命令区分：
-  - `/003-6-issue-pr #N` —— 提交 PR
-  - `/003-6-issue-pr test #N` —— 执行测试并更新 checkbox
-  - `/003-6-issue-pr merge #N` —— 检查 Test Plan → 合并
+- 在 `001-6-issue-pr` 中增加子命令区分：
+  - `/001-6-issue-pr #N` —— 提交 PR
+  - `/001-6-issue-pr test #N` —— 执行测试并更新 checkbox
+  - `/001-6-issue-pr merge #N` —— 检查 Test Plan → 合并
 
 方案 B（职责更清）：
 - 拆分出独立 skill：
-  - `003-6-issue-pr` —— 仅负责提交 PR
-  - `003-7-issue-pr-test` —— 负责执行 Test Plan
-  - `003-8-issue-pr-merge` —— 负责检查 Test Plan 完成度并合并
+  - `001-6-issue-pr` —— 仅负责提交 PR
+  - `001-7-issue-pr-test` —— 负责执行 Test Plan
+  - `001-8-issue-pr-merge` —— 负责检查 Test Plan 完成度并合并
 
 ## 涉及文件
 
 | 文件 | 改动说明 |
 |------|---------|
-| `.claude/skills/003-6-issue-pr/SKILL.md` | 拆分 PR 阶段流程，增加 Test Plan 检查逻辑 |
-| `.claude/skills/003-5-issue-fix/SKILL.md` | 增加"解决问题完成"标记逻辑 |
-| `.claude/skills/003-6-issue-pr/`（或新增 skill） | 拆分 PR 阶段，增加 Test Plan 检查逻辑 |
+| `.claude/skills/001-6-issue-pr/SKILL.md` | 拆分 PR 阶段流程，增加 Test Plan 检查逻辑 |
+| `.claude/skills/001-5-issue-fix/SKILL.md` | 增加"解决问题完成"标记逻辑 |
+| `.claude/skills/001-6-issue-pr/`（或新增 skill） | 拆分 PR 阶段，增加 Test Plan 检查逻辑 |
 
 ## 验收标准
 

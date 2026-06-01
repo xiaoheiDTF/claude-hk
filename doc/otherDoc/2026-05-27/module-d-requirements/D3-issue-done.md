@@ -1,4 +1,4 @@
-# D3: 003-6-issue-done 改造
+# D3: 001-6-issue-done 改造
 
 > 创建时间：2026-05-27
 > 模块：claude-tap-plus / 模块 D / D3
@@ -8,13 +8,13 @@
 
 ## 目标
 
-在 `003-6-issue-done` 技能中，标记完成后调用后端更新 `ready-for-pr`。
+在 `001-6-issue-done` 技能中，标记完成后调用后端更新 `ready-for-pr`。
 
 ## 改造文件
 
 | 文件 | 操作 |
 |------|------|
-| `.claude/skills/003-6-issue-done/scripts/03UserPromptSubmit.sh` | **修改** |
+| `.claude/skills/001-6-issue-done/scripts/03UserPromptSubmit.sh` | **修改** |
 
 ## 依赖
 

@@ -284,14 +284,14 @@ CREATE INDEX idx_issue_claims_status ON issue_claims(status);
 | 时机 | 操作 | 调用方 |
 |------|------|--------|
 | 首次 check/claim | INSERT OR IGNORE (idle) | 后端自动 |
-| claim 成功 | UPDATE status='claimed', session_id=xxx | 003-4-issue-claim |
-| 创建分支后 | UPDATE status='fixing' | 003-5-issue-fix |
-| 开发完成后 | UPDATE status='ready-for-pr' | 003-6-issue-done |
-| PR 创建后 | UPDATE status='pr-created' | 003-7-issue-pr |
-| 开始测试时 | UPDATE status='testing' | 003-8-issue-test |
-| 开始审核时 | UPDATE status='reviewing' | 003-9-issue-review |
-| 合并后 | UPDATE status='merged' | 003-9-issue-review |
-| 打回后 | UPDATE status='rejected' | 003-9-issue-review |
+| claim 成功 | UPDATE status='claimed', session_id=xxx | 001-4-issue-claim |
+| 创建分支后 | UPDATE status='fixing' | 001-5-issue-fix |
+| 开发完成后 | UPDATE status='ready-for-pr' | 001-6-issue-done |
+| PR 创建后 | UPDATE status='pr-created' | 001-7-issue-pr |
+| 开始测试时 | UPDATE status='testing' | 001-8-issue-test |
+| 开始审核时 | UPDATE status='reviewing' | 001-9-issue-review |
+| 合并后 | UPDATE status='merged' | 001-9-issue-review |
+| 打回后 | UPDATE status='rejected' | 001-9-issue-review |
 | 手动释放 | UPDATE status='idle', session_id=NULL | 异常放弃时 |
 | SessionEnd | UPDATE status='idle', session_id=NULL（排除 merged） | SessionEnd hook |
 
