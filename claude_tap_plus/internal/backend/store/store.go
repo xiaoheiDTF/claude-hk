@@ -156,6 +156,28 @@ type ConfigStore interface {
 	UpdateConfig(ctx context.Context, updates map[string]interface{}) error
 }
 
+// --- Proxy types ---
+
+// Proxy 表示代理实体（对应数据库 proxies 表）。
+type Proxy struct {
+	ProxyID      string     // 代理唯一 ID
+	ProjectSlug  string     // 项目标识
+	Status       string     // 状态：active/offline
+	RegisteredAt time.Time  // 注册时间
+	LastPingAt   *time.Time // 最后心跳时间（可为 NULL）
+}
+
+// ProxyFilter 是代理列表的过滤条件。
+type ProxyFilter struct {
+	Status  *string // 按状态过滤
+	Project *string // 按 project_slug 过滤
+}
+
+// ProxyStore 定义代理数据存储的接口。
+type ProxyStore interface {
+	ListProxies(ctx context.Context, filter ProxyFilter) ([]Proxy, error)
+}
+
 // --- Store aggregate ---
 
 // Store 是统一的数据存储聚合接口。
@@ -165,5 +187,6 @@ type Store interface {
 	Machines() MachineStore // 返回 Machine 存储
 	Projects() ProjectStore // 返回 Project 存储
 	Configs() ConfigStore   // 返回 Config 存储
+	Proxies() ProxyStore    // 返回 Proxy 存储
 	Close() error           // 关闭存储连接
 }

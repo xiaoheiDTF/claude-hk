@@ -50,15 +50,22 @@ func (s *Server) Start() error {
 	traceSvc := service.NewTraceService(s.store.Sessions())
 	logSvc := service.NewLogService(s.cfg.LogDir)
 	configSvc := service.NewConfigService(s.store.Configs())
+	proxySvc := service.NewProxyService(s.store.Proxies())
+	statusSvc := service.NewStatusService(
+		s.store.Sessions(), s.store.Proxies(),
+		s.store.Issues(), s.store.Machines(), s.store.Projects(),
+		time.Now(),
+	)
 
 	router := api.NewRouter(api.Handlers{
 		Issue:   api.NewIssueHandler(issueSvc),
 		Session: api.NewSessionHandler(sessionSvc, issueSvc, tokenSvc, traceSvc),
-		Proxy:   api.NewProxyHandler(),
+		Proxy:   api.NewProxyHandlerWithService(proxySvc),
 		Machine: api.NewMachineHandler(machineSvc),
 		Project: api.NewProjectHandler(projectSvc),
 		Log:     api.NewLogHandler(logSvc),
 		Config:  api.NewConfigHandler(configSvc),
+		Status:  api.NewStatusHandler(statusSvc),
 	})
 
 	// 创建 HTTP 服务器

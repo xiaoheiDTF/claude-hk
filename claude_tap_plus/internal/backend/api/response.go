@@ -195,6 +195,43 @@ type LogItem struct {
 	Message   string `json:"message"`   // 日志内容
 }
 
+// --- Proxy response types ---
+
+// ProxiesResponse 是代理列表的响应体。
+type ProxiesResponse struct {
+	Proxies []ProxyItem `json:"proxies"` // 代理列表
+	Total   int         `json:"total"`   // 总数量
+}
+
+// ProxyItem 是代理列表中的单个条目。
+type ProxyItem struct {
+	ProxyID      string     `json:"proxy_id"`                // 代理唯一 ID
+	ProjectSlug  string     `json:"project_slug"`            // 项目标识
+	Status       string     `json:"status"`                  // 状态：active/offline
+	RegisteredAt time.Time  `json:"registered_at"`           // 注册时间
+	LastPingAt   *time.Time `json:"last_ping_at,omitempty"`  // 最后心跳时间
+}
+
+// --- Status response types ---
+
+// StatusResponse 是系统状态的响应体。
+type StatusResponse struct {
+	Status        string     `json:"status"`         // 系统状态：healthy
+	Version       string     `json:"version"`        // 版本号
+	UptimeSeconds int64      `json:"uptime_seconds"` // 运行时间（秒）
+	Stats         SystemStats `json:"stats"`          // 统计信息
+	Timestamp     time.Time  `json:"timestamp"`      // 时间戳
+}
+
+// SystemStats 是系统统计信息的响应结构。
+type SystemStats struct {
+	ActiveSessions int64 `json:"active_sessions"` // 活跃会话数
+	ActiveProxies  int64 `json:"active_proxies"`  // 活跃代理数
+	PendingIssues  int64 `json:"pending_issues"`  // 待处理 Issue 数
+	TotalMachines  int64 `json:"total_machines"`  // 机器总数
+	TotalProjects  int64 `json:"total_projects"`  // 项目总数
+}
+
 // --- Shared helpers ---
 
 // APIError 是统一的 API 错误结构体。

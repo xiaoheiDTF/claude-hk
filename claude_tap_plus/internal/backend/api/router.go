@@ -17,6 +17,7 @@ type Handlers struct {
 	Project *ProjectHandler // Project 相关接口处理器
 	Log     *LogHandler     // Log 相关接口处理器
 	Config  *ConfigHandler  // Config 相关接口处理器
+	Status  *StatusHandler  // 系统状态处理器
 }
 
 // NewRouter 创建并返回 HTTP 路由器，注册所有 API 端点。
@@ -51,11 +52,12 @@ func NewRouter(h Handlers) http.Handler {
 		}
 	})
 
-	// Proxy 相关路由（代理注册 + trace-init 转发）。
+	// Proxy 相关路由（代理注册 + trace-init 转发 + 代理列表）。
 	if h.Proxy != nil {
 		mux.HandleFunc("/api/proxy/register", h.Proxy.Register)     // 代理注册
 		mux.HandleFunc("/api/proxy/unregister", h.Proxy.Unregister) // 代理注销
 		mux.HandleFunc("/api/proxy/trace-init", h.Proxy.TraceInit)  // 转发 trace-init
+		mux.HandleFunc("/api/proxies", h.Proxy.List)                // 代理列表
 	}
 
 	// Machine 相关路由。
@@ -78,6 +80,11 @@ func NewRouter(h Handlers) http.Handler {
 		mux.HandleFunc("/api/config", h.Config.ServeHTTP) // 获取/更新配置
 	}
 
-	logger.Debug("api", "routes registered: %d endpoints", 13)
+	// Status 相关路由。
+	if h.Status != nil {
+		mux.HandleFunc("/api/status", h.Status.Get) // 系统状态
+	}
+
+	logger.Debug("api", "routes registered: %d endpoints", 15)
 	return mux
 }

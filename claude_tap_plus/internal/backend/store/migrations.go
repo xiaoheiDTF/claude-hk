@@ -77,6 +77,17 @@ func runMigrations(db *sql.DB) error {
 			value      TEXT NOT NULL,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
+
+		// proxies 表：记录已注册的代理信息
+		`CREATE TABLE IF NOT EXISTS proxies (
+			proxy_id      TEXT PRIMARY KEY,
+			project_slug  TEXT NOT NULL,
+			status        TEXT NOT NULL DEFAULT 'active',
+			registered_at DATETIME NOT NULL,
+			last_ping_at  DATETIME
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_proxies_status ON proxies(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_proxies_project ON proxies(project_slug)`,
 	}
 
 	logger.Debug("store", "running %d migration statements", len(stmts))

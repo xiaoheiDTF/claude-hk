@@ -9,19 +9,30 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/service"
+	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/backend/store"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
-// ProxyHandler 处理代理注册和 trace-init 转发。
+// ProxyHandler 处理代理注册、trace-init 转发和代理列表查询。
 type ProxyHandler struct {
 	mu      sync.RWMutex
-	proxies map[string]string // pid -> proxy_url，注册的代理列表
+	proxies map[string]string     // pid -> proxy_url，注册的代理列表（内存）
+	svc     *service.ProxyService // 代理列表服务（数据库）
 }
 
-// NewProxyHandler 创建代理处理器。
+// NewProxyHandler 创建代理处理器（无数据库依赖，仅内存功能）。
 func NewProxyHandler() *ProxyHandler {
 	return &ProxyHandler{
 		proxies: make(map[string]string),
+	}
+}
+
+// NewProxyHandlerWithService 创建带数据库服务的代理处理器。
+func NewProxyHandlerWithService(svc *service.ProxyService) *ProxyHandler {
+	return &ProxyHandler{
+		proxies: make(map[string]string),
+		svc:     svc,
 	}
 }
 
@@ -124,6 +135,53 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 
 	logger.Warn("api.proxy", "trace-init: all proxies failed")
 	http.Error(w, "all proxies unreachable", http.StatusBadGateway)
+}
+
+// List 处理获取代理列表的请求。
+// GET /api/proxies
+// 查询参数：status（可选）、project（可选）
+func (h *ProxyHandler) List(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use GET")
+		return
+	}
+
+	var filter store.ProxyFilter
+	if v := r.URL.Query().Get("status"); v != "" {
+		filter.Status = &v
+	}
+	if v := r.URL.Query().Get("project"); v != "" {
+		filter.Project = &v
+	}
+
+	logger.Debug("api.proxy", "GET /api/proxies status=%v project=%v", filter.Status, filter.Project)
+
+	proxies, err := h.svc.List(r.Context(), filter)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to list proxies")
+		return
+	}
+
+	// 确保返回空数组而非 null
+	if proxies == nil {
+		proxies = []store.Proxy{}
+	}
+
+	items := make([]ProxyItem, len(proxies))
+	for i, p := range proxies {
+		items[i] = ProxyItem{
+			ProxyID:      p.ProxyID,
+			ProjectSlug:  p.ProjectSlug,
+			Status:       p.Status,
+			RegisteredAt: p.RegisteredAt,
+			LastPingAt:   p.LastPingAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, ProxiesResponse{
+		Proxies: items,
+		Total:   len(items),
+	})
 }
 
 // relayTraceInit 将 trace-init 请求转发到指定代理。

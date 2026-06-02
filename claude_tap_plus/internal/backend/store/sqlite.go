@@ -11,7 +11,7 @@ import (
 	_ "modernc.org/sqlite" // 注册 SQLite 驱动
 )
 
-// SQLiteStore 是统一的 SQLite 存储入口，聚合了 Issue、Session、Machine、Project 和 Config 五个子存储。
+// SQLiteStore 是统一的 SQLite 存储入口，聚合了 Issue、Session、Machine、Project、Config 和 Proxy 六个子存储。
 type SQLiteStore struct {
 	db            *sql.DB              // SQLite 数据库连接
 	issueStore    *sqliteIssueStore    // Issue 存储实现
@@ -19,6 +19,7 @@ type SQLiteStore struct {
 	machineStore  *sqliteMachineStore  // Machine 存储实现
 	projectStore  *sqliteProjectStore  // Project 存储实现
 	configStore   *sqliteConfigStore   // Config 存储实现
+	proxyStore    *sqliteProxyStore    // Proxy 存储实现
 }
 
 // NewSQLiteStore 创建并初始化 SQLite 存储。
@@ -60,6 +61,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		machineStore: &sqliteMachineStore{db: db},
 		projectStore: &sqliteProjectStore{db: db},
 		configStore:  cs,
+		proxyStore:   &sqliteProxyStore{db: db},
 	}, nil
 }
 
@@ -77,6 +79,9 @@ func (s *SQLiteStore) Projects() ProjectStore { return s.projectStore }
 
 // Configs 返回 Config 存储接口。
 func (s *SQLiteStore) Configs() ConfigStore { return s.configStore }
+
+// Proxies 返回 Proxy 存储接口。
+func (s *SQLiteStore) Proxies() ProxyStore { return s.proxyStore }
 
 // DB 返回底层的 *sql.DB 连接（主要用于测试）。
 func (s *SQLiteStore) DB() *sql.DB { return s.db }
