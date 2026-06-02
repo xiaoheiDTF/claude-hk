@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Code configuration and documentation project. The repo provides a hooks system, custom skills, Chinese-translated Claude Code documentation, and a Go-based Claude Code API traffic proxy with a backend service (`claude_tap_plus/`).
+Two coupled trees that act as one product:
+
+- **`.claude/`** — shell-side automation: 29 lifecycle hooks, 14 skills, shared logging/locking/backend-calling modules. Lives inside the repo and is consumed by the Claude Code CLI at runtime.
+- **`claude_tap_plus/`** — Go-side service: a reverse proxy that records Claude API traffic as JSONL traces, plus a backend HTTP server (SQLite-backed) that the shell side calls for atomic issue claims, session registration, and status tracking.
+
+The two trees communicate only over HTTP on `127.0.0.1`, with `~/.claude-tap-plus/backend.json` as the single config bridge. See [`.claude/` ↔ `claude_tap_plus/` Linkage](#claude--claude_tap_plus-linkage) for the full call map.
 
 ## Architecture
 
@@ -84,14 +89,80 @@ The 003 series is a complete issue-driven development pipeline:
 - `/001-8-issue-test` — executes Test Plan items, checks off `- [x]`
 - `/001-9-issue-review merge/reject` — **blocks merge if any Test Plan item is unchecked `[ ]`**
 
-### Backend Integration
+### `.claude/` ↔ `claude_tap_plus/` Linkage
 
-Skills communicate with the Go backend service via `skills/backend.sh` shared module:
+The shell side (`.claude/`) and the Go side (`claude_tap_plus/`) are wired together through **one config file + two twin wrapper modules + a fixed set of HTTP endpoints**. Each side has a stable directory role; changes to one side's path or API shape must be mirrored on the other.
 
-- `~/.claude-tap-plus/backend.json` — stores backend host/port (written by Go backend on startup, auto-deleted on exit)
-- `001-4-issue-claim` calls `/api/issue/claim` for atomic claims
-- `29-session-end` hook calls `/api/issue/release-session` to release all issues held by the ending session
-- All backend calls are silent-fail (degrade gracefully when backend is down)
+#### Config bridge (single source of truth)
+
+```
+~/.claude-tap-plus/backend.json   {"host":"127.0.0.1","port":8080}
+        ↑                                   ↓
+        │ written on startup                │ read on every hook/skill fire
+        │ deleted on exit                   │
+claude_tap_plus/internal/backend/      .claude/lib/config.sh
+                                      (load_backend_config() → sets $BACKEND_URL)
+```
+
+`backend.json` is the contract. The Go backend writes it on `backend` subcommand start and removes it on exit; shell code never parses the file directly, it always goes through `.claude/lib/config.sh`.
+
+#### Twin wrapper modules (intentional duplication)
+
+To keep `hooks/` and `skills/` trees independent (skills must not source hooks, and vice versa), the same backend-calling primitives are provided twice — both source the same `lib/config.sh`:
+
+| Wrapper | Sourced by | Provides |
+|---------|-----------|----------|
+| `.claude/hooks/lib/backend.sh` | `hooks/01-session-start`, `hooks/29-session-end` | `_backend_available`, `_require_backend`, `_call_backend` |
+| `.claude/skills/backend.sh`   | all `001-*` skill scripts | same, plus `_get_session_id`, `update_issue_status`, `_status_to_label`, `_sync_github_label` |
+
+If you add a new endpoint, expose it through the wrapper that matches your caller's tree. Don't reach across.
+
+#### Directory-to-directory call map
+
+| Shell caller (`.claude/`) | HTTP endpoint | Go handler (`claude_tap_plus/internal/backend/`) | Purpose |
+|--------------------------|---------------|--------------------------------------------------|---------|
+| `hooks/01-session-start/base.sh` | `POST /api/proxy/trace-init` | `api/` → `service/` | Notify backend a new Claude session is starting |
+| `hooks/01-session-start/base.sh` | `POST /api/session/register` | `api/session_handler.go` → `service/session_service.go` | Register session ↔ machine ↔ project |
+| `hooks/29-session-end/base.sh`   | `POST /api/issue/release-session` | `api/issue_handler.go` → `service/issue_service.go` → `store/issue_store.go` | Release every issue the ending session had claimed |
+| `hooks/29-session-end/base.sh`   | `POST /api/session/close` | `api/session_handler.go` | Mark session closed in DB |
+| `skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh` | `POST /api/issue/check` | `api/issue_handler.go` | Batch check whether issues are already claimed |
+| `skills/001-4-issue-claim/scripts/03UserPromptSubmit.sh` | `POST /api/issue/claim`  | `service/issue_service.go` (atomic) | Atomically claim an issue; falls back to GitHub labels if backend unreachable |
+| `skills/001-5/6/7/8/9-issue-*` (via `update_issue_status`) | `POST /api/issue/status` | `service/issue_service.go` | Push status transitions (`claimed`→`fixing`→…→`merged`); backend returns `previous_status` so the shell can sync GitHub labels |
+
+#### End-to-end issue flow (which tree does what, when)
+
+```
+.claude/skills/001-4-issue-claim/      claude_tap_plus/internal/backend/
+  POST /api/issue/check  ────────────►   service/issue_service.go
+  POST /api/issue/claim ────────────►   (atomic SQL update on issue_claims)
+        │                                       │
+        │ claim granted                          │
+        ▼                                       ▼
+.claude/skills/001-5..001-9/            (status stored in SQLite)
+  update_issue_status(status) ────────►  POST /api/issue/status
+        │                                       │
+        │ previous_status returned              │
+        ▼                                       ▼
+  _sync_github_label()                  (no further backend work)
+  gh issue edit --add-label X
+        │
+        ▼
+  normal GitHub flow (branch / PR / Test Plan / review)
+
+— session ends —
+
+.claude/hooks/29-session-end/base.sh
+  POST /api/issue/release-session ────► release every claim held by this session
+  POST /api/session/close          ────► mark session closed
+```
+
+#### Failure mode
+
+All shell → backend calls are **silent-fail**:
+- `_backend_available()` → returns nonzero; caller skips the API work and continues.
+- `_require_backend()` (claim only) → returns 0/1/2 so claim can fall back to label-based locking if backend is missing or down.
+
+This means the shell side keeps working when the Go backend isn't running — the Go side is an enhancement (atomicity, multi-agent coordination, audit trail), not a dependency.
 
 ### Initialization Flow
 
@@ -165,14 +236,10 @@ Backend path:
   - `issue_store.go` — `IssueStore` interface + SQLite impl (check/claim/release/release-session)
   - `store.go` — Interfaces: `IssueStore`, `Store`
 
-**Backend API routes:**
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/health` | Health check |
-| POST | `/api/issue/check` | Batch check issue claim status |
-| POST | `/api/issue/claim` | Atomically claim an issue |
-| POST | `/api/issue/release` | Release a specific issue |
-| POST | `/api/issue/release-session` | Release all issues for a session |
+**Backend API routes** (shell-side callers are mapped to these in the [Linkage](#claude--claude_tap_plus-linkage) section above):
+- `GET /health`
+- `POST /api/proxy/trace-init`, `POST /api/session/register`, `POST /api/session/close`
+- `POST /api/issue/{check, claim, release, release-session, status}`
 
 **Data flow (proxy):** CLI parses flags → detects upstream URL → starts local proxy → intercepts requests → SSE reassembler for streaming → JSONL trace per API call → exit summary (API calls, token counts).
 
