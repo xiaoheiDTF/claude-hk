@@ -25,6 +25,6 @@ fi
 skill_log "INFO" "日期: $TODAY"
 skill_log "INFO" "脚本目录: $PROJECT_DIR/doc/testcode/python/"
 
-CONTEXT="[testcode-python] 日期: $TODAY\n脚本目录: $PROJECT_DIR/doc/testcode/python/\n  - api/  → API自动化测试\n  - other/ → 其他脚本\n$PYTHON_INFO"
+CONTEXT="[testcode-python] 日期: $TODAY\n$PYTHON_INFO"
 
 echo "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"$CONTEXT\"}}"

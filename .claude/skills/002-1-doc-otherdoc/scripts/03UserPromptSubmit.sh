@@ -14,6 +14,6 @@ mkdir -p "$DOC_DIR"
 skill_log "INFO" "日期: $TODAY"
 skill_log "INFO" "存储目录: $DOC_DIR"
 
-CONTEXT="[otherdoc] 日期: $TODAY\n存储目录: $DOC_DIR/\n规则: 文件存入 $DOC_DIR/，文件名从内容提取关键词，扩展名 .md"
+CONTEXT="[otherdoc] 日期: $TODAY\n存储目录: $DOC_DIR/"
 
 echo "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"$CONTEXT\"}}"
