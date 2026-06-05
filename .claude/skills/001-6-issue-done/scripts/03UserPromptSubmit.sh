@@ -34,3 +34,12 @@ if [ -n "$ISSUE_NUM" ]; then
 fi
 
 skill_log "INFO" "[inject] issue-done context injected for #$ISSUE_NUM"
+
+# 补充上下文：从 03-user-prompt-submit/ 加载学习进化内容
+source "$PROJECT_DIR/.claude/skills/_load_supplementary.sh"
+_load_supplementary "$PROJECT_DIR/.claude/skills/${SKILL_TAG}"
+if [ -n "$SUPPLEMENTARY_TEXT" ]; then
+  echo ""
+  echo "=== 补充上下文 ==="
+  echo "$SUPPLEMENTARY_TEXT"
+fi
