@@ -84,17 +84,22 @@ claude_tap_plus/
 │   ├── logger/                         # 日志系统
 │   │   └── logger.go                   # 统一日志接口
 │   │
-│   └── backend/                        # 后端服务
+│   ├── backend/                        # 后端服务
 │       ├── server.go                   # HTTP 服务器
 │       ├── config.go                   # 后端配置（Host/Port/DBPath）
 │       ├── errors.go                   # 错误定义
 │       │
 │       ├── api/                        # API 路由层
-│       │   ├── router.go               # 路由注册
+│       │   ├── router.go               # 路由注册（15 个端点）
 │       │   ├── issue_handler.go        # Issue 接口处理器
 │       │   ├── session_handler.go      # Session 接口处理器
 │       │   ├── health_handler.go       # 健康检查
 │       │   ├── proxy_handler.go        # 代理注册与 Trace 转发
+│       │   ├── machine_handler.go      # Machine 接口处理器
+│       │   ├── project_handler.go      # Project 接口处理器
+│       │   ├── log_handler.go          # 日志查询处理器
+│       │   ├── config_handler.go       # 配置管理处理器
+│       │   ├── status_handler.go       # 系统状态处理器
 │       │   ├── request.go              # 请求类型定义
 │       │   └── response.go             # 响应类型定义
 │       │
@@ -102,20 +107,32 @@ claude_tap_plus/
 │       │   ├── issue.go                # IssueClaim 结构体 + IssueStatus 枚举
 │       │   ├── machine.go              # Machine 实体
 │       │   ├── project.go              # Project 实体
-│       │   └── session.go              # Session 结构体 + SessionStatus 枚举
+│       │   ├── session.go              # Session 结构体 + SessionStatus 枚举
+│       │   └── token.go                # TokenStats 统计结构体
 │       │
 │       ├── service/                    # 业务逻辑层
 │       │   ├── issue_service.go        # Issue 业务逻辑
 │       │   ├── session_service.go      # Session 业务逻辑
 │       │   ├── cleanup_service.go      # 超时清理
-│       │   └── idle_watchdog.go        # 空闲看门狗
+│       │   ├── idle_watchdog.go        # 空闲看门狗
+│       │   ├── machine_service.go      # Machine 业务逻辑
+│       │   ├── project_service.go      # Project 业务逻辑
+│       │   ├── token_service.go        # Token 统计业务逻辑
+│       │   ├── trace_service.go        # Trace 文件业务逻辑
+│       │   ├── log_service.go          # 日志查询业务逻辑
+│       │   ├── config_service.go       # 配置管理业务逻辑
+│       │   └── status_service.go       # 系统状态业务逻辑
 │       │
 │       └── store/                      # 持久化层
 │           ├── store.go                # 接口定义
 │           ├── sqlite.go               # SQLiteStore 聚合
 │           ├── migrations.go           # Schema 迁移
 │           ├── issue_store.go          # Issue SQL 实现
-│           └── session_store.go        # Session SQL 实现
+│           ├── session_store.go        # Session SQL 实现
+│           ├── machine_store.go        # Machine SQL 实现
+│           ├── project_store.go        # Project SQL 实现
+│           ├── config_store.go         # Config SQL 实现
+│           └── log_store.go            # Log SQL 实现
 │
 └── tests/                              # 测试
     ├── backend/                        # 后端 API 测试
@@ -606,15 +623,20 @@ type Session struct {
 
 ```go
 type Handlers struct {
-    Issue   *IssueHandler
-    Session *SessionHandler
-    Proxy   *ProxyHandler
+    Issue   *IssueHandler   // Issue 相关接口处理器
+    Session *SessionHandler // Session 相关接口处理器
+    Proxy   *ProxyHandler   // 代理注册和 trace-init 转发处理器
+    Machine *MachineHandler // Machine 相关接口处理器
+    Project *ProjectHandler // Project 相关接口处理器
+    Log     *LogHandler     // 日志查询处理器
+    Config  *ConfigHandler  // 配置管理处理器
+    Status  *StatusHandler  // 系统状态处理器
 }
 
 func NewRouter(h Handlers) http.Handler
 ```
 
-**完整路由表**：
+**完整路由表**（15 个端点）：
 
 | 方法 | 路径 | 处理器 | 用途 |
 |------|------|--------|------|
@@ -624,13 +646,23 @@ func NewRouter(h Handlers) http.Handler
 | POST | `/api/issue/release` | `IssueHandler.ReleaseIssue` | 释放指定 Issue |
 | POST | `/api/issue/release-session` | `IssueHandler.ReleaseSession` | 释放会话所有 Issue |
 | POST | `/api/issue/status` | `IssueHandler.UpdateStatus` | 更新 Issue 状态 |
+| GET | `/api/issues` | `IssueHandler.ListIssues` | 列出所有 Issue |
 | POST | `/api/session/register` | `SessionHandler.Register` | 注册会话 |
 | POST | `/api/session/close` | `SessionHandler.Close` | 关闭会话 |
 | GET | `/api/sessions` | `SessionHandler.List` | 获取会话列表 |
-| GET | `/api/session/` | `SessionHandler.Get` | 获取单个会话 |
+| GET | `/api/session/{id}` | `SessionHandler.Get` | 获取单个会话 |
+| GET | `/api/session/{id}/issues` | `SessionHandler.GetIssues` | 获取会话关联 Issue |
+| GET | `/api/session/{id}/tokens` | `SessionHandler.GetTokens` | 获取会话 Token 统计 |
+| GET | `/api/session/{id}/traces` | `SessionHandler.GetTraces` | 获取会话 Trace 文件 |
 | POST | `/api/proxy/register` | `ProxyHandler.Register` | 代理注册 |
 | POST | `/api/proxy/unregister` | `ProxyHandler.Unregister` | 代理注销 |
 | POST | `/api/proxy/trace-init` | `ProxyHandler.TraceInit` | 转发 trace-init |
+| GET | `/api/proxies` | `ProxyHandler.List` | 代理列表 |
+| GET | `/api/machines` | `MachineHandler.List` | 列出所有机器 |
+| GET | `/api/projects` | `ProjectHandler.List` | 列出所有项目 |
+| GET/PUT | `/api/config` | `ConfigHandler.ServeHTTP` | 获取/更新配置 |
+| GET | `/api/logs` | `LogHandler.Query` | 查询日志 |
+| GET | `/api/status` | `StatusHandler.Get` | 系统状态 |
 
 #### issue_handler.go
 
@@ -642,6 +674,7 @@ func NewRouter(h Handlers) http.Handler
 | `ReleaseIssue` | `(w http.ResponseWriter, r *http.Request)` | 释放 Issue |
 | `ReleaseSession` | `(w http.ResponseWriter, r *http.Request)` | 释放会话 |
 | `UpdateStatus` | `(w http.ResponseWriter, r *http.Request)` | 更新状态 |
+| `ListIssues` | `(w http.ResponseWriter, r *http.Request)` | 列出所有 Issue |
 
 #### session_handler.go
 
@@ -652,6 +685,9 @@ func NewRouter(h Handlers) http.Handler
 | `Close` | `(w http.ResponseWriter, r *http.Request)` | 关闭会话 |
 | `List` | `(w http.ResponseWriter, r *http.Request)` | 列出会话 |
 | `Get` | `(w http.ResponseWriter, r *http.Request)` | 获取单个会话 |
+| `GetIssues` | `(w http.ResponseWriter, r *http.Request)` | 获取会话关联 Issue |
+| `GetTokens` | `(w http.ResponseWriter, r *http.Request)` | 获取会话 Token 统计 |
+| `GetTraces` | `(w http.ResponseWriter, r *http.Request)` | 获取会话 Trace 文件 |
 
 #### proxy_handler.go
 
@@ -661,6 +697,44 @@ func NewRouter(h Handlers) http.Handler
 | `Register` | `(w http.ResponseWriter, r *http.Request)` | 代理注册 |
 | `Unregister` | `(w http.ResponseWriter, r *http.Request)` | 代理注销 |
 | `TraceInit` | `(w http.ResponseWriter, r *http.Request)` | 转发 trace-init 到所有注册的代理 |
+| `List` | `(w http.ResponseWriter, r *http.Request)` | 列出所有注册的代理 |
+
+#### machine_handler.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewMachineHandler` | `(svc *service.MachineService) *MachineHandler` | 创建处理器 |
+| `List` | `(w http.ResponseWriter, r *http.Request)` | 列出所有机器 |
+
+#### project_handler.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewProjectHandler` | `(svc *service.ProjectService) *ProjectHandler` | 创建处理器 |
+| `List` | `(w http.ResponseWriter, r *http.Request)` | 列出所有项目 |
+
+#### log_handler.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewLogHandler` | `(svc *service.LogService) *LogHandler` | 创建处理器 |
+| `Query` | `(w http.ResponseWriter, r *http.Request)` | 查询日志（支持过滤） |
+
+#### config_handler.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewConfigHandler` | `(svc *service.ConfigService) *ConfigHandler` | 创建处理器 |
+| `ServeHTTP` | `(w http.ResponseWriter, r *http.Request)` | GET/PUT 分发 |
+| `Get` | `(w http.ResponseWriter, r *http.Request)` | 获取配置 |
+| `Update` | `(w http.ResponseWriter, r *http.Request)` | 更新配置 |
+
+#### status_handler.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewStatusHandler` | `(svc *service.StatusService) *StatusHandler` | 创建处理器 |
+| `Get` | `(w http.ResponseWriter, r *http.Request)` | 获取系统状态（活跃会话/代理/Issue/机器/项目数） |
 
 #### request.go / response.go
 
@@ -730,6 +804,61 @@ type RegisterSessionRequest struct {
 
 监控空闲会话，超时后自动释放关联的 Issue。
 
+#### machine_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewMachineService` | `(s store.MachineStore) *MachineService` | 创建服务 |
+| `List` | `(ctx, filter store.MachineFilter) ([]store.Machine, error)` | 列出机器 |
+| `Get` | `(ctx, machineID string) (*store.Machine, error)` | 获取机器 |
+
+#### project_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewProjectService` | `(s store.ProjectStore) *ProjectService` | 创建服务 |
+| `List` | `(ctx) ([]store.Project, error)` | 列出项目 |
+| `Get` | `(ctx, projectSlug string) (*store.Project, error)` | 获取项目 |
+
+#### token_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewTokenService` | `(s store.SessionStore) *TokenService` | 创建服务 |
+| `GetSessionTokens` | `(ctx, sessionID string) (*domain.TokenStats, error)` | 获取会话 Token 统计 |
+
+从 session 的 local_trace_path 指向的 JSONL Trace 文件中解析并汇总 Token 用量。
+
+#### trace_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewTraceService` | `(s store.SessionStore) *TraceService` | 创建服务 |
+| `GetSessionTraces` | `(ctx, sessionID string) ([]TraceFileInfo, error)` | 获取会话 Trace 文件列表 |
+
+读取 session 关联的 Trace 目录，返回文件元数据（路径、大小、行数、日期）。
+
+#### log_service.go
+
+提供日志查询业务逻辑，支持按级别、标签、时间范围过滤。
+
+#### config_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewConfigService` | `(s store.ConfigStore) *ConfigService` | 创建服务 |
+| `Get` | `(ctx) (map[string]interface{}, error)` | 获取所有配置 |
+| `Update` | `(ctx, updates map[string]interface{}) error` | 更新配置项 |
+
+#### status_service.go
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `NewStatusService` | `(deps StatusDeps) *StatusService` | 创建服务 |
+| `Get` | `(ctx) (*SystemStatus, error)` | 获取系统整体状态 |
+
+返回 `SystemStatus` 结构体，包含版本号、运行时间、活跃会话数、活跃代理数、待处理 Issue 数、机器总数、项目总数。
+
 ### 4.5 Store 持久化层（internal/backend/store/）
 
 > 详细 ER 图见 [claude-tap-plus-diagrams.md](claude-tap-plus-diagrams.md#7-数据库-ER-图)
@@ -744,6 +873,7 @@ type IssueStore interface {
     UpdateIssueStatus(ctx context.Context, repo string, number int, sessionID string, newStatus string) (*UpdateStatusResult, error)
     ReleaseIssue(ctx context.Context, repo string, number int, sessionID string) (bool, error)
     ReleaseSessionIssues(ctx context.Context, sessionID string) ([]int, error)
+    ListIssues(ctx context.Context, repo string) ([]IssueClaim, error)
 }
 ```
 
@@ -758,11 +888,38 @@ type SessionStore interface {
 }
 ```
 
+**MachineStore 接口**：
+```go
+type MachineStore interface {
+    ListMachines(ctx context.Context, filter MachineFilter) ([]Machine, error)
+    GetMachine(ctx context.Context, machineID string) (*Machine, error)
+}
+```
+
+**ProjectStore 接口**：
+```go
+type ProjectStore interface {
+    ListProjects(ctx context.Context) ([]Project, error)
+    GetProject(ctx context.Context, projectSlug string) (*Project, error)
+}
+```
+
+**ConfigStore 接口**：
+```go
+type ConfigStore interface {
+    GetConfig(ctx context.Context) (map[string]interface{}, error)
+    UpdateConfig(ctx context.Context, updates map[string]interface{}) error
+}
+```
+
 **Store 聚合接口**：
 ```go
 type Store interface {
     Issues() IssueStore
     Sessions() SessionStore
+    Machines() MachineStore
+    Projects() ProjectStore
+    Config() ConfigStore
     Close() error
 }
 ```
@@ -810,7 +967,7 @@ func (s *SQLiteStore) Close() error
 
 #### migrations.go — Schema 迁移
 
-4 张表：
+6 张表：
 
 **machines 表**：
 | 字段 | 类型 | 说明 |
@@ -863,6 +1020,22 @@ func (s *SQLiteStore) Close() error
 | updated_at | DATETIME | 更新时间 |
 | UNIQUE | (repo_full_name, issue_number) | 唯一约束 |
 
+**config 表**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| key | TEXT PK | 配置键名 |
+| value | TEXT | 配置值（JSON 字符串） |
+| updated_at | DATETIME | 更新时间 |
+
+**proxies 表**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| proxy_id | TEXT PK | 代理实例 ID |
+| project_slug | TEXT | 关联项目 |
+| status | TEXT | 状态（默认 active） |
+| registered_at | DATETIME | 注册时间 |
+| last_ping_at | DATETIME | 最后心跳时间 |
+
 **索引**：
 - `idx_machines_hostname` — machines(hostname)
 - `idx_projects_slug` — projects(project_slug)
@@ -873,6 +1046,8 @@ func (s *SQLiteStore) Close() error
 - `idx_issue_claims_repo` — issue_claims(repo_full_name)
 - `idx_issue_claims_session` — issue_claims(session_id)
 - `idx_issue_claims_status` — issue_claims(status)
+- `idx_proxies_status` — proxies(status)
+- `idx_proxies_project` — proxies(project_slug)
 
 ---
 

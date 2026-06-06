@@ -129,9 +129,19 @@ Hooks + Skills 是一套基于 Shell 的 **Claude Code 生命周期事件处理�
 │   ├── 002-2-doc-testcode-python/           # Python 测试脚本生成
 │   ├── 002-1-doc-otherdoc/                   # 文档归档
 │   ├── 001-1-issue-init/ ~ 001-9-issue-review/  # Issue 工作流（9 个）
+│   ├── 003-1-develop-feature-tree/          # 功能点与功能树分析
+│   ├── 003-2-develop-bdd-scenario/          # BDD 场景规范
+│   ├── 003-3-1-backend-bdd/                 # 后端 BDD
+│   ├── 003-3-2-frontend-bdd/                # 前端 BDD
+│   ├── 003-4-api-contract/                  # API 契约
+│   ├── 003-5-1-backend-tdd-java/            # 后端 TDD（Java/SpringBoot）
+│   ├── 003-6-1-ui-state-definition/         # UI 状态定义
+│   ├── 003-6-2-frontend-cdd/                # 前端 CDD
+│   ├── 003-7-e2e-test/                      # 端到端测试
 │   ├── 999-2-git-push/                   # Git 提交 + 推送
 │   ├── 999-1-git-commit/                 # Git 仅提交
-│   └── 999-other-110-requirement-planning/  # 需求规划
+│   ├── 999-other-110-requirement-planning/  # 需求规划
+│   └── 999-other-120-learn/                 # 学习进化
 │
 └── lib/
     └── config.sh                       # 共享配置读取模块
@@ -146,7 +156,7 @@ Hooks + Skills 是一套基于 Shell 的 **Claude Code 生命周期事件处理�
 | Skill 共享模块 | 5 个 | active.sh, lock.sh, log.sh, backend.sh, enforce_boundary.sh |
 | 有业务逻辑的 Hook | 6 个 | 01, 03, 05, 06, 16, 29 |
 | 纯日志转发的 Hook | 23 个 | 02, 04, 07-15, 17-28 |
-| Skill 模块 | 14 个 | 每个包含 SKILL.md + scripts/ |
+| Skill 模块 | 24 个 | 每个包含 SKILL.md + scripts/ |
 
 ---
 
@@ -741,8 +751,7 @@ XXX-skill-name/
 
 | Skill | 触发命令 | 描述 | allowed-tools |
 |-------|---------|------|---------------|
-| 002-2-doc-testcode-python | `/002-2-doc-testcode-python` | 在 doc/testcode/python 目录下编写和管理 Python 测试脚本 | Bash, Read, Write, Edit, Glob, Grep |
-| 002-1-doc-otherdoc | `/002-1-doc-otherdoc` | 将内容以 Markdown 存储到 doc/otherDoc，按日期归档 | Bash, Read, Write, Edit, Glob, Grep |
+| **001 Issue 工作流（9 个）** | | | |
 | 001-1-issue-init | `/001-1-issue-init` | 初始化 GitHub 项目的 issue 标签体系（一次性） | Bash, Read, Write |
 | 001-2-issue | `/001-2-issue` | 创建 GitHub Issue，支持本地草稿、模板和发布 | Bash, Read, Write, Glob, Grep |
 | 001-3-issue-discuss | `/001-3-issue-discuss` | 拉取 Issue 内容进行讨论，支持评论互动 | Bash, Read, Write |
@@ -752,9 +761,24 @@ XXX-skill-name/
 | 001-7-issue-pr | `/001-7-issue-pr` | 创建 PR 关联 Issue | Bash, Read, Edit, Write, Glob, Grep |
 | 001-8-issue-test | `/001-8-issue-test` | 执行 PR 的 Test Plan 并更新 checkbox | Bash, Read, Edit, Glob, Grep |
 | 001-9-issue-review | `/001-9-issue-review` | 审核 PR：合并或打回 | Bash, Read |
-| 999-2-git-push | `/999-2-git-push` | 按规范格式提交代码并推送到远程（commit + push） | Bash, Read, Glob, Grep |
+| **002 文档工具（2 个）** | | | |
+| 002-1-doc-otherdoc | `/002-1-doc-otherdoc` | 将内容以 Markdown 存储到 doc/otherDoc，按日期归档 | Bash, Read, Write, Edit, Glob, Grep |
+| 002-2-doc-testcode-python | `/002-2-doc-testcode-python` | 在 doc/testcode/python 目录下编写和管理 Python 测试脚本 | Bash, Read, Write, Edit, Glob, Grep |
+| **003 开发流程（8 个）** | | | |
+| 003-1-develop-feature-tree | `/003-1-develop-feature-tree` | 功能点与功能树分析：明确做什么、涉及谁、边界在哪 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-2-develop-bdd-scenario | `/003-2-develop-bdd-scenario` | BDD 场景规范：将功能点细化为可验证的正向/异常/边界场景 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-3-1-backend-bdd | `/003-3-1-backend-bdd` | 后端 BDD：将 BDD 场景拆解为后端可验证的行为场景 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-3-2-frontend-bdd | `/003-3-2-frontend-bdd` | 前端 BDD：将 BDD 场景拆解为前端可验证的 UI/交互场景 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-4-api-contract | `/003-4-api-contract` | API 契约：根据后端 BDD 和前端 BDD 定义前后端接口契约 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-5-1-backend-tdd-java | `/003-5-1-backend-tdd-java` | 后端 TDD（Java/SpringBoot）：根据后端 BDD 写单元测试 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-6-1-ui-state-definition | `/003-6-1-ui-state-definition` | UI 状态定义 | Bash, Read, Write, Edit, Glob, Grep |
+| 003-6-2-frontend-cdd | `/003-6-2-frontend-cdd` | 前端 CDD | Bash, Read, Write, Edit, Glob, Grep |
+| 003-7-e2e-test | `/003-7-e2e-test` | 端到端测试 | Bash, Read, Write, Edit, Glob, Grep |
+| **999 Git 与工具（4 个）** | | | |
 | 999-1-git-commit | `/999-1-git-commit` | 按规范格式提交代码到本地（仅 commit） | Bash, Read, Edit, Glob, Grep |
+| 999-2-git-push | `/999-2-git-push` | 按规范格式提交代码并推送到远程（commit + push） | Bash, Read, Glob, Grep |
 | 999-other-110-requirement-planning | `/999-other-110-requirement-planning` | 将功能需求拆解为 PRD 页面文档和领域模块文档 | Bash, Read, Write, Edit, Glob, Grep |
+| 999-other-120-learn | `/999-other-120-learn` | 学习进化：从用户反馈中学习和改进 | Bash, Read, Write, Edit, Glob, Grep |
 
 ---
 

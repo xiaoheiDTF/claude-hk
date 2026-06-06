@@ -56,7 +56,7 @@ graph TB
     style LOGGER fill:#888,color:#fff
 ```
 
-**说明**：三大子系统共用 `logger/` 基础设施。代理模式包含完整的 API 流量拦截管线（config → proxy → sse → trace → usage），后端服务采用三层架构（api → service → store），会话管理独立运行。
+**说明**：三大子系统共用 `logger/` 基础设施。代理模式包含完整的 API 流量拦截管线（config → proxy → sse → trace → usage），后端服务采用三层架构（api → service → store，11 个 Service + 9 个 Handler + 15 个端点），会话管理独立运行。
 
 ---
 
@@ -287,54 +287,79 @@ graph TD
     end
 
     subgraph API 路由层
-        R["router.go"]
+        R["router.go（15 个端点）"]
         IH["IssueHandler"]
         SH["SessionHandler"]
         PH["ProxyHandler"]
+        MH["MachineHandler"]
+        PrH["ProjectHandler"]
+        LH["LogHandler"]
+        CH["ConfigHandler"]
+        STH["StatusHandler"]
         HH["Health"]
     end
 
     subgraph Service 业务层
         IS["IssueService"]
         SS["SessionService"]
+        MS["MachineService"]
+        PS["ProjectService"]
+        TS["TokenService"]
+        TrS["TraceService"]
+        LS["LogService"]
+        CS2["ConfigService"]
+        STS["StatusService"]
         CS["CleanupService"]
         WD["IdleWatchdog"]
     end
 
     subgraph Store 持久化层
-        IStore["IssueStore<br/>(interface)"]
-        SStore["SessionStore<br/>(interface)"]
+        IStore["IssueStore"]
+        SStore["SessionStore"]
+        MStore["MachineStore"]
+        PrStore["ProjectStore"]
+        CStore["ConfigStore"]
+        LStore["LogStore"]
         SQLite["SQLiteStore"]
         DB[("SQLite<br/>backend.db")]
     end
 
     REQ --> R
-    R --> IH & SH & PH & HH
+    R --> IH & SH & PH & MH & PrH & LH & CH & STH & HH
 
     IH --> IS
     SH --> SS
-    PH --> PH
+    MH --> MS
+    PrH --> PS
+    LH --> LS
+    CH --> CS2
+    STH --> STS
+    SS --> TS & TrS
 
     IS --> IStore
     SS --> SStore
+    MS --> MStore
+    PS --> PrStore
+    LS --> LStore
+    CS2 --> CStore
+    STS --> SStore & IStore
     CS --> SStore
     WD --> IStore
 
-    IStore --> SQLite
-    SStore --> SQLite
+    IStore & SStore & MStore & PrStore & CStore & LStore --> SQLite
     SQLite --> DB
 
     style REQ fill:#4a90d9,color:#fff
     style DB fill:#f9f, color:#000
 ```
 
-**说明**：严格的单向依赖——API 层调用 Service 层，Service 层调用 Store 接口，Store 接口由 SQLiteStore 实现。CleanupService 和 IdleWatchdog 是后台任务，直接操作 Store 层。
+**说明**：严格的单向依赖——API 层调用 Service 层，Service 层调用 Store 接口，Store 接口由 SQLiteStore 统一实现。路由从原来的 7 个端点扩展到 15 个，新增 Machine/Project/Log/Config/Status 五组处理器。CleanupService 和 IdleWatchdog 是后台任务，直接操作 Store 层。
 
 ---
 
 ## 7. 数据库 ER 图
 
-4 张表的关系图。
+6 张表的关系图。
 
 ```mermaid
 erDiagram
@@ -384,12 +409,27 @@ erDiagram
         DATETIME updated_at
     }
 
+    config {
+        TEXT key PK
+        TEXT value
+        DATETIME updated_at
+    }
+
+    proxies {
+        TEXT proxy_id PK
+        TEXT project_slug
+        TEXT status
+        DATETIME registered_at
+        DATETIME last_ping_at
+    }
+
     machines ||--o{ sessions : "machine_id"
     projects ||--o{ sessions : "project_slug"
+    projects ||--o{ proxies : "project_slug"
     sessions ||--o{ issue_claims : "session_id"
 ```
 
-**说明**：`machines` 和 `projects` 通过 `machine_id` 和 `project_slug` 与 `sessions` 关联。`issue_claims` 通过 `session_id` 与 `sessions` 关联，记录哪个会话领取了哪个 Issue。`issue_claims` 有 UNIQUE(repo_full_name, issue_number) 约束确保同一 Issue 不会被重复创建记录。
+**说明**：`machines` 和 `projects` 通过 `machine_id` 和 `project_slug` 与 `sessions` 关联。`issue_claims` 通过 `session_id` 与 `sessions` 关联，记录哪个会话领取了哪个 Issue。`config` 表是独立的键值存储，用于系统运行时配置。`proxies` 表记录已注册的代理实例，通过 `project_slug` 关联项目。`issue_claims` 有 UNIQUE(repo_full_name, issue_number) 约束确保同一 Issue 不会被重复创建记录。
 
 ---
 
