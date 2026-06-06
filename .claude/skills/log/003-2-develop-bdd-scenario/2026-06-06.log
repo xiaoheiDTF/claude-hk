@@ -1,0 +1,4 @@
+[2026-06-06 10:21:00] [INFO] [003-2-develop-bdd-scenario] BDD 场景规范已加载
+[2026-06-06 10:21:43] [INFO] [003-2-develop-bdd-scenario] [stop] skill completed | session: f19f2dcd-5cb7-4e25-89c6-4a90c9705548
+[2026-06-06 10:21:44] [INFO] [003-2-develop-bdd-scenario] [stop] .active removed session: f19f2dcd-5cb7-4e25-89c6-4a90c9705548
+[2026-06-06 10:21:44] [INFO] [003-2-develop-bdd-scenario] [stop] skill lifecycle end
