@@ -6,38 +6,23 @@
 
 | 层面 | 目录 | 回答的问题 |
 |------|------|-----------|
-| 功能介绍 | [`features/`](features/) | 有哪些功能？怎么用？使用场景是什么？ |
-| 功能机制 | [`mechanisms/`](mechanisms/) | 功能背后怎么实现的？设计原理是什么？ |
-| 项目治理 | [`project/`](project/) | 版本日志、贡献指南 |
+| 架构设计 | [`redeme/`](redeme/) | 系统架构、流程图、设计原理 |
+| 功能介绍 | [`features/`](features/) | 有哪些功能？怎么用？使用场景是什么？（待补充） |
+| 功能机制 | [`mechanisms/`](mechanisms/) | 功能背后怎么实现的？设计原理是什么？（待补充） |
+| 项目治理 | [`project/`](project/) | 版本日志、贡献指南（待补充） |
+| 中文翻译 | [`claude-code-cli-doc/`](claude-code-cli-doc/) | Claude Code CLI 完整中文文档（130+ 篇） |
+| 技能输出 | [`otherDoc/`](otherDoc/) | 002-1 技能的归档文档（按日期） |
+| 测试脚本 | [`testcode/`](testcode/) | 002-2 技能的 Python 测试脚本 |
+| Issue 草稿 | [`issues/`](issues/) | Issue 模板和本地草稿 |
 
-## 功能介绍
+## 架构设计
 
-> 面向使用者：了解项目能做什么、怎么用。
-
-| 文档 | 内容 |
-|------|------|
-| [Skill 完整清单](features/skill-reference.md) | 13 个内置 Skill 的命令、能力、输出目录 |
-| [Skill 使用教程](features/skill-usage.md) | 调用流程、参数、典型场景 |
-| [Git 工作流](features/git-workflow.md) | 提交规范、004/005 Skill 使用 |
-| [Hooks 使用方式](features/hooks-usage.md) | 29 个事件一览、如何扩展 |
-| [如何新增 Skill](features/how-to-add-skill.md) | 6 步教程、目录模板、规范 |
-
-## 功能机制
-
-> 面向开发者：了解实现原理和设计决策。
+> 面向开发者：完整的系统架构参考和流程图。
 
 | 文档 | 内容 |
 |------|------|
-| [系统架构](mechanisms/architecture.md) | 三层设计、调用链、模块依赖 |
-| [目录结构](mechanisms/project-structure.md) | 每个目录/文件的设计意图和职责 |
-| [Hooks 管道](mechanisms/hooks-pipeline.md) | 事件注册、调度器模式、JSON 解析降级 |
-| [Skill 系统](mechanisms/skill-system.md) | 上下文注入、生命周期、工具边界、并发安全 |
-| [初始化流程](mechanisms/initialization.md) | init.sh 5 步骤、幂等性、平台适配 |
-| [设计亮点](mechanisms/design-highlights.md) | 两层调度、渐进降级、并发安全、双路日志 |
-
-## 项目治理
-
-| 文档 | 内容 |
-|------|------|
-| [CHANGELOG](project/CHANGELOG.md) | 版本更新日志 |
-| [贡献指南](project/CONTRIBUTING.md) | 如何提 Issue、PR、新增 Skill |
+| [Hooks + Skills 架构](redeme/hooks-skills-architecture.md) | 29 个 Hook 事件、24 个 Skill、共享模块、003 Issue 工作流 |
+| [Hooks + Skills 流程图集](redeme/hooks-skills-diagrams.md) | 总览图、初始化时序、Skill 生命周期、并发安全模型 |
+| [claude_tap_plus 架构](redeme/claude-tap-plus-architecture.md) | Go 后端：代理模式、15 个 API 端点、6 张表、Profile 配置 |
+| [claude_tap_plus 流程图集](redeme/claude-tap-plus-diagrams.md) | 数据流、配置优先级、SSE 重组、ER 图 |
+| [Dashboard 线框图](redeme/dashboard-wireframe.md) | 仪表盘功能分析、BDD 场景、后端 BDD |
