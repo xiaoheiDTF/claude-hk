@@ -16,24 +16,61 @@ import (
 
 // ProxyHandler 处理代理注册、trace-init 转发和代理列表查询。
 type ProxyHandler struct {
-	mu      sync.RWMutex
-	proxies map[string]string     // pid -> proxy_url，注册的代理列表（内存）
-	svc     *service.ProxyService // 代理列表服务（数据库）
+	mu            sync.RWMutex
+	proxies       map[string]string   // pid -> proxy_url，注册的代理列表（内存）
+	sessions      map[string]string   // session_id -> proxy_url，会话到代理的精确路由映射
+	proxySessions map[string][]string // pid -> []session_id，代理注销时清理映射
+	svc           *service.ProxyService // 代理列表服务（数据库）
 }
 
 // NewProxyHandler 创建代理处理器（无数据库依赖，仅内存功能）。
 func NewProxyHandler() *ProxyHandler {
 	return &ProxyHandler{
-		proxies: make(map[string]string),
+		proxies:       make(map[string]string),
+		sessions:      make(map[string]string),
+		proxySessions: make(map[string][]string),
 	}
 }
 
 // NewProxyHandlerWithService 创建带数据库服务的代理处理器。
 func NewProxyHandlerWithService(svc *service.ProxyService) *ProxyHandler {
 	return &ProxyHandler{
-		proxies: make(map[string]string),
-		svc:     svc,
+		proxies:       make(map[string]string),
+		sessions:      make(map[string]string),
+		proxySessions: make(map[string][]string),
+		svc:           svc,
 	}
+}
+
+// bindSession 将会话绑定到代理 URL（内部调用需持有写锁）。
+func (h *ProxyHandler) bindSession(pid, sessionID, proxyURL string) {
+	// 解绑该 session_id 之前可能绑定的代理
+	if oldURL, ok := h.sessions[sessionID]; ok && oldURL != proxyURL {
+		logger.Debug("api.proxy", "rebind session %s: %s -> %s", sessionID, oldURL, proxyURL)
+	}
+	h.sessions[sessionID] = proxyURL
+	// 记录到 proxy 索引，用于注销时清理
+	found := false
+	for _, sid := range h.proxySessions[pid] {
+		if sid == sessionID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		h.proxySessions[pid] = append(h.proxySessions[pid], sessionID)
+	}
+}
+
+// unbindProxySessions 清理指定 pid 下的所有 session 绑定（内部调用需持有写锁）。
+func (h *ProxyHandler) unbindProxySessions(pid string) {
+	for _, sessionID := range h.proxySessions[pid] {
+		if h.sessions[sessionID] == h.proxies[pid] {
+			delete(h.sessions, sessionID)
+			logger.Debug("api.proxy", "unbind session %s on proxy %s unregister", sessionID, pid)
+		}
+	}
+	delete(h.proxySessions, pid)
 }
 
 // Register 处理代理注册请求。
@@ -85,6 +122,7 @@ func (h *ProxyHandler) Unregister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mu.Lock()
+	h.unbindProxySessions(req.PID)
 	delete(h.proxies, req.PID)
 	h.mu.Unlock()
 
@@ -92,9 +130,9 @@ func (h *ProxyHandler) Unregister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// TraceInit 转发 trace-init 请求到所有注册的代理。
+// TraceInit 转发 trace-init 请求到指定代理。
 // POST /api/proxy/trace-init
-// 将请求体原样转发给每个代理的 /_internal/trace-init，返回第一个成功的响应。
+// 优先根据 session_id 查询已绑定的代理进行精确转发；未绑定时广播探测并记录映射。
 func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "use POST", http.StatusMethodNotAllowed)
@@ -108,32 +146,59 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 获取所有注册的代理
+	// 解析 session_id 用于精确路由
+	var tiReq TraceInitRequest
+	if err := json.Unmarshal(body, &tiReq); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if tiReq.SessionID == "" {
+		http.Error(w, "session_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// 精确路由：该 session 是否已绑定到某个代理
 	h.mu.RLock()
-	urls := make([]string, 0, len(h.proxies))
-	for _, url := range h.proxies {
-		urls = append(urls, url)
+	boundURL, bound := h.sessions[tiReq.SessionID]
+	proxiesCopy := make(map[string]string, len(h.proxies))
+	for pid, url := range h.proxies {
+		proxiesCopy[pid] = url
 	}
 	h.mu.RUnlock()
 
-	if len(urls) == 0 {
+	if bound {
+		logger.Debug("api.proxy", "trace-init: direct route session=%s to %s", tiReq.SessionID, boundURL)
+		resp, err := relayTraceInit(boundURL, body)
+		if err == nil {
+			writeJSON(w, http.StatusOK, resp)
+			return
+		}
+		logger.Warn("api.proxy", "trace-init: bound proxy %s unreachable for session=%s: %v", boundURL, tiReq.SessionID, err)
+		// 绑定代理失效，降级为广播探测并更新绑定
+	}
+
+	if len(proxiesCopy) == 0 {
 		logger.Warn("api.proxy", "trace-init: no proxies registered")
 		http.Error(w, "no proxies registered", http.StatusServiceUnavailable)
 		return
 	}
 
-	// 转发到每个代理，返回第一个成功的响应
-	for _, proxyURL := range urls {
+	// 广播探测：转发到每个代理，第一个成功者被选中并记录映射
+	for pid, proxyURL := range proxiesCopy {
 		resp, err := relayTraceInit(proxyURL, body)
 		if err != nil {
 			logger.Debug("api.proxy", "trace-init relay to %s failed: %v", proxyURL, err)
 			continue
 		}
+		h.mu.Lock()
+		h.bindSession(pid, tiReq.SessionID, proxyURL)
+		h.mu.Unlock()
+		logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s url=%s", tiReq.SessionID, pid, proxyURL)
 		writeJSON(w, http.StatusOK, resp)
 		return
 	}
 
-	logger.Warn("api.proxy", "trace-init: all proxies failed")
+	logger.Warn("api.proxy", "trace-init: all proxies failed for session=%s", tiReq.SessionID)
 	http.Error(w, "all proxies unreachable", http.StatusBadGateway)
 }
 
