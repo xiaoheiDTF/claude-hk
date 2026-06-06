@@ -15,6 +15,7 @@ type ProfileConfig struct {
 	APIKey    string `json:"api_key"`               // API 密钥
 	AuthToken string `json:"auth_token,omitempty"`  // OAuth Token
 	Provider  string `json:"provider,omitempty"`    // 供应商标识（anthropic/openai/gemini）
+	Model     string `json:"model,omitempty"`       // 强制替换的模型名
 }
 
 // ProfilesFile 表示 profiles.json 的完整结构。

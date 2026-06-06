@@ -21,16 +21,29 @@ import (
 
 // ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
 type ReverseProxy struct {
-	target         string              // 上游 API 目标地址
-	baseDir        string              // Trace 文件存放的基础目录
-	writer         *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
-	client         *http.Client        // 转发请求的 HTTP 客户端
-	turn           atomic.Int64        // 请求计数器，用于标记 Turn 编号
-	server         *http.Server        // 本地代理 HTTP 服务器
-	startOnce      sync.Once           // 确保 Start 只执行一次
-	sessionID      string              // 当前会话 ID（由 trace-init 设置）
-	projectSlug    string              // 当前项目标识（由 trace-init 设置）
-	OnSessionInit  func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
+	target             string              // 上游 API 目标地址
+	baseDir            string              // Trace 文件存放的基础目录
+	writer             *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
+	client             *http.Client        // 转发请求的 HTTP 客户端
+	turn               atomic.Int64        // 请求计数器，用于标记 Turn 编号
+	server             *http.Server        // 本地代理 HTTP 服务器
+	startOnce          sync.Once           // 确保 Start 只执行一次
+	sessionID          string              // 当前会话 ID（由 trace-init 设置）
+	projectSlug        string              // 当前项目标识（由 trace-init 设置）
+	OnSessionInit      func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
+	model              string              // 强制替换的模型名（空=不改写）
+	upstreamAvailable  bool                // 上游可用性标记，初始 true
+	fallbackConfig     *FallbackConfig      // 兜底配置（上游不可用时切换）
+	availableMu        sync.Mutex          // 保护 upstreamAvailable 和 fallbackConfig 的并发安全
+	actualAddr         string              // 实际监听地址（启动后设置）
+}
+
+// FallbackConfig 存储上游不可用时的兜底配置。
+type FallbackConfig struct {
+	BaseURL   string // 兜底上游 API 地址
+	Model     string // 兜底模型名
+	AuthToken string // 兜底认证 Token
+	APIKey    string // 兜底 API Key
 }
 
 // NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
@@ -38,8 +51,9 @@ type ReverseProxy struct {
 func NewReverseProxy(target, traceDir string) *ReverseProxy {
 	logger.Debug("proxy", "new proxy: target=%s baseDir=%s", target, traceDir)
 	return &ReverseProxy{
-		target:  strings.TrimRight(target, "/"),
-		baseDir: traceDir,
+		target:            strings.TrimRight(target, "/"),
+		baseDir:           traceDir,
+		upstreamAvailable: true,
 		client: &http.Client{
 			Timeout: 0, // 流式场景不设超时
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -72,6 +86,7 @@ func (p *ReverseProxy) Start(host string, port int) (int, error) {
 	}()
 
 	actualPort := listener.Addr().(*netTCPAddr).Port
+	p.actualAddr = fmt.Sprintf("http://127.0.0.1:%d", actualPort)
 	logger.Info("proxy", "listening on 127.0.0.1:%d", actualPort)
 	return actualPort, nil
 }
@@ -85,6 +100,11 @@ func (p *ReverseProxy) Stop() {
 	if p.server != nil {
 		_ = p.server.Close()
 	}
+}
+
+// URL 返回代理服务器的 HTTP 地址（如 http://127.0.0.1:8080）。
+func (p *ReverseProxy) URL() string {
+	return p.actualAddr
 }
 
 // serveHTTP 是代理的核心 HTTP 处理函数。
@@ -116,6 +136,15 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(bodyBytes, &reqBody)
 	}
 
+	// 请求体 model 改写（契约 3）
+	bodyBytes = rewriteModel(bodyBytes, reqBody, p.model)
+
+	// 重新解析改写后的请求体
+	reqBody = nil
+	if len(bodyBytes) > 0 {
+		_ = json.Unmarshal(bodyBytes, &reqBody)
+	}
+
 	// 生成请求 ID 与 Turn 编号
 	reqID := fmt.Sprintf("req_%d", time.Now().UnixNano()%1e12)
 	turn := int(p.turn.Add(1))
@@ -123,8 +152,28 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("proxy", "[Turn %d] request: %s %s (%d bytes)", turn, r.Method, r.URL.Path, len(bodyBytes))
 
+	// 确定上游目标：检查是否需要走兜底配置（契约 4）
+	p.availableMu.Lock()
+	useFallback := !p.upstreamAvailable && p.fallbackConfig != nil
+	activeTarget := p.target
+	var fallbackModel string
+	if useFallback {
+		activeTarget = p.fallbackConfig.BaseURL
+		fallbackModel = p.fallbackConfig.Model
+	}
+	p.availableMu.Unlock()
+
+	// 兜底模式下重新改写 model
+	if useFallback && fallbackModel != "" {
+		bodyBytes = rewriteModel(bodyBytes, reqBody, fallbackModel)
+		reqBody = nil
+		if len(bodyBytes) > 0 {
+			_ = json.Unmarshal(bodyBytes, &reqBody)
+		}
+	}
+
 	// 构建上游请求 URL
-	upstreamURL := p.target + r.URL.Path
+	upstreamURL := activeTarget + r.URL.Path
 	if r.URL.RawQuery != "" {
 		upstreamURL += "?" + r.URL.RawQuery
 	}
@@ -147,14 +196,31 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	upstreamReq.Header.Del("Host")
 
+	// 兜底模式下替换认证头
+	if useFallback && p.fallbackConfig != nil {
+		if p.fallbackConfig.APIKey != "" {
+			upstreamReq.Header.Set("x-api-key", p.fallbackConfig.APIKey)
+		}
+		if p.fallbackConfig.AuthToken != "" {
+			upstreamReq.Header.Set("Authorization", "Bearer "+p.fallbackConfig.AuthToken)
+		}
+	}
+
 	// 向上游发送请求
 	upstreamResp, err := p.client.Do(upstreamReq)
 	if err != nil {
 		logger.Warn("proxy", "[Turn %d] upstream error: %v", turn, err)
+		p.markUnavailable()
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 	defer upstreamResp.Body.Close()
+
+	// 响应错误（4xx/5xx）→ 标记上游不可用（契约 4）
+	if upstreamResp.StatusCode >= 400 {
+		logger.Warn("proxy", "[Turn %d] upstream error response: %d", turn, upstreamResp.StatusCode)
+		p.markUnavailable()
+	}
 
 	duration := time.Since(t0).Milliseconds()
 
@@ -506,4 +572,45 @@ func (p *ReverseProxy) TracePath() string {
 		return w.Path()
 	}
 	return ""
+}
+
+// markUnavailable 标记上游不可用（契约 4）。
+// 首次失败后置 upstreamAvailable = false，进程生命周期内不再恢复。
+func (p *ReverseProxy) markUnavailable() {
+	p.availableMu.Lock()
+	defer p.availableMu.Unlock()
+	if p.upstreamAvailable {
+		p.upstreamAvailable = false
+		logger.Warn("proxy", "upstream marked unavailable, switching to fallback")
+	}
+}
+
+// SetModel 设置强制替换的模型名。
+func (p *ReverseProxy) SetModel(model string) {
+	p.model = model
+}
+
+// SetFallbackConfig 设置兜底配置。
+func (p *ReverseProxy) SetFallbackConfig(cfg *FallbackConfig) {
+	p.fallbackConfig = cfg
+}
+
+// rewriteModel 改写请求体 JSON 中的 model 字段（契约 3）。
+// 如果 model 为空、body 为空、body 非 JSON 或 body 为 JSON 非对象，原样返回。
+func rewriteModel(body []byte, parsed any, model string) []byte {
+	if model == "" || len(body) == 0 {
+		return body
+	}
+
+	m, ok := parsed.(map[string]any)
+	if !ok {
+		return body // 非 JSON 或非对象
+	}
+
+	m["model"] = model
+	rewritten, err := json.Marshal(m)
+	if err != nil {
+		return body // 改写失败，原样返回
+	}
+	return rewritten
 }

@@ -11,6 +11,7 @@ type ResolvedConfig struct {
 	BaseURL   string // 最终的上游 API 地址
 	APIKey    string // 最终的 API Key（可能为空）
 	AuthToken string // 最终的 OAuth Token（可能为空）
+	Model     string // 最终的模型名（可能为空，空表示不做替换）
 }
 
 // ResolveTargetConfig 按优先级解析最终的上游 API 配置。
@@ -34,6 +35,7 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string
 			result.BaseURL = p.BaseURL
 			result.APIKey = p.APIKey
 			result.AuthToken = p.AuthToken
+			result.Model = p.Model
 		}
 	}
 
@@ -66,13 +68,20 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string
 		}
 	}
 
-	// Level 4: ~/.claude.json（仅在 base_url 仍为空时）
-	if result.BaseURL == "" && cfg == &ClaudeClient {
+	// Level 4: ~/.claude.json（仅在 base_url 或 model 仍为空时）
+	if cfg == &ClaudeClient {
 		cc, err := ReadClaudeConfig()
 		if err == nil && cc != nil {
-			if url := ClaudeBaseURLFromConfig(cc); url != "" {
-				result.BaseURL = url
-				logger.Debug("config", "base_url from ~/.claude.json")
+			if result.BaseURL == "" {
+				if url := ClaudeBaseURLFromConfig(cc); url != "" {
+					result.BaseURL = url
+					logger.Debug("config", "base_url from ~/.claude.json")
+				}
+			}
+			// model 优先级：profile model > ~/.claude.json model > 空
+			if result.Model == "" && cc.Model != "" {
+				result.Model = cc.Model
+				logger.Debug("config", "model from ~/.claude.json")
 			}
 		}
 	}
@@ -88,6 +97,6 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string
 	} else if result.AuthToken != "" {
 		authType = "auth_token"
 	}
-	logger.Info("config", "resolved: base_url=%s auth=%s", result.BaseURL, authType)
+	logger.Info("config", "resolved: base_url=%s auth=%s model=%s", result.BaseURL, authType, result.Model)
 	return result, nil
 }

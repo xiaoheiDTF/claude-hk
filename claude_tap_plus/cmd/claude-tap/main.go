@@ -232,6 +232,15 @@ func runProxy(args []string) {
 
 	// 创建反向代理实例，绑定上游目标和追踪输出目录
 	rp := proxy.NewReverseProxy(target, tapOutputDir)
+
+	// 设置 model 改写（契约 2：resolved.Model 优先级链）
+	rp.SetModel(resolved.Model)
+
+	// 加载兜底配置（契约 4：从 Claude settings 读取）
+	if fallback := loadFallbackConfig(); fallback != nil {
+		rp.SetFallbackConfig(fallback)
+	}
+
 	port := tapPort
 	// 启动代理监听（如果 port 为 0 则随机分配端口）
 	actualPort, err := rp.Start("127.0.0.1", port)
@@ -360,6 +369,27 @@ func runProxy(args []string) {
 		resumeCmd := buildResumeCommand(originalArgs, sessionID)
 		fmt.Printf("📎 Resume:\n")
 		fmt.Printf("   %s\n", resumeCmd)
+	}
+}
+
+// loadFallbackConfig 从 Claude settings 加载兜底配置（契约 4）。
+// 读取 ~/.claude/settings.json 中的 base_url、model、认证信息作为 fallback。
+func loadFallbackConfig() *proxy.FallbackConfig {
+	s, err := config.ReadClaudeSettings()
+	if err != nil || s == nil {
+		return nil
+	}
+
+	baseURL := s.Env.AnthropicBaseURL
+	if baseURL == "" {
+		baseURL = config.ClaudeClient.DefaultTarget
+	}
+
+	return &proxy.FallbackConfig{
+		BaseURL:   baseURL,
+		Model:     s.Model,
+		AuthToken: s.Env.AnthropicAuthToken,
+		APIKey:    s.Env.AnthropicAPIKey,
 	}
 }
 
