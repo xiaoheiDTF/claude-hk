@@ -236,6 +236,11 @@ func runProxy(args []string) {
 	// 设置 model 改写（契约 2：resolved.Model 优先级链）
 	rp.SetModel(resolved.Model)
 
+	// 检测是否为 kimi 上游，启用 reasoning_content 缓存
+	if proxy.IsKimiURL(resolved.BaseURL) {
+		rp.SetKimiMode(true)
+	}
+
 	// 加载兜底配置（契约 4：从 Claude settings 读取）
 	if fallback := loadFallbackConfig(); fallback != nil {
 		rp.SetFallbackConfig(fallback)

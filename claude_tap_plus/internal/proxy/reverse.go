@@ -36,6 +36,8 @@ type ReverseProxy struct {
 	fallbackConfig     *FallbackConfig      // 兜底配置（上游不可用时切换）
 	availableMu        sync.Mutex          // 保护 upstreamAvailable 和 fallbackConfig 的并发安全
 	actualAddr         string              // 实际监听地址（启动后设置）
+	reasoningCache     *ReasoningCache     // reasoning_content 缓存（仅 kimi 模式）
+	kimiMode           bool                // 是否为 kimi 上游
 }
 
 // FallbackConfig 存储上游不可用时的兜底配置。
@@ -145,6 +147,13 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(bodyBytes, &reqBody)
 	}
 
+	// 为 thinking 模式下的 assistant tool_call 消息注入 reasoning_content
+	bodyBytes = injectReasoningContentCached(bodyBytes, reqBody, p.reasoningCache, p.kimiMode)
+	reqBody = nil
+	if len(bodyBytes) > 0 {
+		_ = json.Unmarshal(bodyBytes, &reqBody)
+	}
+
 	// 生成请求 ID 与 Turn 编号
 	reqID := fmt.Sprintf("req_%d", time.Now().UnixNano()%1e12)
 	turn := int(p.turn.Add(1))
@@ -166,6 +175,13 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	// 兜底模式下重新改写 model
 	if useFallback && fallbackModel != "" {
 		bodyBytes = rewriteModel(bodyBytes, reqBody, fallbackModel)
+		reqBody = nil
+		if len(bodyBytes) > 0 {
+			_ = json.Unmarshal(bodyBytes, &reqBody)
+		}
+
+		// 为 thinking 模式下的 assistant tool_call 消息注入 reasoning_content
+		bodyBytes = injectReasoningContentCached(bodyBytes, reqBody, p.reasoningCache, IsKimiURL(activeTarget))
 		reqBody = nil
 		if len(bodyBytes) > 0 {
 			_ = json.Unmarshal(bodyBytes, &reqBody)
@@ -292,6 +308,11 @@ func (p *ReverseProxy) handleStreaming(
 	reconstructed := reassembler.Reconstruct()
 	logger.Debug("proxy", "[Turn %d] stream done: %d SSE events, %dms", turn, len(reassembler.Events), durationMs)
 
+	// kimi 模式下缓存 SSE 响应中的 reasoning_content
+	if p.kimiMode && reconstructed != nil {
+		p.cacheFromResponse(reconstructed)
+	}
+
 	// 构建 Trace 记录
 	record := buildRecord(
 		reqID, turn, durationMs,
@@ -354,6 +375,13 @@ func (p *ReverseProxy) handleNonStreaming(
 	var respBody any
 	if len(decodeBytes) > 0 {
 		_ = json.Unmarshal(decodeBytes, &respBody)
+	}
+
+	// kimi 模式下缓存响应中的 reasoning_content
+	if p.kimiMode {
+		if respMap, ok := respBody.(map[string]any); ok {
+			p.cacheFromResponse(respMap)
+		}
 	}
 
 	// 构建 Trace 记录
@@ -595,6 +623,104 @@ func (p *ReverseProxy) SetFallbackConfig(cfg *FallbackConfig) {
 	p.fallbackConfig = cfg
 }
 
+// SetKimiMode 启用或禁用 kimi 模式。
+// 启用时会自动创建 reasoning_content 缓存。
+func (p *ReverseProxy) SetKimiMode(kimi bool) {
+	p.kimiMode = kimi
+	if kimi && p.reasoningCache == nil {
+		p.reasoningCache = NewReasoningCache()
+		logger.Info("proxy", "kimi mode enabled, reasoning_content caching active")
+	}
+}
+
+// IsKimiURL 判断 URL 是否为 kimi/moonshot 上游。
+func IsKimiURL(url string) bool {
+	lower := strings.ToLower(url)
+	return strings.Contains(lower, "kimi") || strings.Contains(lower, "moonshot")
+}
+
+// cacheFromResponse 从 API 响应快照中提取 reasoning_content 并存入缓存。
+//
+// 同时处理两种响应格式：
+//   - OpenAI Chat Completions: snap["choices"][0]["message"] 包含 reasoning_content/content/tool_calls
+//   - Anthropic: snap["content"] 包含 thinking 块和 tool_use 块
+//
+// 仅在 kimi 模式下调用。
+func (p *ReverseProxy) cacheFromResponse(snap map[string]any) {
+	if p.reasoningCache == nil || snap == nil {
+		return
+	}
+
+	// 提取 reasoning_content 和消息内容
+	var reasoningContent string
+	var msgContent string    // 文本内容（用于 full key）
+	var toolCallsJSON string // tool_calls JSON（用于 tc key 和 full key）
+
+	// 路径 1: OpenAI Chat Completions 格式
+	choices, _ := snap["choices"].([]any)
+	if len(choices) > 0 {
+		choice, _ := choices[0].(map[string]any)
+		if choice != nil {
+			msg, _ := choice["message"].(map[string]any)
+			if msg != nil {
+				reasoningContent, _ = msg["reasoning_content"].(string)
+				msgContent, _ = msg["content"].(string)
+				if tc, ok := msg["tool_calls"]; ok && tc != nil {
+					if tcBytes, err := json.Marshal(tc); err == nil {
+						toolCallsJSON = string(tcBytes)
+					}
+				}
+			}
+		}
+	}
+
+	// 路径 2: Anthropic 格式（从 content 数组中的 thinking 块提取）
+	if reasoningContent == "" {
+		contentArr, _ := snap["content"].([]any)
+		for _, blockRaw := range contentArr {
+			block, ok := blockRaw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if blockType, _ := block["type"].(string); blockType == "thinking" {
+				if thinking, ok := block["thinking"].(string); ok && thinking != "" {
+					reasoningContent = thinking
+					break
+				}
+			}
+		}
+		// 同时从 Anthropic 格式提取 tool_use 块用于 key 计算
+		if toolCallsJSON == "" {
+			var toolUseBlocks []any
+			for _, blockRaw := range contentArr {
+				block, ok := blockRaw.(map[string]any)
+				if !ok {
+					continue
+				}
+				if blockType, _ := block["type"].(string); blockType == "tool_use" {
+					toolUseBlocks = append(toolUseBlocks, block)
+				}
+			}
+			if len(toolUseBlocks) > 0 {
+				if tcBytes, err := json.Marshal(toolUseBlocks); err == nil {
+					toolCallsJSON = string(tcBytes)
+				}
+			}
+		}
+	}
+
+	if reasoningContent == "" {
+		return // 无 reasoning_content 可缓存
+	}
+
+	fullKey := MakeFullKey(msgContent, toolCallsJSON)
+	tcKey := MakeToolcallKey(toolCallsJSON)
+	p.reasoningCache.Store(fullKey, tcKey, reasoningContent)
+
+	f, t := p.reasoningCache.Len()
+	logger.Debug("proxy", "cached reasoning_content: rc_len=%d full=%d tc=%d", len(reasoningContent), f, t)
+}
+
 // rewriteModel 改写请求体 JSON 中的 model 字段（契约 3）。
 // 如果 model 为空、body 为空、body 非 JSON 或 body 为 JSON 非对象，原样返回。
 func rewriteModel(body []byte, parsed any, model string) []byte {
@@ -611,6 +737,137 @@ func rewriteModel(body []byte, parsed any, model string) []byte {
 	rewritten, err := json.Marshal(m)
 	if err != nil {
 		return body // 改写失败，原样返回
+	}
+	return rewritten
+}
+
+// injectReasoningContentCached 为 assistant tool_call 消息注入 reasoning_content 补丁。
+//
+// Kimi 等兼容 Anthropic 的端点要求：assistant tool_call 消息必须携带顶层字段 reasoning_content，
+// 以及 content 数组中的 thinking 块。Claude Code 发送 tool_call 消息时不包含这些字段，导致上游 400 错误：
+//
+//	400 thinking is enabled but reasoning_content is missing in assistant tool call message at index N
+//
+// 行为随 isKimi 参数变化：
+//   - isKimi=false: 不做任何修改，直接透传
+//   - isKimi=true + cache!=nil: 使用缓存的三级查找回填真实 reasoning_content
+//   - isKimi=true + cache==nil: 注入空字符串（兜底行为，空字符串无害但能防止报错）
+func injectReasoningContentCached(body []byte, parsed any, cache *ReasoningCache, isKimi bool) []byte {
+	if !isKimi {
+		return body // 非 kimi 上游不做任何注入
+	}
+
+	if len(body) == 0 {
+		return body
+	}
+
+	m, ok := parsed.(map[string]any)
+	if !ok {
+		return body // 非 JSON 或非对象
+	}
+
+	// 获取 messages 数组（无 messages 则无需处理）
+	messages, ok := m["messages"].([]any)
+	if !ok || len(messages) == 0 {
+		return body
+	}
+
+	modified := false
+	for i, msgRaw := range messages {
+		msg, ok := msgRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		// 只处理 assistant 消息
+		role, _ := msg["role"].(string)
+		if role != "assistant" {
+			continue
+		}
+
+		// 检查 content 是否为数组
+		content, ok := msg["content"].([]any)
+		if !ok || len(content) == 0 {
+			continue
+		}
+
+		// 检查是否有 tool_use 块、thinking 块、reasoning_content 字段
+		hasToolUse := false
+		hasThinking := false
+		for _, blockRaw := range content {
+			block, ok := blockRaw.(map[string]any)
+			if !ok {
+				continue
+			}
+			blockType, _ := block["type"].(string)
+			if blockType == "tool_use" {
+				hasToolUse = true
+			}
+			if blockType == "thinking" {
+				hasThinking = true
+			}
+		}
+
+		// 检查已有的 reasoning_content
+		existingRC, hasReasoningContent := msg["reasoning_content"].(string)
+
+		// 只处理含 tool_use 的 assistant 消息
+		if !hasToolUse {
+			continue
+		}
+
+		needPatch := false
+
+		// 如果已有非空的 reasoning_content，用它刷新缓存
+		if hasReasoningContent && existingRC != "" && cache != nil {
+			fullKey := MakeFullKeyFromMsg(msg)
+			tcKey := MakeToolcallKeyFromMsg(msg)
+			cache.Store(fullKey, tcKey, existingRC)
+			// 已有完整 reasoning_content，不需要补丁
+			// 但仍需确保 thinking 块存在
+		}
+
+		// 补丁 1: content 数组缺少 thinking 块 → 在开头插入
+		if !hasThinking {
+			thinkingBlock := map[string]any{
+				"type":     "thinking",
+				"thinking": "",
+			}
+			newContent := make([]any, 0, len(content)+1)
+			newContent = append(newContent, thinkingBlock)
+			newContent = append(newContent, content...)
+			msg["content"] = newContent
+			needPatch = true
+		}
+
+		// 补丁 2: 消息缺少顶层 reasoning_content 字段 → 尝试从缓存回填
+		if !hasReasoningContent {
+			rcValue := "" // 兜底空字符串
+			if cache != nil {
+				fullKey := MakeFullKeyFromMsg(msg)
+				tcKey := MakeToolcallKeyFromMsg(msg)
+				if cached, found := cache.Lookup(fullKey, tcKey, true); found {
+					rcValue = cached
+				}
+			}
+			msg["reasoning_content"] = rcValue
+			needPatch = true
+		}
+
+		if needPatch {
+			messages[i] = msg
+			modified = true
+		}
+	}
+
+	if !modified {
+		return body
+	}
+
+	m["messages"] = messages
+	rewritten, err := json.Marshal(m)
+	if err != nil {
+		return body
 	}
 	return rewritten
 }
