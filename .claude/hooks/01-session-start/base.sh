@@ -81,6 +81,9 @@ ensure_skill_checks() {
 
 ensure_skill_checks
 
+# trace-init 返回的 trace 路径，供 register_session 回填 local_trace_path
+__LAST_TRACE_PATH=""
+
 # 5. 初始化代理 trace 路径（通过后端 8080 转发到代理）
 init_trace_path() {
   if ! _backend_available; then
@@ -115,13 +118,12 @@ init_trace_path() {
   }")
 
   if [ -n "$result" ]; then
-    log "INFO" "Trace initialized: $(echo "$result" | jq -r '.trace_path // "unknown"' 2>/dev/null)"
+    __LAST_TRACE_PATH=$(echo "$result" | jq -r '.trace_path // ""' 2>/dev/null)
+    log "INFO" "Trace initialized: ${__LAST_TRACE_PATH:-unknown}"
   else
     log "DEBUG" "Trace init failed (backend call returned empty)"
   fi
 }
-
-init_trace_path
 
 # 6. 注册会话到后端（SR-2）
 register_session() {
@@ -155,6 +157,7 @@ register_session() {
   # Windows 路径反斜杠转义
   local safe_cwd="${cwd//\\/\\\\}"
   local safe_transcript_path="${transcript_path//\\/\\\\}"
+  local safe_trace_path="${__LAST_TRACE_PATH//\\/\\\\}"
 
   _call_backend "/api/session/register" "{
     \"session_id\":\"$session_id\",
@@ -163,6 +166,7 @@ register_session() {
     \"project_slug\":\"$project_slug\",
     \"project_cwd\":\"$safe_cwd\",
     \"transcript_path\":\"$safe_transcript_path\",
+    \"local_trace_path\":\"$safe_trace_path\",
     \"model\":\"$model\",
     \"source\":\"$source_type\"
   }" > /dev/null 2>&1
@@ -170,6 +174,7 @@ register_session() {
   log "INFO" "Session registered to backend: $session_id"
 }
 
+init_trace_path
 register_session
 
 hook_output 0 '{}'
