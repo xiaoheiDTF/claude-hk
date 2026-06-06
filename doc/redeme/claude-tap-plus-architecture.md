@@ -175,20 +175,35 @@ graph TB
 
 #### claudeconfig.go — Claude 配置读取
 
-读取 `~/.claude.json` 文件获取 Claude Code 客户端配置。
+读取 `~/.claude.json` 和 `~/.claude/settings.json` 获取 Claude Code 客户端配置。
 
 | 函数 | 签名 | 说明 |
 |------|------|------|
 | `ReadClaudeConfig` | `() (*ClaudeConfig, error)` | 读取 ~/.claude.json |
+| `ReadClaudeSettings` | `() (*ClaudeSettings, error)` | 读取 ~/.claude/settings.json |
 | `ClaudeBaseURLFromConfig` | `(cfg *ClaudeConfig) string` | 从配置提取 Base URL |
 | `HomeDir` | `() string` | 获取用户主目录 |
+| `SetHomeDir` | `(fn func() string)` | 设置 homeDir 实现（测试用） |
 
 **ClaudeConfig 结构体**：
 ```go
 type ClaudeConfig struct {
-    BaseURL string
+    BaseURL string  // 顶层 base_url 字段
+    Model   string  // 默认使用的模型
     Env     struct {
         AnthropicBaseURL string
+    }
+}
+```
+
+**ClaudeSettings 结构体**（从 `~/.claude/settings.json` 读取，用于兜底配置）：
+```go
+type ClaudeSettings struct {
+    Model string  // 默认模型
+    Env   struct {
+        AnthropicBaseURL   string  // 上游 API 地址
+        AnthropicAuthToken string  // OAuth Token
+        AnthropicAPIKey    string  // API Key
     }
 }
 ```
@@ -232,8 +247,45 @@ type ProfileConfig struct {
     APIKey    string // API 密钥
     AuthToken string // OAuth Token
     Provider  string // 供应商标识
+    Model     string // 强制替换的模型名（新增）
 }
 ```
+
+**profiles.json 完整示例**（`~/.claude-tap-plus/profiles.json`）：
+
+```json
+{
+  "default": "glm",
+  "profiles": {
+    "glm": {
+      "base_url": "https://open.bigmodel.cn/api/anthropic",
+      "auth_token": "你的 GLM auth_token",
+      "provider": "anthropic",
+      "model": "GLM-5.1"
+    },
+    "kimi": {
+      "base_url": "https://api.kimi.com/coding",
+      "api_key": "你的 Kimi API Key",
+      "provider": "anthropic",
+      "model": "kimi-for-coding"
+    },
+    "official": {
+      "base_url": "https://api.anthropic.com",
+      "provider": "anthropic"
+    }
+  }
+}
+```
+
+**字段说明**：
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `base_url` | ✅ | 上游 API 地址 |
+| `api_key` | ❌ | API 密钥（与 auth_token 二选一） |
+| `auth_token` | ❌ | OAuth Token（与 api_key 二选一） |
+| `provider` | ❌ | 供应商标识：`anthropic` / `openai` / `gemini` |
+| `model` | ❌ | 强制替换的模型名（空则走默认优先级链） |
 
 #### resolve.go — 配置解析聚合
 
@@ -245,13 +297,33 @@ type ProfileConfig struct {
 
 **配置优先级**（从高到低）：
 
+**Base URL / Auth 优先级**：
+
 | 优先级 | 来源 | 说明 |
 |--------|------|------|
-| 1 | CLI 参数 | `--base-url`, `--api-key` 等命令行参数 |
+| 1 | CLI 参数 | `--tap-base-url`, `--tap-api-key` 等命令行参数 |
 | 2 | Profile 配置 | profiles.json 中指定的 profile |
 | 3 | 环境变量 | `ANTHROPIC_BASE_URL` 等 |
 | 4 | ~/.claude.json | Claude Code 配置文件 |
 | 5 | 默认值 | `ClientConfig.DefaultTarget` |
+
+**Model 优先级**：
+
+| 优先级 | 来源 | 说明 |
+|--------|------|------|
+| 1 | profile.model | profiles.json 中 profile 的 model 字段 |
+| 2 | ~/.claude.json model | Claude Code 配置中的 model 字段 |
+| 3 | 空 | 不做替换，原样透传客户端请求中的 model |
+
+**ResolvedConfig 结构体**：
+```go
+type ResolvedConfig struct {
+    BaseURL   string // 最终的上游 API 地址
+    APIKey    string // 最终的 API Key
+    AuthToken string // 最终的 OAuth Token
+    Model     string // 最终的模型名（空=不改写）
+}
+```
 
 ### 3.2 HTTP 反向代理（internal/proxy/）
 
@@ -260,15 +332,30 @@ type ProfileConfig struct {
 **ReverseProxy 结构体**：
 ```go
 type ReverseProxy struct {
-    target string              // 上游 API 目标地址
-    baseDir string            // Trace 文件存放的基础目录
-    writer *trace.TraceWriter  // 当前会话的 Trace 写入器
-    client *http.Client        // 转发请求的 HTTP 客户端
-    turn atomic.Int64         // 请求计数器
-    server *http.Server        // 本地代理 HTTP 服务器
-    sessionID string          // 当前会话 ID
-    projectSlug string        // 当前项目标识
-    OnSessionInit func(...)   // 会话初始化回调
+    target             string              // 上游 API 目标地址
+    baseDir            string              // Trace 文件存放的基础目录
+    writer             *trace.TraceWriter  // 当前会话的 Trace 写入器
+    client             *http.Client        // 转发请求的 HTTP 客户端
+    turn               atomic.Int64        // 请求计数器
+    server             *http.Server        // 本地代理 HTTP 服务器
+    sessionID          string              // 当前会话 ID
+    projectSlug        string              // 当前项目标识
+    OnSessionInit      func(...)           // 会话初始化回调
+    model              string              // 强制替换的模型名（空=不改写）
+    upstreamAvailable  bool                // 上游可用性标记
+    fallbackConfig     *FallbackConfig      // 兜底配置
+    availableMu        sync.Mutex          // 并发安全锁
+    actualAddr         string              // 实际监听地址
+}
+```
+
+**FallbackConfig 结构体**（兜底配置）：
+```go
+type FallbackConfig struct {
+    BaseURL   string // 兜底上游 API 地址
+    Model     string // 兜底模型名
+    AuthToken string // 兜底认证 Token
+    APIKey    string // 兜底 API Key
 }
 ```
 
@@ -277,6 +364,9 @@ type ReverseProxy struct {
 | `NewReverseProxy` | `(target, traceDir string) *ReverseProxy` | 创建代理实例 |
 | `Start` | `(host string, port int) (int, error)` | 启动代理服务器 |
 | `Stop` | `()` | 停止代理 |
+| `URL` | `() string` | 获取代理 HTTP 地址 |
+| `SetModel` | `(model string)` | 设置强制替换的模型名 |
+| `SetFallbackConfig` | `(cfg *FallbackConfig)` | 设置兜底配置 |
 | `Summary` | `() map[string]any` | 获取统计摘要 |
 | `SessionID` | `() string` | 获取当前会话 ID |
 | `ProjectSlug` | `() string` | 获取项目标识 |
@@ -288,10 +378,32 @@ type ReverseProxy struct {
 serveHTTP(request)
     ├── path == "/_internal/trace-init"?
     │   └── handleInternal() → 创建 TraceWriter
+    ├── 读取请求体 → 解析 JSON
+    ├── model 改写 → rewriteModel(body, parsed, model)
+    │   └── 强制覆盖/注入请求体中的 model 字段
+    ├── 检查上游可用性
+    │   ├── upstreamAvailable == true → 用 profile target
+    │   └── upstreamAvailable == false → 切换到 fallbackConfig
+    │       ├── 替换 base_url
+    │       ├── 替换 model（rewriteModel 再次改写）
+    │       └── 替换认证头（x-api-key / Authorization）
+    ├── 转发请求到上游
+    │   ├── 连接失败 → markUnavailable() → 返回 502
+    │   └── 响应 4xx/5xx → markUnavailable() → 透传响应
     ├── Streaming 响应?
     │   └── handleStreaming() → SSE 重组 → Trace 写入
     └── 非 Streaming 响应
         └── handleNonStreaming() → 直接写入 Trace
+```
+
+**上游兜底机制**：
+
+```
+上游首次失败（连接失败 / 响应 4xx/5xx）
+    → markUnavailable() → upstreamAvailable = false
+    → 后续请求全部切换到 ~/.claude/settings.json 的配置
+    → BaseURL + Model + Auth 全量替换
+    → 进程生命周期内不恢复
 ```
 
 #### headers.go — Header 处理
@@ -899,8 +1011,11 @@ go build -o claude-tap-plus ./cmd/claude-tap
 ### 运行
 
 ```bash
-# 代理模式（默认）
-go run ./cmd/claude-tap claude
+# 代理模式 — 使用指定 profile（强制替换 model）
+claude-tap-plus --tap-profile glm
+
+# 代理模式 — 不指定 profile（不做 model 替换）
+claude-tap-plus
 
 # 后端服务
 go run ./cmd/claude-tap backend [--port 8080] [--db backend.db]
@@ -915,6 +1030,83 @@ go run ./cmd/claude-tap session-pull
 go run ./cmd/claude-tap session-status
 ```
 
+### Profile 配置
+
+配置文件位置：`~/.claude-tap-plus/profiles.json`
+
+```json
+{
+  "default": "glm",
+  "profiles": {
+    "glm": {
+      "base_url": "https://open.bigmodel.cn/api/anthropic",
+      "auth_token": "你的 GLM auth_token",
+      "provider": "anthropic",
+      "model": "GLM-5.1"
+    },
+    "kimi": {
+      "base_url": "https://api.kimi.com/coding",
+      "api_key": "你的 Kimi API Key",
+      "provider": "anthropic",
+      "model": "kimi-for-coding"
+    },
+    "official": {
+      "base_url": "https://api.anthropic.com",
+      "provider": "anthropic"
+    }
+  }
+}
+```
+
+**使用示例**：
+
+```bash
+# 使用 glm profile → 所有请求 model 强制替换为 GLM-5.1
+claude-tap-plus --tap-profile glm
+
+# 使用 kimi profile → 所有请求 model 强制替换为 kimi-for-coding
+claude-tap-plus --tap-profile kimi
+
+# 使用 official profile → 无 model 字段，走 Claude settings 兜底
+claude-tap-plus --tap-profile official
+
+# 不指定 profile → 原样透传，不做 model 替换
+claude-tap-plus
+```
+
+**Model 优先级链**：
+
+```
+profile.model                    → 强制覆盖（最高）
+       ↓ 没配
+~/.claude.json 的 model          → 默认兜底
+       ↓ 也没有
+不做替换                          → 原样透传（最低）
+```
+
+### 上游兜底机制
+
+代理启动时自动从 `~/.claude/settings.json` 读取兜底配置：
+
+```json
+{
+  "model": "GLM-5.1",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+    "ANTHROPIC_AUTH_TOKEN": "你的 OAuth Token",
+    "ANTHROPIC_API_KEY": "你的 API Key"
+  }
+}
+```
+
+**兜底触发条件**：上游首次请求失败（连接失败 或 响应 4xx/5xx）
+
+**兜底切换范围**：BaseURL + Model + Auth 全量替换
+
+**恢复机制**：无。进程生命周期内保持不可用，直到进程结束
+
+**认证优先级**：有 `ANTHROPIC_AUTH_TOKEN` 用 Token，有 `ANTHROPIC_API_KEY` 用 API Key
+
 ### 环境变量
 
 | 变量 | 说明 |
@@ -928,7 +1120,10 @@ go run ./cmd/claude-tap session-status
 |------|------|
 | `~/.claude-tap-plus/.traces/{machineID}/{projectSlug}/{sessionID}.jsonl` | Trace 文件 |
 | `~/.claude-tap-plus/backend.json` | 后端服务地址（启动时写入，退出时删除） |
+| `~/.claude-tap-plus/profiles.json` | Profile 配置（含 base_url、auth、model） |
 | `~/.claude-tap-plus/proxy.json` | 代理会话注册信息 |
+| `~/.claude/settings.json` | Claude Code 设置（兜底配置来源） |
+| `~/.claude.json` | Claude Code 客户端配置 |
 | `{exe-dir}/sessions/{slug}/meta.json` | 会话存储元数据 |
 | `backend.db` | SQLite 数据库 |
 
