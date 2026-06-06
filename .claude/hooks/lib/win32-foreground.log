@@ -6137,3 +6137,102 @@
 [2026-06-06 19:47:56] SUCCESS: Window is now foreground!
 [2026-06-06 19:47:58] Foreground lock timeout restored to 0
 [2026-06-06 19:47:58] === done ===
+[2026-06-06 19:51:07] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 19:51:08] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Claude Code'
+[2026-06-06 19:51:08] Current foreground lock timeout: 0
+[2026-06-06 19:51:08] Disable foreground lock: True
+[2026-06-06 19:51:08] COM AppActivate(title)=True
+[2026-06-06 19:51:08] SetForeground=True BringToTop=True
+[2026-06-06 19:51:08] SUCCESS: Window is now foreground!
+[2026-06-06 19:51:10] Foreground lock timeout restored to 0
+[2026-06-06 19:51:10] === done ===
+[2026-06-06 19:53:16] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 19:53:17] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 19:53:17] Current foreground lock timeout: 0
+[2026-06-06 19:53:17] Disable foreground lock: True
+[2026-06-06 19:53:17] COM AppActivate(title)=True
+[2026-06-06 19:53:17] SetForeground=True BringToTop=True
+[2026-06-06 19:53:18] SUCCESS: Window is now foreground!
+[2026-06-06 19:53:20] Foreground lock timeout restored to 0
+[2026-06-06 19:53:20] === done ===
+[2026-06-06 19:57:16] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 19:57:17] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 19:57:17] Current foreground lock timeout: 0
+[2026-06-06 19:57:17] Disable foreground lock: True
+[2026-06-06 19:57:17] COM AppActivate(title)=True
+[2026-06-06 19:57:17] SetForeground=True BringToTop=True
+[2026-06-06 19:57:17] SUCCESS: Window is now foreground!
+[2026-06-06 19:57:19] Foreground lock timeout restored to 0
+[2026-06-06 19:57:19] === done ===
+[2026-06-06 19:58:39] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 19:58:40] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 19:58:40] Current foreground lock timeout: 0
+[2026-06-06 19:58:40] Disable foreground lock: True
+[2026-06-06 19:58:40] COM AppActivate(title)=True
+[2026-06-06 19:58:40] SetForeground=True BringToTop=True
+[2026-06-06 19:58:40] SUCCESS: Window is now foreground!
+[2026-06-06 19:58:42] Foreground lock timeout restored to 0
+[2026-06-06 19:58:42] === done ===
+[2026-06-06 19:59:05] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 19:59:06] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 19:59:06] Current foreground lock timeout: 0
+[2026-06-06 19:59:06] Disable foreground lock: True
+[2026-06-06 19:59:06] COM AppActivate(title)=True
+[2026-06-06 19:59:06] SetForeground=True BringToTop=True
+[2026-06-06 19:59:06] SUCCESS: Window is now foreground!
+[2026-06-06 19:59:09] Foreground lock timeout restored to 0
+[2026-06-06 19:59:09] === done ===
+[2026-06-06 20:02:06] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:02:08] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 20:02:08] Current foreground lock timeout: 0
+[2026-06-06 20:02:08] Disable foreground lock: True
+[2026-06-06 20:02:08] COM AppActivate(title)=True
+[2026-06-06 20:02:08] SetForeground=True BringToTop=True
+[2026-06-06 20:02:08] SUCCESS: Window is now foreground!
+[2026-06-06 20:02:10] Foreground lock timeout restored to 0
+[2026-06-06 20:02:10] === done ===
+[2026-06-06 20:03:24] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:03:25] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 20:03:25] Current foreground lock timeout: 0
+[2026-06-06 20:03:25] Disable foreground lock: True
+[2026-06-06 20:03:25] COM AppActivate(title)=True
+[2026-06-06 20:03:25] SetForeground=True BringToTop=True
+[2026-06-06 20:03:25] SUCCESS: Window is now foreground!
+[2026-06-06 20:03:27] Foreground lock timeout restored to 0
+[2026-06-06 20:03:27] === done ===
+[2026-06-06 20:08:58] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:08:59] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 20:08:59] Current foreground lock timeout: 0
+[2026-06-06 20:08:59] Disable foreground lock: True
+[2026-06-06 20:08:59] COM AppActivate(title)=True
+[2026-06-06 20:08:59] SetForeground=True BringToTop=True
+[2026-06-06 20:08:59] SUCCESS: Window is now foreground!
+[2026-06-06 20:09:01] Foreground lock timeout restored to 0
+[2026-06-06 20:09:01] === done ===
+[2026-06-06 20:09:23] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:09:23] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 20:09:23] Current foreground lock timeout: 0
+[2026-06-06 20:09:23] Disable foreground lock: True
+[2026-06-06 20:09:23] COM AppActivate(title)=True
+[2026-06-06 20:09:23] SetForeground=True BringToTop=True
+[2026-06-06 20:09:24] SUCCESS: Window is now foreground!
+[2026-06-06 20:09:26] Foreground lock timeout restored to 0
+[2026-06-06 20:09:26] === done ===
+[2026-06-06 20:09:54] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:09:55] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Split wireframe design doc into small PRDs'
+[2026-06-06 20:09:55] Current foreground lock timeout: 0
+[2026-06-06 20:09:55] Disable foreground lock: False
+[2026-06-06 20:09:55] COM AppActivate(title)=True
+[2026-06-06 20:09:55] SetForeground=True BringToTop=True
+[2026-06-06 20:09:55] SUCCESS: Window is now foreground!
+[2026-06-06 20:09:57] Foreground lock timeout restored to 0
+[2026-06-06 20:09:57] === done ===
+[2026-06-06 20:10:36] === win32-foreground started (hint='claude-hk') ===
+[2026-06-06 20:10:37] Target: WindowsTerminal.exe PID=15280 hwnd=525244 title='? Update README documentation files'
+[2026-06-06 20:10:37] Current foreground lock timeout: 0
+[2026-06-06 20:10:37] Disable foreground lock: True
+[2026-06-06 20:10:37] COM AppActivate(title)=True
+[2026-06-06 20:10:37] SetForeground=True BringToTop=True
+[2026-06-06 20:10:37] SUCCESS: Window is now foreground!
+[2026-06-06 20:10:40] Foreground lock timeout restored to 0
+[2026-06-06 20:10:40] === done ===
