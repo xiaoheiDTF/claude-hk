@@ -67,14 +67,25 @@ graph TB
 ```mermaid
 flowchart TD
     A["CLI 启动<br/>main.go"] --> B["配置解析<br/>ResolveTargetConfig()"]
+    B --> B1["model 优先级链<br/>profile.model > ~/.claude.json model > 空"]
     B --> C["创建代理<br/>NewReverseProxy(target, traceDir)"]
-    C --> D["启动本地代理<br/>proxy.Start(127.0.0.1, port)"]
+    C --> C1["SetModel(resolved.Model)<br/>设置 model 改写"]
+    C1 --> C2["loadFallbackConfig()<br/>读取 ~/.claude/settings.json"]
+    C2 --> C3["SetFallbackConfig(fallback)<br/>设置兜底配置"]
+    C3 --> D["启动本地代理<br/>proxy.Start(127.0.0.1, port)"]
     D --> E["启动 Claude Code 子进程<br/>设置 ANTHROPIC_BASE_URL=proxy"]
 
     E --> F["Claude Code 发送 API 请求"]
     F --> G["代理拦截请求<br/>serveHTTP()"]
 
-    G --> H{请求类型?}
+    G --> G1["读取请求体 → 解析 JSON"]
+    G1 --> G2["rewriteModel()<br/>强制改写 model 字段"]
+    G2 --> G3{"upstreamAvailable?"}
+    G3 -->|"true"| G4["用 profile target 转发"]
+    G3 -->|"false"| G5["切换 fallbackConfig<br/>base_url + model + auth 全量替换"]
+
+    G4 --> H{请求类型?}
+    G5 --> H
 
     H -->|"/_internal/trace-init"| I["handleInternal()<br/>创建 TraceWriter"]
     I --> J["SessionID + ProjectSlug<br/>写入 proxy.json"]
@@ -93,14 +104,18 @@ flowchart TD
     T --> U["接收完整响应"]
     U --> Q
 
+    L -->|"连接失败 / 4xx/5xx"| FB["markUnavailable()<br/>标记上游不可用"]
+    FB --> G3
+
     R --> V["~/.claude-tap-plus/.traces/<br/>{machineID}/{projectSlug}/{sessionID}.jsonl"]
     Q --> V
 
     style V fill:#6f6,color:#fff
     style I fill:#ff9
+    style FB fill:#f66,color:#fff
 ```
 
-**说明**：代理启动后以本地 HTTP 服务器形式运行，Claude Code 的 API 请求被重定向到代理。代理区分三种请求：内部初始化、流式响应和非流式响应。所有 API 调用最终以 JSONL 格式记录到 Trace 文件。
+**说明**：代理启动后以本地 HTTP 服务器形式运行，Claude Code 的 API 请求被重定向到代理。代理在转发前会改写请求体中的 `model` 字段。当上游不可用时（连接失败或响应 4xx/5xx），自动切换到 `~/.claude/settings.json` 的兜底配置，全量替换 base_url、model 和认证信息。
 
 ---
 
@@ -108,11 +123,13 @@ flowchart TD
 
 多级优先级的配置解析决策树。
 
+### 3.1 Base URL / Auth 优先级
+
 ```mermaid
 flowchart TD
-    A["ResolveTargetConfig()"] --> B{CLI 参数<br/>--base-url?}
+    A["ResolveTargetConfig()"] --> B{CLI 参数<br/>--tap-base-url?}
     B -- 有 --> RESOLVED["使用 CLI 配置"]
-    B -- 无 --> C{指定了 Profile?<br/>--profile?}
+    B -- 无 --> C{指定了 Profile?<br/>--tap-profile?}
     C -- 有 --> D["ResolveProfileConfig(name)"]
     D --> RESOLVED
     C -- 无 --> E{环境变量<br/>ANTHROPIC_BASE_URL?}
@@ -127,7 +144,22 @@ flowchart TD
     style G fill:#ff9
 ```
 
-**说明**：配置按 5 级优先级解析：CLI 参数 > Profile > 环境变量 > ~/.claude.json > 默认值。高优先级存在值时直接使用，不再检查更低优先级。
+### 3.2 Model 优先级
+
+```mermaid
+flowchart TD
+    A["Model 解析"] --> B{"profile 有 model?"}
+    B -- 有 --> M1["使用 profile.model<br/>（强制覆盖）"]
+    B -- 无 --> C{"~/.claude.json 有 model?"}
+    C -- 有 --> M2["使用 ~/.claude.json model<br/>（默认兜底）"]
+    C -- 无 --> M3["Model = 空<br/>（不做替换，原样透传）"]
+
+    style M1 fill:#6f6
+    style M2 fill:#ff9
+    style M3 fill:#ddd
+```
+
+**说明**：配置按 5 级优先级解析：CLI 参数 > Profile > 环境变量 > ~/.claude.json > 默认值。Model 单独解析：profile.model > ~/.claude.json model > 空（不改写）。
 
 ---
 
@@ -140,6 +172,7 @@ sequenceDiagram
     participant CC as Claude Code
     participant P as ReverseProxy
     participant Up as 上游 API
+    participant FB as 兜底上游
     participant SSE as SSEReassembler
     participant TW as TraceWriter
     participant FS as 文件系统
@@ -152,11 +185,28 @@ sequenceDiagram
         P->>FS: Write proxy.json
         P-->>CC: 200 OK {trace_path}
     else 正常 API 请求
+        P->>P: 读取请求体 → 解析 JSON
+        P->>P: rewriteModel() 改写 model
         P->>P: turn++（请求计数）
-        P->>P: FilterHeaders（过滤 Header）
-        P->>Up: 转发请求
 
-        alt Streaming 响应
+        alt upstreamAvailable == true
+            P->>P: FilterHeaders（过滤 Header）
+            P->>Up: 转发请求（profile target）
+        else upstreamAvailable == false
+            P->>P: rewriteModel() 改写为 fallback model
+            P->>P: 替换认证头（token/api_key）
+            P->>FB: 转发请求（fallback target）
+        end
+
+        alt 上游连接失败
+            Up--xP: 连接错误
+            P->>P: markUnavailable()
+            P-->>CC: 502 Bad Gateway
+        else 上游返回 4xx/5xx
+            Up-->>P: 500 错误
+            P->>P: markUnavailable()
+            P-->>CC: 透传错误响应
+        else Streaming 响应
             Up-->>P: 200 OK (SSE)
             loop 每个 SSE 数据块
                 Up-->>P: data: {...}
@@ -178,7 +228,7 @@ sequenceDiagram
     end
 ```
 
-**说明**：代理对 Claude Code 完全透明——请求被原样转发，响应被原样返回。在传输过程中，代理并行地解析响应内容并写入 Trace 文件。
+**说明**：代理在转发前会改写请求体中的 `model` 字段。当上游可用时使用 profile 的 target 转发；当上游不可用时自动切换到 fallback 配置（来自 `~/.claude/settings.json`），全量替换 base_url、model 和认证信息。上游首次失败（连接失败或 4xx/5xx）会触发 `markUnavailable()`，后续请求全部走 fallback。
 
 ---
 
