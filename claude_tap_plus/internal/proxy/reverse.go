@@ -31,6 +31,7 @@ type ReverseProxy struct {
 	sessionID          string              // 当前会话 ID（由 trace-init 设置）
 	projectSlug        string              // 当前项目标识（由 trace-init 设置）
 	OnSessionInit      func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
+	OnTraceInitDone    func()              // trace-init 处理完成回调（通知 main.go 释放 init 锁）
 	model              string              // 强制替换的模型名（空=不改写）
 	upstreamAvailable  bool                // 上游可用性标记，初始 true
 	fallbackConfig     *FallbackConfig      // 兜底配置（上游不可用时切换）
@@ -509,6 +510,13 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guard: 已绑定其他 session 时拒绝，防止广播误投覆盖
+	if p.sessionID != "" && p.sessionID != req.SessionID {
+		logger.Warn("proxy", "trace-init rejected: bound to %s, got %s", p.sessionID, req.SessionID)
+		http.Error(w, "already bound to another session", http.StatusConflict)
+		return
+	}
+
 	logger.Debug("proxy", "trace-init: session=%s machine=%s slug=%s", req.SessionID, req.MachineID, req.ProjectSlug)
 
 	// 若请求中未提供，则通过 trace 包自动检测
@@ -547,6 +555,11 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 	// 通知外部注册 proxy.json
 	if p.OnSessionInit != nil {
 		p.OnSessionInit(req.SessionID, projectSlug)
+	}
+
+	// 通知 main.go：trace-init 处理完成，可以释放 init 锁
+	if p.OnTraceInitDone != nil {
+		p.OnTraceInitDone()
 	}
 
 	w.Header().Set("Content-Type", "application/json")

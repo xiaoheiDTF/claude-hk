@@ -20,6 +20,7 @@ type ProxyHandler struct {
 	proxies       map[string]string   // pid -> proxy_url，注册的代理列表（内存）
 	sessions      map[string]string   // session_id -> proxy_url，会话到代理的精确路由映射
 	proxySessions map[string][]string // pid -> []session_id，代理注销时清理映射
+	traceMu       sync.Mutex          // trace-init 串行锁，确保一对一消费
 	svc           *service.ProxyService // 代理列表服务（数据库）
 }
 
@@ -132,7 +133,10 @@ func (h *ProxyHandler) Unregister(w http.ResponseWriter, r *http.Request) {
 
 // TraceInit 转发 trace-init 请求到指定代理。
 // POST /api/proxy/trace-init
-// 优先根据 session_id 查询已绑定的代理进行精确转发；未绑定时广播探测并记录映射。
+// 路由优先级：
+//  1. proxy_pid 精确路由（init 锁保证一对一）
+//  2. session_id 已绑定代理的精确路由
+//  3. 广播探测（兜底，proxy 侧 guard 防止误投）
 func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "use POST", http.StatusMethodNotAllowed)
@@ -146,7 +150,7 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 解析 session_id 用于精确路由
+	// 解析请求
 	var tiReq TraceInitRequest
 	if err := json.Unmarshal(body, &tiReq); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -157,7 +161,34 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 精确路由：该 session 是否已绑定到某个代理
+	// 串行锁：确保同一时刻只处理一个 trace-init（配合 init PID 文件一对一消费）
+	h.traceMu.Lock()
+	defer h.traceMu.Unlock()
+
+	// 优先级 1：proxy_pid 精确路由
+	if tiReq.ProxyPID != "" {
+		h.mu.RLock()
+		proxyURL, found := h.proxies[tiReq.ProxyPID]
+		h.mu.RUnlock()
+
+		if found {
+			logger.Debug("api.proxy", "trace-init: PID route session=%s to pid=%s url=%s", tiReq.SessionID, tiReq.ProxyPID, proxyURL)
+			resp, err := relayTraceInit(proxyURL, body)
+			if err == nil {
+				h.mu.Lock()
+				h.bindSession(tiReq.ProxyPID, tiReq.SessionID, proxyURL)
+				h.mu.Unlock()
+				logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s", tiReq.SessionID, tiReq.ProxyPID)
+				writeJSON(w, http.StatusOK, resp)
+				return
+			}
+			logger.Warn("api.proxy", "trace-init: PID route failed for pid=%s: %v, falling back", tiReq.ProxyPID, err)
+		} else {
+			logger.Warn("api.proxy", "trace-init: proxy_pid=%s not registered, falling back", tiReq.ProxyPID)
+		}
+	}
+
+	// 优先级 2：session_id 已绑定代理
 	h.mu.RLock()
 	boundURL, bound := h.sessions[tiReq.SessionID]
 	proxiesCopy := make(map[string]string, len(h.proxies))
@@ -174,7 +205,6 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		logger.Warn("api.proxy", "trace-init: bound proxy %s unreachable for session=%s: %v", boundURL, tiReq.SessionID, err)
-		// 绑定代理失效，降级为广播探测并更新绑定
 	}
 
 	if len(proxiesCopy) == 0 {
@@ -183,7 +213,7 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 广播探测：转发到每个代理，第一个成功者被选中并记录映射
+	// 优先级 3：广播探测（兜底）
 	for pid, proxyURL := range proxiesCopy {
 		resp, err := relayTraceInit(proxyURL, body)
 		if err != nil {
@@ -193,7 +223,7 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		h.mu.Lock()
 		h.bindSession(pid, tiReq.SessionID, proxyURL)
 		h.mu.Unlock()
-		logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s url=%s", tiReq.SessionID, pid, proxyURL)
+		logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s url=%s (broadcast)", tiReq.SessionID, pid, proxyURL)
 		writeJSON(w, http.StatusOK, resp)
 		return
 	}

@@ -59,6 +59,7 @@ type CloseSessionRequest struct {
 // TraceInitRequest 是代理 trace-init 转发请求体。
 type TraceInitRequest struct {
 	SessionID      string `json:"session_id"`      // 会话唯一 ID
+	ProxyPID       string `json:"proxy_pid"`       // 写入 .init-pid 的代理 PID（精确路由用）
 	MachineID      string `json:"machine_id"`      // 机器标识
 	ProjectSlug    string `json:"project_slug"`    // 项目标识
 	TranscriptPath string `json:"transcript_path"` // 对话记录路径

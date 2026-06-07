@@ -108,10 +108,20 @@ init_trace_path() {
   # Windows 路径反斜杠转义：\ → \\（否则 Go JSON 解析器拒绝非法转义序列如 \U）
   local safe_transcript_path="${transcript_path//\\/\\\\}"
 
-  # 通过后端转发 trace-init 到代理
+  # 读取 init-pid 文件（由 proxy 写入，读后即删）
+  local init_pid_file="$HOME/.claude-tap-plus/.init-pid"
+  local tap_pid=""
+  if [ -f "$init_pid_file" ]; then
+    tap_pid=$(cat "$init_pid_file" 2>/dev/null)
+    rm -f "$init_pid_file"
+    log "INFO" "Init PID consumed: ${tap_pid:-empty}"
+  fi
+
+  # 通过后端转发 trace-init 到代理（带上 proxy_pid 精确路由）
   local result
   result=$(_call_backend "/api/proxy/trace-init" "{
     \"session_id\":\"$sid\",
+    \"proxy_pid\":\"$tap_pid\",
     \"machine_id\":\"$machine_id\",
     \"project_slug\":\"$project_slug\",
     \"transcript_path\":\"$safe_transcript_path\"
