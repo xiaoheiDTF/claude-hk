@@ -47,3 +47,7 @@
 [2026-06-06 20:10:36] [INFO] [999-2-git-push] [stop] .active removed session: ae44a20e-0554-47dc-ab1c-0a69354064e9
 [2026-06-06 20:10:36] [INFO] [999-2-git-push] [stop] skill lifecycle end
 [2026-06-06 20:11:08] [INFO] [999-2-git-push] skill 调用: git-push | 分支: main
+[2026-06-06 20:12:19] [INFO] [999-2-git-push] [stop] skill completed | branch: main | session: ae44a20e-0554-47dc-ab1c-0a69354064e9
+[2026-06-06 20:12:19] [INFO] [999-2-git-push] [stop] .active removed session: ae44a20e-0554-47dc-ab1c-0a69354064e9
+[2026-06-06 20:12:19] [INFO] [999-2-git-push] [stop] skill lifecycle end
+[2026-06-06 20:13:32] [INFO] [999-2-git-push] [check] git 可用
