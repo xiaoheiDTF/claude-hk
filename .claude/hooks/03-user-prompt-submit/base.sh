@@ -21,7 +21,7 @@ if [ -n "$OUTPUT" ]; then
   SKILL_NAME=$(echo "$META" | cut -d'|' -f1)
   SKILL_ARGS=$(echo "$META" | cut -d'|' -f2)
 
-  log "INFO" "Skill matched: $SKILL_NAME | session: $session_id | args: $SKILL_ARGS"
+  log "INFO" "Skill matched: $SKILL_NAME | session: $session_id | args: $SKILL_ARGS | context: $CONTEXT"
   hook_output 0 "$CONTEXT"
 fi
 
