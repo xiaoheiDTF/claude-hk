@@ -84,10 +84,11 @@ ensure_skill_checks
 # trace-init 返回的 trace 路径，供 register_session 回填 local_trace_path
 __LAST_TRACE_PATH=""
 
-# 5. 初始化代理 trace 路径（通过后端 8080 转发到代理）
+# 5. 初始化代理 trace 路径（通过环境变量直连 proxy，无需 backend 中转）
 init_trace_path() {
-  if ! _backend_available; then
-    log "DEBUG" "Trace init skipped (backend/proxy unreachable)"
+  local proxy_url="${CLAUDE_TAP_PROXY_URL:-}"
+  if [ -z "$proxy_url" ]; then
+    log "DEBUG" "Trace init skipped: no proxy URL in env"
     return 0
   fi
 
@@ -95,43 +96,23 @@ init_trace_path() {
   sid=$(json_get '.session_id')
   [ -z "$sid" ] && return 0
 
-  local machine_id
-  machine_id="$(whoami 2>/dev/null || echo unknown)@$(hostname 2>/dev/null || echo unknown)"
-
   local transcript_path
   transcript_path=$(json_get '.transcript_path')
-
-  local project_slug
-  project_slug=$(echo "$transcript_path" | sed -n 's/.*[\.]claude[\\/]\{1\}projects[\\/]\{1\}\([^\\/]*\).*/\1/p')
-  [ -z "$project_slug" ] && project_slug=$(basename "$(json_get '.cwd')" 2>/dev/null)
 
   # Windows 路径反斜杠转义：\ → \\（否则 Go JSON 解析器拒绝非法转义序列如 \U）
   local safe_transcript_path="${transcript_path//\\/\\\\}"
 
-  # 读取 init-pid 文件（由 proxy 写入，读后即删）
-  local init_pid_file="$HOME/.claude-tap-plus/.init-pid"
-  local tap_pid=""
-  if [ -f "$init_pid_file" ]; then
-    tap_pid=$(cat "$init_pid_file" 2>/dev/null)
-    rm -f "$init_pid_file"
-    log "INFO" "Init PID consumed: ${tap_pid:-empty}"
-  fi
-
-  # 通过后端转发 trace-init 到代理（带上 proxy_pid 精确路由）
+  # 直接调用 proxy 的 trace-init 端点（环境变量保证路由确定性）
   local result
-  result=$(_call_backend "/api/proxy/trace-init" "{
-    \"session_id\":\"$sid\",
-    \"proxy_pid\":\"$tap_pid\",
-    \"machine_id\":\"$machine_id\",
-    \"project_slug\":\"$project_slug\",
-    \"transcript_path\":\"$safe_transcript_path\"
-  }")
+  result=$(curl -s --max-time 5 -X POST "$proxy_url/_internal/trace-init" \
+    -H "Content-Type: application/json" \
+    -d "{\"session_id\":\"$sid\",\"transcript_path\":\"$safe_transcript_path\"}" 2>/dev/null)
 
   if [ -n "$result" ]; then
     __LAST_TRACE_PATH=$(echo "$result" | jq -r '.trace_path // ""' 2>/dev/null)
     log "INFO" "Trace initialized: ${__LAST_TRACE_PATH:-unknown}"
   else
-    log "DEBUG" "Trace init failed (backend call returned empty)"
+    log "DEBUG" "Trace init failed (proxy call returned empty)"
   fi
 }
 
