@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -263,42 +262,10 @@ func runProxy(args []string) {
 	// 自动检测并启动后端服务（如果未运行）
 	ensureBackend()
 
-	// 向后端注册本代理（hooks 通过后端转发 trace-init）
+	// 向后端注册本代理（hooks 通过环境变量直连 proxy，backend 用于 session/issue 管理）
 	registerProxyWithBackend(proxyURL)
 	// 代理退出时注销
 	defer unregisterProxyFromBackend()
-
-	// ---- Init 锁：串行化 trace-init，确保 PID 文件一对一消费 ----
-	// 锁机制：mkdir 原子操作（跨平台），确保同一时刻只有一个 proxy 处于 init 阶段
-	initLockPath := filepath.Join(BaseDir(), ".init-lock")
-	initPIDPath := filepath.Join(BaseDir(), ".init-pid")
-
-	// 获取 init 锁（阻塞等待）
-	for {
-		if err := os.Mkdir(initLockPath, 0o755); err == nil {
-			logger.Info("main", "init lock acquired")
-			break
-		}
-		logger.Debug("main", "init lock busy, waiting...")
-		time.Sleep(100 * time.Millisecond)
-	}
-	// 确保退出时释放锁
-	defer os.RemoveAll(initLockPath)
-
-	// 写入 PID 文件（供 hook 读取）
-	if err := os.WriteFile(initPIDPath, []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {
-		logger.Warn("main", "write init-pid failed: %v", err)
-	}
-	logger.Info("main", "init-pid written: %d", os.Getpid())
-
-	// trace-init 完成信号
-	initDone := make(chan struct{}, 1)
-	rp.OnTraceInitDone = func() {
-		select {
-		case initDone <- struct{}{}:
-		default:
-		}
-	}
 
 	// 设置会话初始化回调：注册到 proxy.json
 	rp.OnSessionInit = func(sessionID, projectSlug string) {
@@ -326,6 +293,10 @@ func runProxy(args []string) {
 
 	// 构建子进程环境变量，将 API 请求指向本地代理
 	childEnv := config.BuildChildEnv(&config.ClaudeClient, proxyURL)
+
+	// 注入代理 PID 和 URL 到子进程环境（hook 直接 curl proxy，无需 backend 中转）
+	childEnv = append(childEnv, "CLAUDE_TAP_PROXY_PID="+strconv.Itoa(os.Getpid()))
+	childEnv = append(childEnv, "CLAUDE_TAP_PROXY_URL="+proxyURL)
 
 	// 注入认证信息：有 API Key 用 API Key，有 Token 用 Token，互斥避免冲突
 	if resolved.APIKey != "" {
@@ -356,18 +327,6 @@ func runProxy(args []string) {
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("start claude: %v", err)
 	}
-
-	// 等待 trace-init 完成后释放 init 锁，允许下一个 proxy 启动
-	select {
-	case <-initDone:
-		logger.Info("main", "trace-init received, init lock releasing")
-	case <-time.After(30 * time.Second):
-		logger.Warn("main", "trace-init timeout (30s), releasing init lock anyway")
-	}
-	// 删除 PID 文件（如果 hook 未删除）
-	os.Remove(initPIDPath)
-	// 释放 init 锁（defer 也会执行，这里提前释放让下一个 proxy 不用等）
-	os.RemoveAll(initLockPath)
 
 	// 监听系统信号（SIGINT、SIGTERM），转发给子进程以实现优雅关闭
 	sigChan := make(chan os.Signal, 2)

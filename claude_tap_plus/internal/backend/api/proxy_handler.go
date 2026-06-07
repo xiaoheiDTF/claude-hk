@@ -18,9 +18,8 @@ import (
 type ProxyHandler struct {
 	mu            sync.RWMutex
 	proxies       map[string]string   // pid -> proxy_url，注册的代理列表（内存）
-	sessions      map[string]string   // session_id -> proxy_url，会话到代理的精确路由映射
-	proxySessions map[string][]string // pid -> []session_id，代理注销时清理映射
-	traceMu       sync.Mutex          // trace-init 串行锁，确保一对一消费
+	sessions      map[string]string   // session_id -> proxy_url，会话到代理的映射（用于注销清理）
+	proxySessions map[string][]string // pid -> []session_id，代理注销时批量清理
 	svc           *service.ProxyService // 代理列表服务（数据库）
 }
 
@@ -45,7 +44,6 @@ func NewProxyHandlerWithService(svc *service.ProxyService) *ProxyHandler {
 
 // bindSession 将会话绑定到代理 URL（内部调用需持有写锁）。
 func (h *ProxyHandler) bindSession(pid, sessionID, proxyURL string) {
-	// 解绑该 session_id 之前可能绑定的代理
 	if oldURL, ok := h.sessions[sessionID]; ok && oldURL != proxyURL {
 		logger.Debug("api.proxy", "rebind session %s: %s -> %s", sessionID, oldURL, proxyURL)
 	}
@@ -133,10 +131,8 @@ func (h *ProxyHandler) Unregister(w http.ResponseWriter, r *http.Request) {
 
 // TraceInit 转发 trace-init 请求到指定代理。
 // POST /api/proxy/trace-init
-// 路由优先级：
-//  1. proxy_pid 精确路由（init 锁保证一对一）
-//  2. session_id 已绑定代理的精确路由
-//  3. 广播探测（兜底，proxy 侧 guard 防止误投）
+// 路由逻辑：通过 proxy_pid（环境变量注入）精确路由到目标代理。
+// PID 来自 CLAUDE_TAP_PROXY_PID 环境变量，由 proxy 启动时注入子进程，/clear 后仍然有效。
 func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "use POST", http.StatusMethodNotAllowed)
@@ -160,76 +156,38 @@ func (h *ProxyHandler) TraceInit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "session_id is required", http.StatusBadRequest)
 		return
 	}
-
-	// 串行锁：确保同一时刻只处理一个 trace-init（配合 init PID 文件一对一消费）
-	h.traceMu.Lock()
-	defer h.traceMu.Unlock()
-
-	// 优先级 1：proxy_pid 精确路由
-	if tiReq.ProxyPID != "" {
-		h.mu.RLock()
-		proxyURL, found := h.proxies[tiReq.ProxyPID]
-		h.mu.RUnlock()
-
-		if found {
-			logger.Debug("api.proxy", "trace-init: PID route session=%s to pid=%s url=%s", tiReq.SessionID, tiReq.ProxyPID, proxyURL)
-			resp, err := relayTraceInit(proxyURL, body)
-			if err == nil {
-				h.mu.Lock()
-				h.bindSession(tiReq.ProxyPID, tiReq.SessionID, proxyURL)
-				h.mu.Unlock()
-				logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s", tiReq.SessionID, tiReq.ProxyPID)
-				writeJSON(w, http.StatusOK, resp)
-				return
-			}
-			logger.Warn("api.proxy", "trace-init: PID route failed for pid=%s: %v, falling back", tiReq.ProxyPID, err)
-		} else {
-			logger.Warn("api.proxy", "trace-init: proxy_pid=%s not registered, falling back", tiReq.ProxyPID)
-		}
+	if tiReq.ProxyPID == "" {
+		logger.Warn("api.proxy", "trace-init: no proxy_pid provided for session=%s", tiReq.SessionID)
+		http.Error(w, "proxy_pid is required", http.StatusBadRequest)
+		return
 	}
 
-	// 优先级 2：session_id 已绑定代理
+	// 查找目标代理
 	h.mu.RLock()
-	boundURL, bound := h.sessions[tiReq.SessionID]
-	proxiesCopy := make(map[string]string, len(h.proxies))
-	for pid, url := range h.proxies {
-		proxiesCopy[pid] = url
-	}
+	proxyURL, found := h.proxies[tiReq.ProxyPID]
 	h.mu.RUnlock()
 
-	if bound {
-		logger.Debug("api.proxy", "trace-init: direct route session=%s to %s", tiReq.SessionID, boundURL)
-		resp, err := relayTraceInit(boundURL, body)
-		if err == nil {
-			writeJSON(w, http.StatusOK, resp)
-			return
-		}
-		logger.Warn("api.proxy", "trace-init: bound proxy %s unreachable for session=%s: %v", boundURL, tiReq.SessionID, err)
-	}
-
-	if len(proxiesCopy) == 0 {
-		logger.Warn("api.proxy", "trace-init: no proxies registered")
-		http.Error(w, "no proxies registered", http.StatusServiceUnavailable)
+	if !found {
+		logger.Warn("api.proxy", "trace-init: proxy pid=%s not registered", tiReq.ProxyPID)
+		http.Error(w, "proxy not found: "+tiReq.ProxyPID, http.StatusNotFound)
 		return
 	}
 
-	// 优先级 3：广播探测（兜底）
-	for pid, proxyURL := range proxiesCopy {
-		resp, err := relayTraceInit(proxyURL, body)
-		if err != nil {
-			logger.Debug("api.proxy", "trace-init relay to %s failed: %v", proxyURL, err)
-			continue
-		}
-		h.mu.Lock()
-		h.bindSession(pid, tiReq.SessionID, proxyURL)
-		h.mu.Unlock()
-		logger.Info("api.proxy", "trace-init: session=%s bound to proxy pid=%s url=%s (broadcast)", tiReq.SessionID, pid, proxyURL)
-		writeJSON(w, http.StatusOK, resp)
+	// 转发到目标代理
+	resp, err := relayTraceInit(proxyURL, body)
+	if err != nil {
+		logger.Warn("api.proxy", "trace-init: relay to pid=%s failed: %v", tiReq.ProxyPID, err)
+		http.Error(w, "proxy unreachable: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 
-	logger.Warn("api.proxy", "trace-init: all proxies failed for session=%s", tiReq.SessionID)
-	http.Error(w, "all proxies unreachable", http.StatusBadGateway)
+	// 绑定会话（用于注销时清理）
+	h.mu.Lock()
+	h.bindSession(tiReq.ProxyPID, tiReq.SessionID, proxyURL)
+	h.mu.Unlock()
+
+	logger.Info("api.proxy", "trace-init: session=%s routed to proxy pid=%s", tiReq.SessionID, tiReq.ProxyPID)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // List 处理获取代理列表的请求。
