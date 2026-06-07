@@ -277,6 +277,14 @@ func MachineID() string {
 	username := "unknown"
 	if u, err := user.Current(); err == nil && u.Username != "" {
 		username = u.Username
+		// Windows: user.Current().Username 返回 "HOSTNAME\Username" 格式，
+		// 去掉域名前缀，避免 \ 被 filepath.Join 当成路径分隔符产生多余的目录层级
+		if idx := strings.LastIndex(username, `\`); idx >= 0 {
+			username = username[idx+1:]
+		}
+		if idx := strings.LastIndex(username, `/`); idx >= 0 {
+			username = username[idx+1:]
+		}
 	}
 	return username + "@" + hostname
 }
