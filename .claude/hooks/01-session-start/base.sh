@@ -86,6 +86,8 @@ __LAST_TRACE_PATH=""
 
 # 5. 初始化代理 trace 路径（通过环境变量直连 proxy，无需 backend 中转）
 init_trace_path() {
+  # 诊断：打印环境变量实际值
+  log "DEBUG" "ENV dump: CLAUDE_TAP_PROXY_URL='${CLAUDE_TAP_PROXY_URL:-<unset>}' CLAUDE_TAP_PROXY_PID='${CLAUDE_TAP_PROXY_PID:-<unset>}'"
   local proxy_url="${CLAUDE_TAP_PROXY_URL:-}"
   if [ -z "$proxy_url" ]; then
     log "DEBUG" "Trace init skipped: no proxy URL in env"
@@ -102,6 +104,8 @@ init_trace_path() {
   # Windows 路径反斜杠转义：\ → \\（否则 Go JSON 解析器拒绝非法转义序列如 \U）
   local safe_transcript_path="${transcript_path//\\/\\\\}"
 
+  log "INFO" "Trace init: proxy=$proxy_url pid=${CLAUDE_TAP_PROXY_PID:-unknown} session=$sid"
+
   # 直接调用 proxy 的 trace-init 端点（环境变量保证路由确定性）
   local result
   result=$(curl -s --max-time 5 -X POST "$proxy_url/_internal/trace-init" \
@@ -112,7 +116,7 @@ init_trace_path() {
     __LAST_TRACE_PATH=$(echo "$result" | jq -r '.trace_path // ""' 2>/dev/null)
     log "INFO" "Trace initialized: ${__LAST_TRACE_PATH:-unknown}"
   else
-    log "DEBUG" "Trace init failed (proxy call returned empty)"
+    log "WARN" "Trace init failed: proxy=$proxy_url returned empty (pid=${CLAUDE_TAP_PROXY_PID:-unknown})"
   fi
 }
 
