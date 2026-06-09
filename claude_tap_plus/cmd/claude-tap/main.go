@@ -25,6 +25,7 @@ import (
 //   session-pull    从存储恢复会话到 ~/.claude/
 //   session-status  显示会话存储状态
 //   backend         启动后端服务器模式
+//   deploy          将模板配置部署到目标项目
 //   help            显示使用帮助
 //
 // 无子命令时默认进入代理模式（拦截 Claude Code API 流量）。
@@ -53,6 +54,9 @@ func main() {
 			return
 		case "backend":
 			runBackend(os.Args[2:])
+			return
+		case "deploy":
+			runDeploy(os.Args[2:])
 			return
 		case "help", "--help", "-h":
 			printUsage()
@@ -85,6 +89,11 @@ func printUsage() {
 	fmt.Println("  --tap-auth-token TOKEN Override OAuth token (highest priority)")
 	fmt.Println("  --tap-base-url URL     Override upstream API URL (highest priority)")
 	fmt.Println("  --claude               Alias for -- (pass remaining args to claude)")
+	fmt.Println("  claude-tap-plus deploy --target PATH             Deploy .claude/ template to project")
+	fmt.Println()
+	fmt.Println("Deploy flags:")
+	fmt.Println("  --target PATH, -t      Target project root directory (required)")
+	fmt.Println("  --dry-run              Preview changes without copying files")
 	fmt.Println()
 	fmt.Println("Session-push flags:")
 	fmt.Println("  --all                  Collect all projects")
