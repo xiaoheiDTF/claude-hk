@@ -48,7 +48,7 @@ func createMinimalTemplate(t *testing.T) string {
 		"settings.json":   `{"key": "value"}`,
 		"init.sh":         "#!/bin/bash\necho init",
 		"dirs.conf":       "LOG_DIR=logs",
-		"registry.conf":   "001-2-issue",
+		"skills/registry.conf": "001-2-issue",
 		"hooks/base.sh":   "#!/bin/bash\nsource lib/config.sh",
 		"skills/test.sh":  "#!/bin/bash\necho test",
 		"lib/config.sh":   "#!/bin/bash\nBACKEND_URL=",
@@ -618,7 +618,7 @@ func TestF2_E1_TemplateMissingDir(t *testing.T) {
 	for _, d := range []string{"skills", "lib", "scripts", "myRule"} {
 		os.MkdirAll(filepath.Join(templateDir, d), 0o755)
 	}
-	for _, f := range []string{"settings.json", "init.sh", "dirs.conf", "registry.conf"} {
+	for _, f := range []string{"settings.json", "init.sh", "dirs.conf", "skills/registry.conf"} {
 		os.WriteFile(filepath.Join(templateDir, f), []byte(""), 0o644)
 	}
 
@@ -640,7 +640,7 @@ func TestF2_E2_TemplateMissingFile(t *testing.T) {
 	for _, d := range []string{"hooks", "skills", "lib", "scripts", "myRule"} {
 		os.MkdirAll(filepath.Join(templateDir, d), 0o755)
 	}
-	for _, f := range []string{"init.sh", "dirs.conf", "registry.conf"} {
+	for _, f := range []string{"init.sh", "dirs.conf", "skills/registry.conf"} {
 		os.WriteFile(filepath.Join(templateDir, f), []byte(""), 0o644)
 	}
 	// 故意不创建 settings.json

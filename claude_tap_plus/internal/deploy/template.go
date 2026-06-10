@@ -13,7 +13,7 @@ var requiredItems = []string{
 	"settings.json",
 	"init.sh",
 	"dirs.conf",
-	"registry.conf",
+	"skills/registry.conf",
 	"lib/",
 	"scripts/",
 	"myRule/",
