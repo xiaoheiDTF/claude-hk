@@ -9,6 +9,34 @@ import (
 	"testing"
 )
 
+// TestIsKimiURL 验证 IsKimiURL 对各上游 URL 的识别。
+func TestIsKimiURL(t *testing.T) {
+	tests := []struct {
+		url  string
+		want bool
+	}{
+		// Kimi/Moonshot
+		{"https://api.kimi.com/v1/chat/completions", true},
+		{"https://api.moonshot.cn/v1/chat/completions", true},
+		// DeepSeek
+		{"https://api.deepseek.com/v1/chat/completions", true},
+		{"https://api.deepseek.com/", true},
+		// 不匹配
+		{"https://api.anthropic.com/v1/messages", false},
+		{"https://api.openai.com/v1/chat/completions", false},
+		{"https://open.bigmodel.cn/api/paas/v4/chat/completions", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			got := IsKimiURL(tt.url)
+			if got != tt.want {
+				t.Errorf("IsKimiURL(%q) = %v, want %v", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestInjectReasoningContentCached_Unit 直接测试 injectReasoningContentCached 函数的各种场景。
 func TestInjectReasoningContentCached_Unit(t *testing.T) {
 	tests := []struct {

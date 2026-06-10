@@ -634,14 +634,14 @@ func (p *ReverseProxy) SetKimiMode(kimi bool) {
 	p.kimiMode = kimi
 	if kimi && p.reasoningCache == nil {
 		p.reasoningCache = NewReasoningCache()
-		logger.Info("proxy", "kimi mode enabled, reasoning_content caching active")
+		logger.Info("proxy", "reasoning_content mode enabled (kimi/deepseek), caching active")
 	}
 }
 
-// IsKimiURL 判断 URL 是否为 kimi/moonshot 上游。
+// IsKimiURL 判断 URL 是否为需要 reasoning_content 注入的上游（kimi/moonshot/deepseek）。
 func IsKimiURL(url string) bool {
 	lower := strings.ToLower(url)
-	return strings.Contains(lower, "kimi") || strings.Contains(lower, "moonshot")
+	return strings.Contains(lower, "kimi") || strings.Contains(lower, "moonshot") || strings.Contains(lower, "deepseek")
 }
 
 // cacheFromResponse 从 API 响应快照中提取 reasoning_content 并存入缓存。
