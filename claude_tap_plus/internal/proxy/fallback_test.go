@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestUpstreamFallback_ConnectionFailure 测试连接失败时触发兜底
@@ -42,12 +44,14 @@ func TestUpstreamFallback_ConnectionFailure(t *testing.T) {
 	traceDir := t.TempDir()
 	rp := NewReverseProxy(badServer.URL, traceDir)
 	rp.model = "glm-5.1"
-	// 设置 fallback 配置（RED 阶段：此字段尚不存在）
-	rp.fallbackConfig = &FallbackConfig{
-		BaseURL:   fallbackServer.URL,
-		Model:     "claude-sonnet-4-6",
-		AuthToken: "tok-fallback",
-	}
+	rp.retryInterval = 50 * time.Millisecond
+	rp.SetFallbackConfigs([]*FallbackConfig{
+		{
+			BaseURL:   fallbackServer.URL,
+			Model:     "claude-sonnet-4-6",
+			AuthToken: "tok-fallback",
+		},
+	})
 
 	_, err := rp.Start("127.0.0.1", 0)
 	if err != nil {
@@ -118,11 +122,14 @@ func TestUpstreamFallback_ResponseError(t *testing.T) {
 	traceDir := t.TempDir()
 	rp := NewReverseProxy(primaryServer.URL, traceDir)
 	rp.model = "glm-5.1"
-	rp.fallbackConfig = &FallbackConfig{
-		BaseURL:   fallbackServer.URL,
-		Model:     "claude-sonnet-4-6",
-		AuthToken: "tok-fallback",
-	}
+	rp.retryInterval = 50 * time.Millisecond
+	rp.SetFallbackConfigs([]*FallbackConfig{
+		{
+			BaseURL:   fallbackServer.URL,
+			Model:     "claude-sonnet-4-6",
+			AuthToken: "tok-fallback",
+		},
+	})
 
 	_, err := rp.Start("127.0.0.1", 0)
 	if err != nil {
@@ -182,11 +189,14 @@ func TestUpstreamFallback_NoRecovery(t *testing.T) {
 	traceDir := t.TempDir()
 	rp := NewReverseProxy(primaryServer.URL, traceDir)
 	rp.model = "glm-5.1"
-	rp.fallbackConfig = &FallbackConfig{
-		BaseURL:   fallbackServer.URL,
-		Model:     "claude-sonnet-4-6",
-		AuthToken: "tok-fallback",
-	}
+	rp.retryInterval = 50 * time.Millisecond
+	rp.SetFallbackConfigs([]*FallbackConfig{
+		{
+			BaseURL:   fallbackServer.URL,
+			Model:     "claude-sonnet-4-6",
+			AuthToken: "tok-fallback",
+		},
+	})
 
 	_, err := rp.Start("127.0.0.1", 0)
 	if err != nil {
@@ -224,6 +234,7 @@ func TestUpstreamFallback_NoFallbackConfig(t *testing.T) {
 	traceDir := t.TempDir()
 	rp := NewReverseProxy(primaryServer.URL, traceDir)
 	rp.model = "glm-5.1"
+	rp.retryInterval = 50 * time.Millisecond
 	// 不设置 fallbackConfig
 
 	_, err := rp.Start("127.0.0.1", 0)
@@ -244,5 +255,163 @@ func TestUpstreamFallback_NoFallbackConfig(t *testing.T) {
 	// 即使上游失败且无 fallback，代理透传上游的 500 响应
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("status = %d, want %d (upstream error forwarded)", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+// TestUpstreamFallback_MultipleProfiles 测试多 fallback profile 轮询
+func TestUpstreamFallback_MultipleProfiles(t *testing.T) {
+	var mu sync.Mutex
+	fb1Count := 0
+	fb2Count := 0
+
+	// fallback 1：总是失败
+	fb1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		fb1Count++
+		mu.Unlock()
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"fb1 down"}`))
+	}))
+	defer fb1.Close()
+
+	// fallback 2：总是成功
+	fb2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		fb2Count++
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg_fb2","type":"message","role":"assistant","content":[],"model":"fb2","stop_reason":"end_turn","usage":{"input_tokens":0,"output_tokens":0}}`))
+	}))
+	defer fb2.Close()
+
+	// 主上游失败
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer primary.Close()
+
+	traceDir := t.TempDir()
+	rp := NewReverseProxy(primary.URL, traceDir)
+	rp.SetFallbackConfigs([]*FallbackConfig{
+		{BaseURL: fb1.URL, Model: "fb1"},
+		{BaseURL: fb2.URL, Model: "fb2"},
+	})
+
+	_, err := rp.Start("127.0.0.1", 0)
+	if err != nil {
+		t.Fatalf("start proxy: %v", err)
+	}
+	defer rp.Stop()
+
+	// 请求 1：主上游 500 → 标记 unavailable，返回 500
+	req1, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(`{"model":"test","stream":false}`)))
+	req1.Header.Set("Content-Type", "application/json")
+	resp1, _ := http.DefaultClient.Do(req1)
+	resp1.Body.Close()
+
+	// 请求 2：此时 unavailable，走 fallback[0]（fb1）也 500 → advance
+	req2, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(`{"model":"test","stream":false}`)))
+	req2.Header.Set("Content-Type", "application/json")
+	resp2, _ := http.DefaultClient.Do(req2)
+	resp2.Body.Close()
+
+	// 请求 3：fallback index 已 advance，走 fallback[1]（fb2）成功
+	req3, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(`{"model":"test","stream":false}`)))
+	req3.Header.Set("Content-Type", "application/json")
+	resp3, _ := http.DefaultClient.Do(req3)
+	resp3.Body.Close()
+
+	mu.Lock()
+	if fb1Count == 0 {
+		t.Error("fallback 1 should have been tried")
+	}
+	if fb2Count == 0 {
+		t.Error("fallback 2 should have been tried after fallback 1 failed")
+	}
+	mu.Unlock()
+}
+
+// TestDoWithRetry_ConnectionError 测试连接错误时重试最终失败
+func TestDoWithRetry_ConnectionError(t *testing.T) {
+	traceDir := t.TempDir()
+	rp := NewReverseProxy("http://127.0.0.1:1", traceDir)
+	rp.retryInterval = 50 * time.Millisecond
+
+	req, _ := http.NewRequest("POST", "http://127.0.0.1:1/v1/messages", bytes.NewReader([]byte(`{"model":"test"}`)))
+	req.Header.Set("Content-Type", "application/json")
+
+	start := time.Now()
+	_, err := rp.doWithRetry(req, 1, false)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected error after retries")
+	}
+
+	// 应重试 5 次，间隔约 50ms*5 = 250ms
+	if elapsed < 200*time.Millisecond {
+		t.Errorf("retries too fast: %v, expected at least 200ms", elapsed)
+	}
+}
+
+// TestDoWithRetry_5xxRetryThenSuccess 测试 5xx 重试后成功
+func TestDoWithRetry_5xxRetryThenSuccess(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"error":"temporarily unavailable"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"ok","model":"test"}`))
+	}))
+	defer server.Close()
+
+	traceDir := t.TempDir()
+	rp := NewReverseProxy(server.URL, traceDir)
+	rp.retryInterval = 10 * time.Millisecond
+
+	req, _ := http.NewRequest("POST", server.URL+"/v1/messages", bytes.NewReader([]byte(`{"model":"test"}`)))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := rp.doWithRetry(req, 1, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	resp.Body.Close()
+
+	if callCount != 3 {
+		t.Errorf("expected 3 calls (2 retries + success), got %d", callCount)
+	}
+}
+
+// TestDoWithRetry_4xxNoRetry 测试 4xx 不重试
+func TestDoWithRetry_4xxNoRetry(t *testing.T) {
+	callCount := int32(0)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&callCount, 1)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"bad request"}`))
+	}))
+	defer server.Close()
+
+	traceDir := t.TempDir()
+	rp := NewReverseProxy(server.URL, traceDir)
+
+	req, _ := http.NewRequest("POST", server.URL+"/v1/messages", bytes.NewReader([]byte(`{"model":"test"}`)))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := rp.doWithRetry(req, 1, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	resp.Body.Close()
+
+	if atomic.LoadInt32(&callCount) != 1 {
+		t.Errorf("expected 1 call (no retry for 4xx), got %d", callCount)
 	}
 }

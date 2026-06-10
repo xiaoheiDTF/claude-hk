@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -17,6 +18,15 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/sse"
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/trace"
+)
+
+const (
+	maxUpstreamRetries = 5                    // 上游请求最大重试次数
+	retryInterval      = 30 * time.Second     // 重试间隔
+	proxyDialTimeout   = 10 * time.Second     // TCP 连接超时
+	proxyTLSHandshake  = 10 * time.Second     // TLS 握手超时
+	proxyResponseHdr   = 60 * time.Second     // 等待响应头超时
+	proxyIdleConn      = 90 * time.Second     // 空闲连接超时
 )
 
 // ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
@@ -33,11 +43,13 @@ type ReverseProxy struct {
 	OnSessionInit      func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
 	model              string              // 强制替换的模型名（空=不改写）
 	upstreamAvailable  bool                // 上游可用性标记，初始 true
-	fallbackConfig     *FallbackConfig      // 兜底配置（上游不可用时切换）
-	availableMu        sync.Mutex          // 保护 upstreamAvailable 和 fallbackConfig 的并发安全
+	fallbackConfigs    []*FallbackConfig   // 兜底配置列表（上游不可用时轮询）
+	availableMu        sync.Mutex          // 保护 upstreamAvailable 和 fallbackConfigs 的并发安全
 	actualAddr         string              // 实际监听地址（启动后设置）
 	reasoningCache     *ReasoningCache     // reasoning_content 缓存（仅 kimi 模式）
 	kimiMode           bool                // 是否为 kimi 上游
+	fallbackIndex      int                 // fallback 轮询索引
+	retryInterval      time.Duration       // 重试间隔（默认 retryInterval，测试可覆盖）
 }
 
 // FallbackConfig 存储上游不可用时的兜底配置。
@@ -56,11 +68,25 @@ func NewReverseProxy(target, traceDir string) *ReverseProxy {
 		target:            strings.TrimRight(target, "/"),
 		baseDir:           traceDir,
 		upstreamAvailable: true,
-		client: &http.Client{
-			Timeout: 0, // 流式场景不设超时
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse // 不自动跟随重定向
-			},
+		client:            newProxyHTTPClient(),
+	}
+}
+
+// newProxyHTTPClient 创建带 Transport 超时的 HTTP 客户端。
+// 流式场景整体不设超时，但连接建立阶段有保护。
+func newProxyHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 0, // 流式场景不设整体超时
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: proxyDialTimeout,
+			}).DialContext,
+			TLSHandshakeTimeout:   proxyTLSHandshake,
+			ResponseHeaderTimeout: proxyResponseHdr,
+			IdleConnTimeout:       proxyIdleConn,
+		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // 不自动跟随重定向
 		},
 	}
 }
@@ -163,12 +189,16 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// 确定上游目标：检查是否需要走兜底配置（契约 4）
 	p.availableMu.Lock()
-	useFallback := !p.upstreamAvailable && p.fallbackConfig != nil
+	useFallback := !p.upstreamAvailable && len(p.fallbackConfigs) > 0
 	activeTarget := p.target
 	var fallbackModel string
+	var fb *FallbackConfig
 	if useFallback {
-		activeTarget = p.fallbackConfig.BaseURL
-		fallbackModel = p.fallbackConfig.Model
+		fb = p.currentFallbackConfig()
+		if fb != nil {
+			activeTarget = fb.BaseURL
+			fallbackModel = fb.Model
+		}
 	}
 	p.availableMu.Unlock()
 
@@ -213,29 +243,42 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	upstreamReq.Header.Del("Host")
 
 	// 兜底模式下替换认证头
-	if useFallback && p.fallbackConfig != nil {
-		if p.fallbackConfig.APIKey != "" {
-			upstreamReq.Header.Set("x-api-key", p.fallbackConfig.APIKey)
+	if useFallback && fb != nil {
+		if fb.APIKey != "" {
+			upstreamReq.Header.Set("x-api-key", fb.APIKey)
 		}
-		if p.fallbackConfig.AuthToken != "" {
-			upstreamReq.Header.Set("Authorization", "Bearer "+p.fallbackConfig.AuthToken)
+		if fb.AuthToken != "" {
+			upstreamReq.Header.Set("Authorization", "Bearer "+fb.AuthToken)
 		}
 	}
 
-	// 向上游发送请求
-	upstreamResp, err := p.client.Do(upstreamReq)
+	// 向上游发送请求（带重试：连接错误和 5xx 时重试）
+	// 有兜底配置时不重试，让 serveHTTP 立即切换兜底；无兜底时才重试
+	hasFallback := len(p.fallbackConfigs) > 0
+	upstreamResp, err := p.doWithRetry(upstreamReq, turn, hasFallback)
 	if err != nil {
-		logger.Warn("proxy", "[Turn %d] upstream error: %v", turn, err)
-		p.markUnavailable()
+		if useFallback {
+			logger.Warn("proxy", "[Turn %d] fallback failed, advancing to next candidate", turn)
+			p.advanceFallback()
+		} else {
+			logger.Warn("proxy", "[Turn %d] upstream error after retries: %v", turn, err)
+			p.markUnavailable()
+		}
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 	defer upstreamResp.Body.Close()
 
-	// 响应错误（4xx/5xx）→ 标记上游不可用（契约 4）
+	// 响应错误处理（契约 4）
 	if upstreamResp.StatusCode >= 400 {
 		logger.Warn("proxy", "[Turn %d] upstream error response: %d", turn, upstreamResp.StatusCode)
-		p.markUnavailable()
+		if useFallback && upstreamResp.StatusCode >= 500 {
+			// fallback 返回 5xx，尝试下一个兜底配置
+			p.advanceFallback()
+		} else if !useFallback {
+			// 主上游错误，标记不可用
+			p.markUnavailable()
+		}
 	}
 
 	duration := time.Since(t0).Milliseconds()
@@ -607,6 +650,68 @@ func (p *ReverseProxy) TracePath() string {
 	return ""
 }
 
+// doWithRetry 向上游发送请求，连接错误或 5xx 时进行重试。
+// 如果 hasFallback 为 true（有兜底配置），不重试直接返回错误，由调用方切换兜底。
+// 如果 hasFallback 为 false（无兜底配置），重试 maxUpstreamRetries 次，间隔 retryInterval。
+func (p *ReverseProxy) doWithRetry(req *http.Request, turn int, hasFallback bool) (*http.Response, error) {
+	var lastErr error
+	var savedBody []byte
+
+	maxRetries := maxUpstreamRetries
+	if hasFallback {
+		maxRetries = 0 // 有兜底时不重试，让 serveHTTP 立即切换
+	}
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			interval := p.retryInterval
+			if interval == 0 {
+				interval = retryInterval
+			}
+			logger.Warn("proxy", "[Turn %d] retry %d/%d after %v", turn, attempt, maxUpstreamRetries, interval)
+			time.Sleep(interval)
+		}
+
+		// 第一次读取时保存 body，后续复用
+		if savedBody == nil && req.Body != nil {
+			savedBody, _ = io.ReadAll(req.Body)
+			req.Body.Close()
+		}
+
+		retryReq, err := http.NewRequest(req.Method, req.URL.String(), bytes.NewReader(savedBody))
+		if err != nil {
+			return nil, err
+		}
+		retryReq.Header = req.Header.Clone()
+
+		resp, err := p.client.Do(retryReq)
+		if err != nil {
+			lastErr = err
+			logger.Warn("proxy", "[Turn %d] attempt %d failed: %v", turn, attempt+1, err)
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, fmt.Errorf("all %d retries exhausted: %w", maxRetries, lastErr)
+		}
+
+		// 5xx 错误触发重试，4xx 不重试；最后一次直接返回（让 serveHTTP 透传）
+		if resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("upstream returned %d", resp.StatusCode)
+			if attempt < maxRetries {
+				logger.Warn("proxy", "[Turn %d] attempt %d: status %d, will retry", turn, attempt+1, resp.StatusCode)
+				resp.Body.Close()
+				continue
+			}
+			// 最后一次尝试，直接返回响应（serveHTTP 会标记不可用并透传）
+			return resp, nil
+		}
+
+		return resp, nil
+	}
+
+	return nil, fmt.Errorf("all %d retries exhausted: %w", maxRetries, lastErr)
+}
+
 // markUnavailable 标记上游不可用（契约 4）。
 // 首次失败后置 upstreamAvailable = false，进程生命周期内不再恢复。
 func (p *ReverseProxy) markUnavailable() {
@@ -623,9 +728,29 @@ func (p *ReverseProxy) SetModel(model string) {
 	p.model = model
 }
 
-// SetFallbackConfig 设置兜底配置。
-func (p *ReverseProxy) SetFallbackConfig(cfg *FallbackConfig) {
-	p.fallbackConfig = cfg
+// SetFallbackConfigs 设置兜底配置列表，支持多 profile 轮询。
+func (p *ReverseProxy) SetFallbackConfigs(cfgs []*FallbackConfig) {
+	p.availableMu.Lock()
+	defer p.availableMu.Unlock()
+	p.fallbackConfigs = cfgs
+	p.fallbackIndex = 0
+}
+
+// currentFallbackConfig 返回当前轮询的 fallback 配置。
+func (p *ReverseProxy) currentFallbackConfig() *FallbackConfig {
+	if len(p.fallbackConfigs) == 0 {
+		return nil
+	}
+	idx := p.fallbackIndex % len(p.fallbackConfigs)
+	return p.fallbackConfigs[idx]
+}
+
+// advanceFallback 切换到下一个 fallback 配置（轮询）。
+func (p *ReverseProxy) advanceFallback() {
+	p.availableMu.Lock()
+	defer p.availableMu.Unlock()
+	p.fallbackIndex++
+	logger.Info("proxy", "fallback advanced to index %d", p.fallbackIndex)
 }
 
 // SetKimiMode 启用或禁用 kimi 模式。

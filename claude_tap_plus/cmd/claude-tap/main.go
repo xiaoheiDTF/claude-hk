@@ -251,9 +251,10 @@ func runProxy(args []string) {
 		rp.SetKimiMode(true)
 	}
 
-	// 加载兜底配置（契约 4：从 Claude settings 读取）
-	if fallback := loadFallbackConfig(); fallback != nil {
-		rp.SetFallbackConfig(fallback)
+	// 加载兜底配置（契约 4：优先 profiles.json → 再 Claude settings）
+	fallbackCfgs := loadFallbackConfigs(resolved.Model, tapProfile)
+	if len(fallbackCfgs) > 0 {
+		rp.SetFallbackConfigs(fallbackCfgs)
 	}
 
 	port := tapPort
@@ -391,9 +392,30 @@ func runProxy(args []string) {
 	}
 }
 
-// loadFallbackConfig 从 Claude settings 加载兜底配置（契约 4）。
-// 读取 ~/.claude/settings.json 中的 base_url、model、认证信息作为 fallback。
-func loadFallbackConfig() *proxy.FallbackConfig {
+// loadFallbackConfigs 按优先级加载兜底配置列表。
+//
+// 优先级（从高到低）：
+//  1. profiles.json 中与 targetModel 同 model 的其他 profile
+//  2. profiles.json 中其他 model 的 profile
+//  3. ~/.claude/settings.json 中的配置（原始 fallback 逻辑）
+func loadFallbackConfigs(targetModel, excludeProfile string) []*proxy.FallbackConfig {
+	// Level 1 & 2: 优先从 profiles.json 查找
+	profiles, err := config.ResolveFallbackProfiles(targetModel, excludeProfile)
+	if err == nil && len(profiles) > 0 {
+		var result []*proxy.FallbackConfig
+		for _, p := range profiles {
+			result = append(result, &proxy.FallbackConfig{
+				BaseURL:   p.BaseURL,
+				Model:     p.Model,
+				AuthToken: p.AuthToken,
+				APIKey:    p.APIKey,
+			})
+		}
+		logger.Info("main", "fallback loaded from profiles.json: %d candidates", len(result))
+		return result
+	}
+
+	// Level 3: 回退到原始逻辑（Claude settings）
 	s, err := config.ReadClaudeSettings()
 	if err != nil || s == nil {
 		return nil
@@ -404,12 +426,13 @@ func loadFallbackConfig() *proxy.FallbackConfig {
 		baseURL = config.ClaudeClient.DefaultTarget
 	}
 
-	return &proxy.FallbackConfig{
+	logger.Info("main", "fallback loaded from Claude settings")
+	return []*proxy.FallbackConfig{{
 		BaseURL:   baseURL,
 		Model:     s.Model,
 		AuthToken: s.Env.AnthropicAuthToken,
 		APIKey:    s.Env.AnthropicAPIKey,
-	}
+	}}
 }
 
 // runSessionPush 执行 session-push 子命令，收集本地 Claude 会话到集中存储。

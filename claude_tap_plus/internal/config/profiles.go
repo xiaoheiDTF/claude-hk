@@ -123,15 +123,19 @@ func ResolveFallbackProfiles(targetModel, excludeProfile string) ([]ProfileConfi
 		}
 	}
 
-	// 优先返回同 model 的 profile
+	// 按优先级拼接：同 model 在前，其他 model 在后
+	var result []ProfileConfig
 	if len(sameModel) > 0 {
 		logger.Info("config", "fallback profiles: %d same-model candidates", len(sameModel))
-		return sameModel, nil
+		result = append(result, sameModel...)
 	}
-
 	if len(otherModel) > 0 {
 		logger.Info("config", "fallback profiles: %d other-model candidates", len(otherModel))
-		return otherModel, nil
+		result = append(result, otherModel...)
+	}
+
+	if len(result) > 0 {
+		return result, nil
 	}
 
 	logger.Debug("config", "no fallback profiles found")
