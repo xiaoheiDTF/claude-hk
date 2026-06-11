@@ -216,9 +216,9 @@ func TestUpstreamFallback_NoRecovery(t *testing.T) {
 	if requestCount != 1 {
 		t.Errorf("primary received %d requests, want 1 (no recovery)", requestCount)
 	}
-	// fallback 收到 2 个请求（第 2、3 个请求）
-	if fallbackRequestCount != 2 {
-		t.Errorf("fallback received %d requests, want 2", fallbackRequestCount)
+	// fallback 收到 3 个请求（请求1主上游500→同请求内触发fallback，请求2、3也走fallback）
+	if fallbackRequestCount != 3 {
+		t.Errorf("fallback received %d requests, want 3", fallbackRequestCount)
 	}
 }
 
@@ -252,9 +252,9 @@ func TestUpstreamFallback_NoFallbackConfig(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// 即使上游失败且无 fallback，代理透传上游的 500 响应
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("status = %d, want %d (upstream error forwarded)", resp.StatusCode, http.StatusInternalServerError)
+	// 无 fallback 时，代理返回 502（logProxyError 默认状态码）
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Errorf("status = %d, want %d (no fallback: bad gateway)", resp.StatusCode, http.StatusBadGateway)
 	}
 }
 

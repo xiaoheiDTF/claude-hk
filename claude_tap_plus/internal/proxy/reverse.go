@@ -136,7 +136,7 @@ func (p *ReverseProxy) URL() string {
 }
 
 // serveHTTP 是代理的核心 HTTP 处理函数。
-// 处理流程：内部端点 → 路径白名单检查 → 读取请求体 → 构建上游请求 → 转发 → 流式/非流式处理。
+// 处理流程：请求预处理 → 尝试主上游 → 失败则尝试 fallback 链 → 全部失败则友好错误。
 func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	// 处理内部端点（绕过路径白名单）
 	if strings.HasPrefix(r.URL.Path, "/_internal/") {
@@ -157,6 +157,10 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = r.Body.Close()
+
+	// 保存原始请求体（改写 model 前），用于 fallback 时重新改写
+	originalBody := make([]byte, len(bodyBytes))
+	copy(originalBody, bodyBytes)
 
 	// 解析请求体为 JSON（用于后续提取 model、stream 等字段）
 	var reqBody any
@@ -187,124 +191,146 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("proxy", "[Turn %d] request: %s %s (%d bytes)", turn, r.Method, r.URL.Path, len(bodyBytes))
 
-	// 确定上游目标：检查是否需要走兜底配置（契约 4）
+	// 读取当前状态快照
 	p.availableMu.Lock()
-	useFallback := !p.upstreamAvailable && len(p.fallbackConfigs) > 0
-	activeTarget := p.target
-	var fallbackModel string
-	var fb *FallbackConfig
-	if useFallback {
-		fb = p.currentFallbackConfig()
-		if fb != nil {
-			activeTarget = fb.BaseURL
-			fallbackModel = fb.Model
-		}
-	}
+	upstreamAvailable := p.upstreamAvailable
+	fbConfigs := make([]*FallbackConfig, len(p.fallbackConfigs))
+	copy(fbConfigs, p.fallbackConfigs)
+	fbIdx := p.fallbackIndex
 	p.availableMu.Unlock()
+	hasFallback := len(fbConfigs) > 0
 
-	// 兜底模式下重新改写 model
-	if useFallback && fallbackModel != "" {
-		bodyBytes = rewriteModel(bodyBytes, reqBody, fallbackModel)
-		reqBody = nil
-		if len(bodyBytes) > 0 {
-			_ = json.Unmarshal(bodyBytes, &reqBody)
+	// ========== Phase 1: 尝试主上游 ==========
+	if upstreamAvailable {
+		upstreamURL := p.target + r.URL.Path
+		if r.URL.RawQuery != "" {
+			upstreamURL += "?" + r.URL.RawQuery
 		}
 
-		// 为 thinking 模式下的 assistant tool_call 消息注入 reasoning_content
-		bodyBytes = injectReasoningContentCached(bodyBytes, reqBody, p.reasoningCache, IsKimiURL(activeTarget))
-		reqBody = nil
-		if len(bodyBytes) > 0 {
-			_ = json.Unmarshal(bodyBytes, &reqBody)
+		upstreamReq, err := http.NewRequest(r.Method, upstreamURL, bytes.NewReader(bodyBytes))
+		if err != nil {
+			logProxyError(w, turn, err, 0)
+			return
 		}
-	}
 
-	// 构建上游请求 URL
-	upstreamURL := activeTarget + r.URL.Path
-	if r.URL.RawQuery != "" {
-		upstreamURL += "?" + r.URL.RawQuery
-	}
-
-	upstreamReq, err := http.NewRequest(r.Method, upstreamURL, bytes.NewReader(bodyBytes))
-	if err != nil {
-		http.Error(w, "create upstream request: "+err.Error(), http.StatusBadGateway)
-		return
-	}
-
-	// 复制请求头，过滤逐跳头
-	for k, vals := range r.Header {
-		lower := strings.ToLower(k)
-		if hopByHopHeaders[lower] {
-			continue
+		// 复制请求头，过滤逐跳头
+		for k, vals := range r.Header {
+			lower := strings.ToLower(k)
+			if hopByHopHeaders[lower] {
+				continue
+			}
+			for _, v := range vals {
+				upstreamReq.Header.Add(k, v)
+			}
 		}
-		for _, v := range vals {
-			upstreamReq.Header.Add(k, v)
-		}
-	}
-	upstreamReq.Header.Del("Host")
+		upstreamReq.Header.Del("Host")
 
-	// 兜底模式下替换认证头
-	if useFallback && fb != nil {
-		if fb.APIKey != "" {
-			upstreamReq.Header.Set("x-api-key", fb.APIKey)
-		}
-		if fb.AuthToken != "" {
-			upstreamReq.Header.Set("Authorization", "Bearer "+fb.AuthToken)
-		}
-	}
-
-	// 向上游发送请求（带重试：连接错误和 5xx 时重试）
-	// 有兜底配置时不重试，让 serveHTTP 立即切换兜底；无兜底时才重试
-	hasFallback := len(p.fallbackConfigs) > 0
-	upstreamResp, err := p.doWithRetry(upstreamReq, turn, hasFallback)
-	if err != nil {
-		if useFallback {
-			logger.Warn("proxy", "[Turn %d] fallback failed, advancing to next candidate", turn)
-			p.advanceFallback()
+		resp, err := p.doWithRetry(upstreamReq, turn, hasFallback)
+		if err != nil {
+			// 连接错误 → 标记不可用，进入 fallback 链
+			logger.Warn("proxy", "[Turn %d] primary connection error: %v", turn, err)
+			p.markUnavailable()
+			// fall through to fallback chain
+		} else if !shouldFallback(resp.StatusCode) {
+			// 主上游成功（或非降级错误如 400），直接处理响应
+			defer resp.Body.Close()
+			p.dispatchResponse(w, resp, reqID, turn, r, reqBody, t0)
+			return
 		} else {
-			logger.Warn("proxy", "[Turn %d] upstream error after retries: %v", turn, err)
+			// 主上游返回需要降级的状态码 → 标记不可用，进入 fallback 链
+			logger.Warn("proxy", "[Turn %d] primary returned %d, triggering fallback", turn, resp.StatusCode)
+			resp.Body.Close()
 			p.markUnavailable()
-		}
-		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer upstreamResp.Body.Close()
-
-	// 响应错误处理（契约 4）
-	if upstreamResp.StatusCode >= 400 {
-		logger.Warn("proxy", "[Turn %d] upstream error response: %d", turn, upstreamResp.StatusCode)
-		if useFallback && upstreamResp.StatusCode >= 500 {
-			// fallback 返回 5xx，尝试下一个兜底配置
-			p.advanceFallback()
-		} else if !useFallback {
-			// 主上游错误，标记不可用
-			p.markUnavailable()
+			// fall through to fallback chain
 		}
 	}
 
-	duration := time.Since(t0).Milliseconds()
+	// ========== Phase 2: 尝试 Fallback 链 ==========
+	if hasFallback {
+		for i := 0; i < len(fbConfigs); i++ {
+			idx := (fbIdx + i) % len(fbConfigs)
+			fb := fbConfigs[idx]
 
-	// 从请求体中提取 model 字段
-	model := ""
-	if m, ok := reqBody.(map[string]any); ok {
-		if v, ok := m["model"].(string); ok {
-			model = v
+			// 从原始请求体重新改写 model
+			fbBody := make([]byte, len(originalBody))
+			copy(fbBody, originalBody)
+			var fbParsed any
+			if len(fbBody) > 0 {
+				_ = json.Unmarshal(fbBody, &fbParsed)
+			}
+			if fb.Model != "" {
+				fbBody = rewriteModel(fbBody, fbParsed, fb.Model)
+				fbParsed = nil
+				if len(fbBody) > 0 {
+					_ = json.Unmarshal(fbBody, &fbParsed)
+				}
+			}
+			fbBody = injectReasoningContentCached(fbBody, fbParsed, p.reasoningCache, IsKimiURL(fb.BaseURL))
+			fbParsed = nil
+			if len(fbBody) > 0 {
+				_ = json.Unmarshal(fbBody, &fbParsed)
+			}
+
+			// 构建 fallback 请求
+			fbURL := fb.BaseURL + r.URL.Path
+			if r.URL.RawQuery != "" {
+				fbURL += "?" + r.URL.RawQuery
+			}
+
+			fbReq, err := http.NewRequest(r.Method, fbURL, bytes.NewReader(fbBody))
+			if err != nil {
+				p.advanceFallback()
+				continue
+			}
+
+			for k, vals := range r.Header {
+				lower := strings.ToLower(k)
+				if hopByHopHeaders[lower] {
+					continue
+				}
+				for _, v := range vals {
+					fbReq.Header.Add(k, v)
+				}
+			}
+			fbReq.Header.Del("Host")
+
+			// 替换认证头
+			if fb.APIKey != "" {
+				fbReq.Header.Set("x-api-key", fb.APIKey)
+			}
+			if fb.AuthToken != "" {
+				fbReq.Header.Set("Authorization", "Bearer "+fb.AuthToken)
+			}
+
+			// 发送请求
+			fbResp, fbErr := p.client.Do(fbReq)
+			if fbErr != nil {
+				logger.Warn("proxy", "[Turn %d] fallback[%d] connection error: %v", turn, idx, fbErr)
+				p.advanceFallback()
+				continue
+			}
+
+			if shouldFallback(fbResp.StatusCode) {
+				fbResp.Body.Close()
+				logger.Warn("proxy", "[Turn %d] fallback[%d] returned %d, trying next", turn, idx, fbResp.StatusCode)
+				p.advanceFallback()
+				continue
+			}
+
+			// Fallback 成功！更新索引
+			p.availableMu.Lock()
+			p.fallbackIndex = idx
+			p.availableMu.Unlock()
+			logger.Info("proxy", "[Turn %d] fallback[%d] succeeded (status %d)", turn, idx, fbResp.StatusCode)
+
+			defer fbResp.Body.Close()
+			p.dispatchResponse(w, fbResp, reqID, turn, r, fbParsed, t0)
+			return
 		}
 	}
 
-	// 检测是否为流式请求
-	isStreaming := false
-	if m, ok := reqBody.(map[string]any); ok {
-		if s, ok := m["stream"].(bool); ok {
-			isStreaming = s
-		}
-	}
-
-	// 根据是否流式分发到对应处理器
-	if isStreaming {
-		p.handleStreaming(w, upstreamResp, reqID, turn, int(duration), r, reqBody, t0, model)
-	} else {
-		p.handleNonStreaming(w, upstreamResp, reqID, turn, int(duration), r, reqBody, model)
-	}
+	// ========== Phase 3: 所有目标失败 → 日志错误 ==========
+	logProxyError(w, turn, fmt.Errorf("all targets failed"), 0)
 }
 
 // handleStreaming 处理 SSE 流式响应：
@@ -712,6 +738,60 @@ func (p *ReverseProxy) doWithRetry(req *http.Request, turn int, hasFallback bool
 	return nil, fmt.Errorf("all %d retries exhausted: %w", maxRetries, lastErr)
 }
 
+// shouldFallback reports whether the HTTP status code should trigger fallback to the next profile.
+// 401 (认证失败)、403 (访问被拒)、429 (频率超限)、5xx (服务器错误) 均触发降级。
+func shouldFallback(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized ||
+		statusCode == http.StatusForbidden ||
+		statusCode == http.StatusTooManyRequests ||
+		statusCode >= http.StatusInternalServerError
+}
+
+// logProxyError 将友好的中文错误提示输出到日志，并返回简单的 HTTP 错误响应。
+func logProxyError(w http.ResponseWriter, turn int, lastErr error, lastStatusCode int) {
+	msg := "上游服务暂时不可用，请稍后重试"
+	switch {
+	case lastStatusCode == http.StatusForbidden:
+		msg = "API 访问被拒绝 (403)，可能是认证信息过期或无权限，已尝试所有可用配置"
+	case lastStatusCode == http.StatusUnauthorized:
+		msg = "API 认证失败 (401)，请检查 API Key 或 Token 配置，已尝试所有可用配置"
+	case lastStatusCode == http.StatusTooManyRequests:
+		msg = "API 请求频率超限 (429)，所有配置均已限流，请稍后重试"
+	case lastErr != nil:
+		msg = "上游连接失败: " + lastErr.Error()
+	}
+
+	logger.Error("proxy", "[Turn %d] %s", turn, msg)
+
+	statusCode := lastStatusCode
+	if statusCode == 0 {
+		statusCode = http.StatusBadGateway
+	}
+	http.Error(w, msg, statusCode)
+}
+
+// dispatchResponse extracts model/stream info from reqBody and dispatches to the appropriate handler.
+func (p *ReverseProxy) dispatchResponse(w http.ResponseWriter, resp *http.Response, reqID string, turn int, r *http.Request, reqBody any, t0 time.Time) {
+	durationMs := int(time.Since(t0).Milliseconds())
+
+	model := ""
+	isStreaming := false
+	if m, ok := reqBody.(map[string]any); ok {
+		if v, ok := m["model"].(string); ok {
+			model = v
+		}
+		if s, ok := m["stream"].(bool); ok {
+			isStreaming = s
+		}
+	}
+
+	if isStreaming {
+		p.handleStreaming(w, resp, reqID, turn, durationMs, r, reqBody, t0, model)
+	} else {
+		p.handleNonStreaming(w, resp, reqID, turn, durationMs, r, reqBody, model)
+	}
+}
+
 // markUnavailable 标记上游不可用（契约 4）。
 // 首次失败后置 upstreamAvailable = false，进程生命周期内不再恢复。
 func (p *ReverseProxy) markUnavailable() {
@@ -763,10 +843,23 @@ func (p *ReverseProxy) SetKimiMode(kimi bool) {
 	}
 }
 
+// reasoningPrefixes 定义需要 reasoning_content 注入的上游 URL 前缀（scheme + host）。
+var reasoningPrefixes = []string{
+	"https://api.kimi.com",
+	"https://api.moonshot.cn",
+	"https://api.deepseek.com",
+}
+
 // IsKimiURL 判断 URL 是否为需要 reasoning_content 注入的上游（kimi/moonshot/deepseek）。
+// 基于 URL 前缀匹配，避免子串误判。
 func IsKimiURL(url string) bool {
 	lower := strings.ToLower(url)
-	return strings.Contains(lower, "kimi") || strings.Contains(lower, "moonshot") || strings.Contains(lower, "deepseek")
+	for _, prefix := range reasoningPrefixes {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // cacheFromResponse 从 API 响应快照中提取 reasoning_content 并存入缓存。
