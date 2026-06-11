@@ -747,7 +747,8 @@ func shouldFallback(statusCode int) bool {
 		statusCode >= http.StatusInternalServerError
 }
 
-// logProxyError 将友好的中文错误提示输出到日志，并返回简单的 HTTP 错误响应。
+// logProxyError 将友好中文提示输出到日志，同时返回 Anthropic API 格式的 JSON 错误响应。
+// 必须返回 JSON 而非纯文本，否则 Claude Code 解析会崩溃。
 func logProxyError(w http.ResponseWriter, turn int, lastErr error, lastStatusCode int) {
 	msg := "上游服务暂时不可用，请稍后重试"
 	switch {
@@ -767,7 +768,16 @@ func logProxyError(w http.ResponseWriter, turn int, lastErr error, lastStatusCod
 	if statusCode == 0 {
 		statusCode = http.StatusBadGateway
 	}
-	http.Error(w, msg, statusCode)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]any{
+		"type": "error",
+		"error": map[string]any{
+			"type":    "api_error",
+			"message": msg,
+		},
+	})
 }
 
 // dispatchResponse extracts model/stream info from reqBody and dispatches to the appropriate handler.
