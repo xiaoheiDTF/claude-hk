@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestIsKimiURL 验证 IsKimiURL 对各上游 URL 的识别。
+// TestIsKimiURL 验证 IsKimiURL 对各上游 URL 的前缀匹配。
 func TestIsKimiURL(t *testing.T) {
 	tests := []struct {
 		url  string
@@ -17,14 +17,18 @@ func TestIsKimiURL(t *testing.T) {
 	}{
 		// Kimi/Moonshot
 		{"https://api.kimi.com/v1/chat/completions", true},
+		{"https://api.kimi.com/", true},
 		{"https://api.moonshot.cn/v1/chat/completions", true},
 		// DeepSeek
 		{"https://api.deepseek.com/v1/chat/completions", true},
 		{"https://api.deepseek.com/", true},
-		// 不匹配
+		// 不匹配：不同 host
 		{"https://api.anthropic.com/v1/messages", false},
 		{"https://api.openai.com/v1/chat/completions", false},
 		{"https://open.bigmodel.cn/api/paas/v4/chat/completions", false},
+		// 不匹配：子串包含但不等于前缀
+		{"https://example.com/api.kimi.com-proxy", false},
+		{"https://not-deepseek.com/v1/chat", false},
 	}
 
 	for _, tt := range tests {
