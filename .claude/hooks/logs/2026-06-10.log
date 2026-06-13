@@ -1,0 +1,6 @@
+[2026-06-10 00:11:33] [DEBUG] [SessionEnd] os=windows python=D:/CodeDevelopment/CodeProject/claude-hk/.claude/localLanguage/python/python.exe
+[2026-06-10 00:11:33] [INFO] [SessionEnd] Input: {"session_id":"bb6db03d-57be-4aee-8ef6-fc8622e1d959","transcript_path":"C:\\Users\\Administrator\\.claude\\projects\\D--CodeDevelopment-CodeProject-claude-hk\\bb6db03d-57be-4aee-8ef6-fc8622e1d959.jsonl","cwd":"D:\\CodeDevelopment\\CodeProject\\claude-hk","hook_event_name":"SessionEnd","reason":"prompt_input_exit"}
+[2026-06-10 00:11:34] [INFO] [SessionEnd] session=bb6db03d-57be-4aee-8ef6-fc8622e1d959 reason=prompt_input_exit
+[2026-06-10 00:11:34] [INFO] [SessionEnd] Backend unreachable, skipping session release for bb6db03d-57be-4aee-8ef6-fc8622e1d959
+[2026-06-10 00:11:34] [DEBUG] [SessionEnd] Backend unreachable, skipping session close for bb6db03d-57be-4aee-8ef6-fc8622e1d959
+[2026-06-10 00:11:34] [INFO] [SessionEnd] Output (exit=0): {}}
