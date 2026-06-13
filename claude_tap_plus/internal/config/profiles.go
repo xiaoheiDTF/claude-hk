@@ -86,3 +86,58 @@ func ResolveProfileConfig(name string) (*ProfileConfig, error) {
 	logger.Info("config", "resolved profile: %s (base_url=%s)", name, p.BaseURL)
 	return &p, nil
 }
+
+// ResolveFallbackProfiles 按优先级查找 fallback profile 列表。
+//
+// 优先级（从高到低）：
+//  1. profiles.json 中与 targetModel 匹配的 profile（同 model）
+//  2. profiles.json 中其他 model 的 profile（不同 model）
+//  3. 返回空（调用方走原始 fallback 逻辑）
+//
+// excludeProfile 为当前使用的 profile 名称，查找时会被排除。
+// 同 model 的多个 profile 按字母序排列，方便调用方轮询。
+func ResolveFallbackProfiles(targetModel, excludeProfile string) ([]ProfileConfig, error) {
+	pf, err := ReadProfiles()
+	if err != nil {
+		return nil, err
+	}
+	if pf == nil {
+		return nil, fmt.Errorf("profiles.json not found")
+	}
+
+	var sameModel []ProfileConfig
+	var otherModel []ProfileConfig
+
+	for name, p := range pf.Profiles {
+		// 排除当前正在使用的 profile
+		if name == excludeProfile {
+			continue
+		}
+		if p.BaseURL == "" {
+			continue // base_url 为空无法作为 fallback
+		}
+		if p.Model == targetModel && targetModel != "" {
+			sameModel = append(sameModel, p)
+		} else {
+			otherModel = append(otherModel, p)
+		}
+	}
+
+	// 按优先级拼接：同 model 在前，其他 model 在后
+	var result []ProfileConfig
+	if len(sameModel) > 0 {
+		logger.Info("config", "fallback profiles: %d same-model candidates", len(sameModel))
+		result = append(result, sameModel...)
+	}
+	if len(otherModel) > 0 {
+		logger.Info("config", "fallback profiles: %d other-model candidates", len(otherModel))
+		result = append(result, otherModel...)
+	}
+
+	if len(result) > 0 {
+		return result, nil
+	}
+
+	logger.Debug("config", "no fallback profiles found")
+	return nil, nil
+}

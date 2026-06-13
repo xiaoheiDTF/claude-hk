@@ -1,0 +1,550 @@
+---
+name: 003-7-e2e-test
+description: E2E 测试：前后端联调后真实环境下的端到端链路验证，产出验收清单
+user-invocable: true
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+---
+
+# 单项目开发流程 — E2E 测试（End-to-End）
+
+> 文档日期：2026-06-03
+> 所属系列：单项目开发完整流程
+> 阶段定位：前后端联调后，真实环境下的端到端链路验证
+
+---
+
+## 一、核心目标
+
+- 前端连接真实后端，验证完整链路是否畅通
+- 每条 BDD 场景对应一个 E2E 测试用例
+- 验证前端组件在真实后端环境下的表现与 Storybook 一致
+- 验证后端接口在真实请求下返回与 TDD 测试一致的结果
+- 产出验收清单，确认功能完成
+
+---
+
+## 二、阶段职责
+
+### 本阶段负责（约束）
+
+- 前后端联调，验证完整链路
+- 每条 BDD 场景编写对应的 E2E 测试用例
+- 执行 E2E 测试，定位并修复联调问题
+- 产出验收清单
+
+### 本阶段不负责（约束）
+
+- 功能点定义 → 功能点阶段
+- BDD 场景编写 → BDD 场景阶段
+- 后端单元测试 → 后端 TDD 阶段
+- 前端组件测试 → 前端 CDD 阶段
+- 接口定义 → API 契约阶段
+- UI 视觉设计 → UI 设计规范阶段
+
+---
+
+## 三、测试发现规则
+
+### 规则 1：BDD 场景映射（强约束）
+
+每条 02 BDD 场景对应至少一个 E2E 测试用例。不新增场景，不遗漏场景。
+
+映射方式：
+- BDD 的前提条件 → 测试的数据准备（数据库 seed 或 API 初始化）
+- BDD 的用户动作 → 测试的浏览器操作（点击、输入、滚动）
+- BDD 的预期结果 → 测试的断言（页面内容、URL 跳转、数据变更）
+
+### 规则 2：真实环境（强约束）
+
+E2E 测试必须在真实环境下运行：
+
+- 真实后端服务运行（不是 Mock）
+- 真实数据库（不是内存数据库）
+- 真实前端应用运行（不是 Storybook）
+- 真实浏览器自动化（Playwright / Cypress）
+
+**不允许使用 MSW 或 Mock 数据拦截。** 联调阶段就是要验证 MSW 拦截和真实后端之间的差异。
+
+### 规则 3：测试工具规范（强约束）
+
+- E2E 测试框架：Playwright（跨浏览器支持，推荐）或 Cypress
+- 测试语言：TypeScript
+- 测试运行：CI/CD 集成
+- 浏览器覆盖：至少 Chromium，按项目需求扩展 Firefox / WebKit
+
+### 规则 4：可追溯
+
+每个 E2E 测试用例必须能追溯到 02 BDD 场景：
+
+- 测试文件命名包含功能点编号
+- 测试用例注释标注对应的 BDD 场景编号
+- 测试用例标题使用 BDD 场景名称
+
+### 规则 5：文档驱动确认
+
+同其他阶段，采用文档驱动确认模式。
+
+**默认流程：**
+
+1. AI 根据 BDD 场景，一次性生成 E2E 测试代码
+2. 代码注释中附待确认问题和总结
+3. 用户在代码中批注、修改
+4. AI 读取修改后继续
+
+**主动提问的触发条件：**
+
+- 联调过程中发现前后端行为不一致（契约 vs 实际）
+- 某条 BDD 场景无法在真实环境下复现
+- 测试需要特殊环境配置（外部服务、特定数据状态）
+
+### 规则 6：问题处理（规则）
+
+联调过程中发现的问题，按来源分类处理：
+
+| 问题类型 | 处理方式 |
+|---------|---------|
+| 前端未按契约调用接口 | 修改前端代码 |
+| 后端未按契约返回数据 | 修改后端代码 |
+| 契约定义不合理 | 回到 04 修改契约，回填前后端 |
+| BDD 场景遗漏了某种链路 | 回到 02 补充场景 |
+| 真实环境下出现了 BDD 未覆盖的异常 | 记录，后续迭代补充 |
+
+不在 E2E 阶段自行决定契约或场景的正确性，有冲突回到源头修改。
+
+---
+
+## 四、测试写法（规则）
+
+### 4.1 测试文件组织
+
+```
+e2e/
+├── {功能点名}/
+│   ├── {场景名}.spec.ts      # 每条 BDD 场景一个测试文件
+│   └── ...
+├── fixtures/                  # 测试数据准备
+│   └── seed.ts
+└── support/
+    ├── auth.ts                # 登录辅助
+    └── setup.ts               # 环境初始化
+```
+
+### 4.2 单个测试用例
+
+```typescript
+// e2e/favorite/favorite-article.spec.ts
+// 对应 BDD 场景: 用户收藏文章 - 正向收藏成功
+
+test('用户收藏文章 - 正向收藏成功', async ({ page }) => {
+  // Given — 数据准备
+  const user = await createTestUser();
+  const article = await createTestArticle();
+
+  // When — 用户操作
+  await page.goto(`/articles/${article.id}`);
+  await page.getByRole('button', { name: '收藏' }).click();
+
+  // Then — 验证 UI 变化
+  await expect(page.getByRole('button', { name: '已收藏' })).toBeVisible();
+  await expect(page.getByText('收藏成功')).toBeVisible();
+
+  // Then — 验证数据持久化
+  const favorite = await getFavoriteFromDB(user.id, article.id);
+  expect(favorite).not.toBeNull();
+});
+```
+
+### 4.3 异常场景测试
+
+```typescript
+// 对应 BDD 场景: 重复收藏同一篇文章
+
+test('重复收藏 - 应提示已收藏', async ({ page }) => {
+  // Given
+  const user = await createTestUser();
+  const article = await createTestArticle();
+  await createFavorite(user.id, article.id); // 已经收藏过
+
+  // When
+  await page.goto(`/articles/${article.id}`);
+  await page.getByRole('button', { name: '收藏' }).click();
+
+  // Then — 验证错误提示
+  await expect(page.getByText('该文章已收藏')).toBeVisible();
+  // 验证按钮状态未变
+  await expect(page.getByRole('button', { name: '已收藏' })).toBeVisible();
+});
+```
+
+### 4.4 动画与过渡测试
+
+E2E 验证动画的**触发和结果**，不验证参数精度（时长、缓动曲线由 06-2 CDD 在 Storybook 中验证）。
+
+**职责边界：**
+
+| 阶段 | 动画验证职责 |
+|------|-------------|
+| 06-1 UI状态定义 | 定义动画参数（类型、时长、缓动、触发条件） |
+| 06-2 CDD | 在 Storybook 中验证动画参数是否还原原型 |
+| **07 E2E** | **验证动画触发后 UI 到达正确状态** |
+
+**E2E 验证清单：**
+
+| 验证维度 | E2E 检查 | 不检查 |
+|---------|---------|-------|
+| 状态切换 | 动画前后元素可见性变化 | 精确时长（ms 级） |
+| 视觉结果 | 动画完成后元素的位置 / 样式 / 内容 | 缓动函数曲线 |
+| 交互反馈 | hover / click 后元素状态变化 | 帧率 |
+| 列表动画 | 列表项进入 / 退出后数量和内容正确 | 进入顺序和交错效果 |
+| 页面转场 | 切换后目标页面可见，源页面消失 | 转场中间帧 |
+
+**Playwright 关键 API：**
+
+- `toBeVisible()` — 等元素可见（Playwright 自动等待动画完成）
+- `toBeHidden()` — 等元素消失（退出动画完成后才通过）
+- `toHaveClass()` — 验证动画 class 是否被正确添加 / 移除
+- `toHaveCSS()` — 验证动画结束后的样式状态
+- `toHaveScreenshot()` — 视觉回归（可选，按项目需求）
+
+**注意事项（约束）：**
+
+- 禁止用 `waitForTimeout(固定毫秒)` 硬等动画结束——Playwright 的 `toBeVisible()` / `toBeHidden()` 自带自动等待
+- 如果动画导致元素短时间内闪烁（如列表重排），用 `waitForLoadState('networkidle')` 等页面稳定后再断言
+- 截图对比受渲染环境影响（字体、抗锯齿），CI 中需要固定浏览器配置
+
+### 4.5 交互稳定性测试
+
+验证 06-1 规则 6 中定义的交互稳定性行为。这些测试针对的不是业务逻辑，而是**用户体验细节**。
+
+**重复提交防护：**
+
+```typescript
+test('收藏按钮 - 快速连点只触发一次', async ({ page }) => {
+  const user = await createTestUser();
+  const article = await createTestArticle();
+
+  await page.goto(`/articles/${article.id}`);
+  const btn = page.getByRole('button', { name: '收藏' });
+
+  // 快速连点 3 次
+  await btn.click({ clickCount: 3 });
+
+  // 动画/loading 期间按钮应被禁用
+  await expect(btn).toBeDisabled();
+
+  // 等待请求完成
+  await expect(page.getByRole('button', { name: '已收藏' })).toBeVisible();
+
+  // 数据库只有一条记录
+  const favorites = await getFavoritesFromDB(user.id);
+  expect(favorites).toHaveLength(1);
+});
+```
+
+**Console 错误检测：**
+
+```typescript
+test('页面加载 - 无 console 错误', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', msg => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+
+  await page.goto('/articles');
+  await page.waitForLoadState('networkidle');
+
+  expect(consoleErrors).toEqual([]);
+});
+```
+
+---
+
+## 五、测试质量（约束）
+
+每个 E2E 测试用例必须满足：
+
+- **真实链路** — 前端 → API → 后端 → 数据库，全链路真实
+- **独立** — 不依赖其他测试的执行结果，每个测试自行准备数据
+- **可重复** — 多次运行结果相同，测试后清理产生的数据
+- **可追溯** — 测试标题对应 BDD 场景名称
+- **断言完整** — 验证 UI 变化 + 数据持久化，不只验证前端展示
+
+---
+
+## 六、测试完整性（约束）
+
+E2E 测试必须覆盖 BDD 场景的三种类型：
+
+- **正向** — 完整链路成功，数据正确写入和展示
+- **异常** — 后端返回错误时，前端正确展示错误提示
+- **边界** — 极端条件下整条链路的行为（空数据、上限、并发）
+- **动画** — 状态切换动画正确触发，动画结束后 UI 处于正确状态
+- **交互稳定性** — 无重复提交、无闪烁、无 console 错误、无布局跳动（来自 06-1 规则 6）
+
+---
+
+## 七、验收清单（规则）
+
+E2E 测试通过后，产出验收清单，对照 BDD 确认功能完成。
+
+### 验收清单模板
+
+```markdown
+## {功能名称} 验收清单
+
+### 功能验收（来自 BDD 正向场景）
+- [ ] {BDD 场景 1} — E2E 测试通过
+- [ ] {BDD 场景 2} — E2E 测试通过
+
+### 异常验收（来自 BDD 异常场景）
+- [ ] {BDD 场景 3} — E2E 测试通过
+- [ ] {BDD 场景 4} — E2E 测试通过
+
+### 边界验收（来自 BDD 边界场景）
+- [ ] {BDD 场景 5} — E2E 测试通过
+
+### 动画验收（来自 06-1 UI 状态定义中的动画定义）
+- [ ] 状态切换动画触发正确，动画结束后 UI 状态正确
+- [ ] 列表进入 / 退出动画后，列表项数量和内容正确
+- [ ] 页面转场后，目标页面正确渲染
+
+### 交互稳定性验收（来自 06-1 规则 6 交互稳定性定义）
+- [ ] 快速连点不产生重复提交
+- [ ] Loading 状态不会一闪而过
+- [ ] 页面加载无 console 错误
+- [ ] 内容区加载无布局跳动
+
+### 前后端一致性
+- [ ] 前端在真实后端下的表现与 Storybook 一致
+- [ ] 后端在真实请求下的响应与契约一致
+```
+
+---
+
+## 八、输出（约束）
+
+E2E 测试阶段完成后必须产出以下内容：
+
+### E2E 测试代码
+
+每条 BDD 场景对应的 Playwright/Cypress 测试文件。
+
+### 测试报告
+
+所有 E2E 测试的执行结果（通过/失败/跳过）。
+
+### 验收清单
+
+对照 BDD 的验收清单，确认每条场景已通过。
+
+### 总结
+
+每次输出必须包含一份**总结**：
+
+- 编写了多少个 E2E 测试用例
+- 通过率（通过 / 失败 / 跳过）
+- 联调过程中发现的问题数量和类型
+- 前后端一致性问题（如有）
+- 一份快速确认检查清单
+
+### 待确认问题
+
+代码注释或文档中附**待确认问题清单**。
+
+---
+
+## 九、完成定义（约束）
+
+满足以下所有条件后，E2E 测试阶段结束：
+
+- 每条 BDD 场景都有对应的 E2E 测试用例
+- 所有 E2E 测试通过
+- 联调问题已全部修复（或记录为已知问题）
+- 前端在真实后端下的表现与 Storybook 一致
+- 后端在真实请求下的响应与契约一致
+- 验收清单已全部勾选
+- 待确认问题已全部被用户回答（或用户明确跳过）
+
+---
+
+## 十、禁止事项（约束）
+
+E2E 测试阶段禁止：
+
+- 使用 MSW 或 Mock 拦截代替真实后端
+- 跳过失败用例而不修复（除非记录为已知问题并说明原因）
+- 在 E2E 阶段重新定义契约或 BDD 场景（有冲突回到源头修改）
+- 使用单元测试覆盖代替 E2E 测试（单元测试验证部件，E2E 验证链路）
+
+---
+
+## 十一、测试日志输出规范（强约束）
+
+每次运行 E2E 测试都必须留存完整日志，用于排查联调问题和追溯历史。E2E 日志比 TDD/CDD 更重要——因为涉及前后端联调，问题可能在任何一端。
+
+### 输出路径确认（强约束）
+
+**AI 首次为当前项目生成 E2E 测试时，必须先向用户确认：**
+
+- 日志输出到哪个目录？默认 `.test-output/`（项目根目录下）
+- 用户可指定任意路径
+
+确认后路径写入 `.test-output/_config.json`，后续运行脚本和框架配置均读取此文件。
+
+```json
+// .test-output/_config.json
+{
+  "tddOutputDir": ".test-output/tdd",
+  "cddOutputDir": ".test-output/cdd",
+  "e2eOutputDir": ".test-output/e2e",
+  "confirmedAt": "2026-06-03T160000",
+  "confirmedBy": "user"
+}
+```
+
+### 目录结构
+
+```
+{outputDir}/                               ← 用户确认的路径，gitignored + AI-excluded
+└── e2e/
+    ├── run.sh                             ← 一键运行脚本（见下方）
+    ├── favorite-article/                  ← 场景名 = 目录名
+    │   ├── 2026-06-03T160000.log          ← 每次运行一份，时间戳命名，不覆盖
+    │   ├── 2026-06-03T160000-summary.json
+    │   ├── screenshots/                   ← Playwright 自动截图
+    │   │   └── 2026-06-03T160000/
+    │   │       ├── 01-navigate.png
+    │   │       ├── 02-click-favorite.png
+    │   │       └── 03-assert-visible.png
+    │   └── trace/                         ← Playwright trace（失败时录制）
+    │       └── 2026-06-03T160000.zip
+    ├── search-debounce/                   ← 另一个场景
+    │   ├── 2026-06-03T161000.log
+    │   └── ...
+    └── _index.json                        ← 所有场景的运行索引
+```
+
+### 日志文件说明
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `{timestamp}.log` | Playwright 完整输出（浏览器操作序列、网络请求、断言结果） | 人读：排查链路失败 |
+| `{timestamp}-summary.json` | 场景名、通过/失败、耗时、失败步骤、前后端错误分类 | 机器读：快速定位 |
+| `screenshots/{timestamp}/` | 每个关键步骤的截图 | 视觉追溯 |
+| `trace/{timestamp}.zip` | Playwright trace 文件（失败时自动录制） | 在 Trace Viewer 中回放完整链路 |
+| `_index.json` | 所有场景的最近运行记录汇总 | 全局概览 |
+
+### 运行脚本（强约束）
+
+**每个测试类型的输出目录下必须有一个 `run.sh`**，用户可直接执行，不依赖 IDE。
+
+`{outputDir}/e2e/run.sh`：
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H%M%S")
+
+# 读取配置
+CONFIG_FILE="$SCRIPT_DIR/../_config.json"
+if [ -f "$CONFIG_FILE" ]; then
+  OUTPUT_DIR=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['e2eOutputDir'])" 2>/dev/null || echo ".test-output/e2e")
+else
+  OUTPUT_DIR=".test-output/e2e"
+fi
+
+echo "=== E2E 测试运行 ${TIMESTAMP} ==="
+echo "输出目录: ${OUTPUT_DIR}"
+echo ""
+
+# 检查前后端服务是否运行
+echo "检查服务状态..."
+if ! curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+  echo "⚠ 后端服务未运行，尝试启动..."
+fi
+if ! curl -s http://localhost:5173 > /dev/null 2>&1; then
+  echo "⚠ 前端服务未运行，尝试启动..."
+fi
+
+# 运行 E2E 测试
+npx playwright test "$@" 2>&1 | tee "${OUTPUT_DIR}/_raw-${TIMESTAMP}.log"
+
+EXIT_CODE=${PIPESTATUS[0]}
+
+# 整理日志（按场景拆分）
+node scripts/e2e-log-organizer.mjs "${OUTPUT_DIR}/_raw-${TIMESTAMP}.log" "${OUTPUT_DIR}"
+
+# 清理原始文件
+rm -f "${OUTPUT_DIR}/_raw-${TIMESTAMP}.log"
+
+echo ""
+echo "=== 测试完成，退出码: ${EXIT_CODE} ==="
+echo "日志已写入: ${OUTPUT_DIR}/{scenario}/${TIMESTAMP}.log"
+
+exit ${EXIT_CODE}
+```
+
+### 隔离规则（强约束）
+
+- 输出目录必须加入 `.gitignore`
+- 输出目录必须加入 **当前使用的 AI 工具的忽略文件**（`.cursorignore` / `.claudeignore` / `.aiderignore` 等，按实际使用的工具配置）
+- AI 默认不读输出目录
+- 用户明确要求"查看 E2E 日志"时，AI 只读 `summary.json`，不读完整 `.log` 和 trace 文件（除非用户指定）
+- `_raw/` 和 `_artifacts/` 是中间产物，日志整理后可定期清理
+
+---
+
+## 十二、完整性检查
+
+### 12.1 覆盖检查（约束）
+
+每条 02 BDD 场景，必须至少对应一个 E2E 测试用例。有 BDD 场景但没有对应 E2E 测试的，属于遗漏。
+
+### 12.2 真实链路检查（约束）
+
+每个 E2E 测试必须涉及真实的 HTTP 请求和数据库操作。有 Mock 拦截的，属于错误。
+
+### 12.3 验收完整性检查（约束）
+
+验收清单的每一项必须对应一个已通过的 E2E 测试。有验收项但没有对应测试的，属于遗漏。
+
+---
+
+## 附录：转 Skill 约束分级（注入指引）
+
+> 本附录写给"把本文档转成 skill"的人和注入脚本看，不是流程本身的一环。
+> 目的是防止转 skill 时把"方向性引导"拍平成"命令式硬约束"，导致 AI 被限制太死。
+
+本文档的内容分两类，转 skill 注入时必须保留这个区分：
+
+### HARD（硬约束 — 违反即流程失效，skill 必须强制卡死）
+
+- 每条 02 BDD 场景必须至少对应一个 E2E 测试用例，不新增、不遗漏场景
+- 必须真实环境（真实后端 / 真实数据库 / 真实浏览器），禁止 MSW 或 Mock 拦截代替真实后端
+- 测试断言必须覆盖 UI 变化 + 数据持久化，不只验证前端展示
+- 发现前后端不一致 / 契约不合理 / 场景遗漏时，回源头（04 或 02）修改，禁止在 E2E 阶段自行决定契约或场景的正确性
+- 输出目录隔离规则（`.gitignore` + AI 忽略文件 + AI 默认不读）
+- 验收清单每一项对应一个已通过的 E2E 测试
+
+### GUIDE（引导规则 — 给方向，AI 按语境自由组织，禁止固化为唯一模板）
+
+- 测试文件怎么组织、用什么命名（4.1 的目录结构是参考，不是强制布局）
+- 动画 / 交互稳定性测试写法（4.4、4.5 是示例，验证什么由功能性质决定，不要求逐条照抄）
+- 验收清单的具体措辞和分组（七节模板是起点，按功能调整）
+- 问题处理时怎么和用户沟通、怎么提待确认问题
+
+### 注入原则（写 skill 注入文本时遵守）
+
+- 注入时保留 HARD / GUIDE 标记，不要把 GUIDE 类内容改写成"必须""禁止"的命令句式
+- GUIDE 类内容注入时给"方向 + 反面示例"，不给唯一正确答案（例：示例代码标注"这是示例不是模板"）
+- 宁可注入少而精的 HARD 列表 + 一句"其余按文档精神发挥"，也不要把全文压缩成几十条命令式条款
+
+---

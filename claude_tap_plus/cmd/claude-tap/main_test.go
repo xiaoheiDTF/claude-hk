@@ -14,94 +14,118 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/proxy"
 )
 
-// TestLoadFallbackConfig_AllFields 测试完整兜底配置加载
-// 来源：契约 4 — 从 ~/.claude/settings.json 读取完整 fallback
-func TestLoadFallbackConfig_AllFields(t *testing.T) {
+// TestLoadFallbackConfigs_FromProfiles 测试从 profiles.json 加载 fallback
+func TestLoadFallbackConfigs_FromProfiles(t *testing.T) {
 	tmpDir := t.TempDir()
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	os.MkdirAll(claudeDir, 0o755)
+	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
+	os.MkdirAll(configDir, 0o755)
 
-	settings := map[string]any{
-		"model": "GLM-5.1",
-		"env": map[string]string{
-			"ANTHROPIC_BASE_URL":   "https://api.anthropic.com",
-			"ANTHROPIC_AUTH_TOKEN": "tok-test-token",
-			"ANTHROPIC_API_KEY":    "sk-test-key",
+	profiles := map[string]any{
+		"default": "current",
+		"profiles": map[string]any{
+			"current": map[string]any{
+				"base_url": "https://api.current.com",
+				"model":    "glm-5.1",
+				"api_key":  "sk-current",
+			},
+			"fb-same": map[string]any{
+				"base_url": "https://api.fbsame.com",
+				"model":    "glm-5.1",
+				"api_key":  "sk-fbsame",
+			},
+			"fb-other": map[string]any{
+				"base_url": "https://api.fbothe.com",
+				"model":    "claude-sonnet-4-6",
+				"api_key":  "sk-fbothe",
+			},
 		},
 	}
-	data, _ := json.Marshal(settings)
-	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0o644)
-
-	origHomeDir := config.HomeDir
-	// 通过覆盖 config 的 homeDir 变量
-	config.SetHomeDir(func() string { return tmpDir })
-	defer config.SetHomeDir(origHomeDir)
-
-	fb := loadFallbackConfig()
-	if fb == nil {
-		t.Fatal("loadFallbackConfig returned nil")
-	}
-	if fb.BaseURL != "https://api.anthropic.com" {
-		t.Errorf("BaseURL = %q, want %q", fb.BaseURL, "https://api.anthropic.com")
-	}
-	if fb.Model != "GLM-5.1" {
-		t.Errorf("Model = %q, want %q", fb.Model, "GLM-5.1")
-	}
-	if fb.AuthToken != "tok-test-token" {
-		t.Errorf("AuthToken = %q, want %q", fb.AuthToken, "tok-test-token")
-	}
-	if fb.APIKey != "sk-test-key" {
-		t.Errorf("APIKey = %q, want %q", fb.APIKey, "sk-test-key")
-	}
-}
-
-// TestLoadFallbackConfig_NoSettings 测试无 settings 文件
-func TestLoadFallbackConfig_NoSettings(t *testing.T) {
-	tmpDir := t.TempDir()
-	// 不创建 .claude 目录
+	pData, _ := json.Marshal(profiles)
+	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
 
 	origHomeDir := config.HomeDir
 	config.SetHomeDir(func() string { return tmpDir })
 	defer config.SetHomeDir(origHomeDir)
 
-	fb := loadFallbackConfig()
-	if fb != nil {
-		t.Error("expected nil when no settings file")
+	cfgs := loadFallbackConfigs("glm-5.1", "current")
+	if len(cfgs) != 2 {
+		t.Fatalf("expected 2 fallback configs, got %d", len(cfgs))
+	}
+
+	// 第一个应该是同 model 的 fb-same
+	if cfgs[0].BaseURL != "https://api.fbsame.com" {
+		t.Errorf("first fallback base_url = %q, want %q", cfgs[0].BaseURL, "https://api.fbsame.com")
+	}
+	if cfgs[0].Model != "glm-5.1" {
+		t.Errorf("first fallback model = %q, want %q", cfgs[0].Model, "glm-5.1")
+	}
+
+	// 第二个应该是其他 model 的 fb-other
+	if cfgs[1].BaseURL != "https://api.fbothe.com" {
+		t.Errorf("second fallback base_url = %q, want %q", cfgs[1].BaseURL, "https://api.fbothe.com")
 	}
 }
 
-// TestLoadFallbackConfig_OnlyModel 测试只有 model 无 auth
-func TestLoadFallbackConfig_OnlyModel(t *testing.T) {
+// TestLoadFallbackConfigs_FromSettings 测试 profiles 无匹配时回退到 settings
+func TestLoadFallbackConfigs_FromSettings(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// 创建空的 profiles.json（只有当前 profile）
+	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
+	os.MkdirAll(configDir, 0o755)
+	profiles := map[string]any{
+		"default": "only",
+		"profiles": map[string]any{
+			"only": map[string]any{
+				"base_url": "https://api.only.com",
+				"model":    "glm-5.1",
+			},
+		},
+	}
+	pData, _ := json.Marshal(profiles)
+	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
+
+	// 创建 settings.json
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	os.MkdirAll(claudeDir, 0o755)
-
 	settings := map[string]any{
 		"model": "claude-sonnet-4-6",
+		"env": map[string]string{
+			"ANTHROPIC_BASE_URL":   "https://api.anthropic.com",
+			"ANTHROPIC_AUTH_TOKEN": "tok-fallback-token",
+		},
 	}
-	data, _ := json.Marshal(settings)
-	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0o644)
+	sData, _ := json.Marshal(settings)
+	os.WriteFile(filepath.Join(claudeDir, "settings.json"), sData, 0o644)
 
 	origHomeDir := config.HomeDir
 	config.SetHomeDir(func() string { return tmpDir })
 	defer config.SetHomeDir(origHomeDir)
 
-	fb := loadFallbackConfig()
-	if fb == nil {
-		t.Fatal("loadFallbackConfig returned nil")
+	cfgs := loadFallbackConfigs("glm-5.1", "only")
+	if len(cfgs) != 1 {
+		t.Fatalf("expected 1 fallback config from settings, got %d", len(cfgs))
 	}
-	if fb.Model != "claude-sonnet-4-6" {
-		t.Errorf("Model = %q, want %q", fb.Model, "claude-sonnet-4-6")
+	if cfgs[0].BaseURL != "https://api.anthropic.com" {
+		t.Errorf("fallback base_url = %q, want %q", cfgs[0].BaseURL, "https://api.anthropic.com")
 	}
-	if fb.AuthToken != "" {
-		t.Errorf("AuthToken = %q, want empty", fb.AuthToken)
+	if cfgs[0].Model != "claude-sonnet-4-6" {
+		t.Errorf("fallback model = %q, want %q", cfgs[0].Model, "claude-sonnet-4-6")
 	}
-	if fb.APIKey != "" {
-		t.Errorf("APIKey = %q, want empty", fb.APIKey)
-	}
-	// 无 base_url 应使用默认值
-	if fb.BaseURL != config.ClaudeClient.DefaultTarget {
-		t.Errorf("BaseURL = %q, want default %q", fb.BaseURL, config.ClaudeClient.DefaultTarget)
+}
+
+// TestLoadFallbackConfigs_NoSettings 测试无配置时返回空
+func TestLoadFallbackConfigs_NoSettings(t *testing.T) {
+	tmpDir := t.TempDir()
+	// 不创建任何配置文件
+
+	origHomeDir := config.HomeDir
+	config.SetHomeDir(func() string { return tmpDir })
+	defer config.SetHomeDir(origHomeDir)
+
+	cfgs := loadFallbackConfigs("glm-5.1", "nonexistent")
+	if len(cfgs) != 0 {
+		t.Errorf("expected 0 fallback configs, got %d", len(cfgs))
 	}
 }
 
@@ -118,6 +142,10 @@ func TestIntegration_FullStartupFlow(t *testing.T) {
 		"profiles": map[string]any{
 			"test-profile": map[string]any{
 				"base_url": "PLACEHOLDER", // 会被 mock 替换
+				"model":    "glm-5.1",
+			},
+			"fallback": map[string]any{
+				"base_url": "PLACEHOLDER",
 				"model":    "glm-5.1",
 			},
 		},
@@ -159,6 +187,10 @@ func TestIntegration_FullStartupFlow(t *testing.T) {
 			"base_url": mockUpstream.URL,
 			"model":    "glm-5.1",
 		},
+		"fallback": map[string]any{
+			"base_url": "https://fallback.example.com",
+			"model":    "glm-5.1",
+		},
 	}
 	pData, _ = json.Marshal(profiles)
 	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
@@ -185,11 +217,11 @@ func TestIntegration_FullStartupFlow(t *testing.T) {
 	rp := proxy.NewReverseProxy(resolved.BaseURL, traceDir)
 	rp.SetModel(resolved.Model)
 
-	fb := loadFallbackConfig()
-	if fb == nil {
-		t.Fatal("loadFallbackConfig returned nil")
+	fbCfgs := loadFallbackConfigs(resolved.Model, "test-profile")
+	if len(fbCfgs) == 0 {
+		t.Fatal("loadFallbackConfigs returned empty")
 	}
-	rp.SetFallbackConfig(fb)
+	rp.SetFallbackConfigs(fbCfgs)
 
 	// 8. 启动代理
 	_, err = rp.Start("127.0.0.1", 0)
@@ -220,10 +252,7 @@ func TestIntegration_FullStartupFlow(t *testing.T) {
 	}
 
 	// 11. 验证 fallback 配置正确
-	if fb.Model != "claude-sonnet-4-6" {
-		t.Errorf("fallback model = %q, want %q", fb.Model, "claude-sonnet-4-6")
-	}
-	if fb.AuthToken != "tok-fallback-token" {
-		t.Errorf("fallback token = %q, want %q", fb.AuthToken, "tok-fallback-token")
+	if fbCfgs[0].Model != "glm-5.1" {
+		t.Errorf("fallback model = %q, want %q", fbCfgs[0].Model, "glm-5.1")
 	}
 }
