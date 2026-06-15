@@ -7223,3 +7223,133 @@
 [2026-06-13 19:08:36] WARNING: Foreground is still 789056 (target 199146)
 [2026-06-13 19:08:39] Foreground lock timeout restored to 0
 [2026-06-13 19:08:39] === done ===
+[2026-06-13 19:12:54] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 19:12:55] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Claude Code'
+[2026-06-13 19:12:55] Current foreground lock timeout: 0
+[2026-06-13 19:12:55] Disable foreground lock: True
+[2026-06-13 19:12:55] COM AppActivate(title)=True
+[2026-06-13 19:12:55] SetForeground=True BringToTop=True
+[2026-06-13 19:12:56] SUCCESS: Window is now foreground!
+[2026-06-13 19:12:58] Foreground lock timeout restored to 0
+[2026-06-13 19:12:58] === done ===
+[2026-06-13 19:25:39] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 19:25:41] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Claude Code'
+[2026-06-13 19:25:41] Current foreground lock timeout: 0
+[2026-06-13 19:25:41] Disable foreground lock: False
+[2026-06-13 19:25:41] COM AppActivate(title)=True
+[2026-06-13 19:25:41] SetForeground=True BringToTop=True
+[2026-06-13 19:25:41] SUCCESS: Window is now foreground!
+[2026-06-13 19:25:43] Foreground lock timeout restored to 0
+[2026-06-13 19:25:43] === done ===
+[2026-06-13 19:31:44] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 19:31:46] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Refactor code to DDD structure'
+[2026-06-13 19:31:46] Current foreground lock timeout: 0
+[2026-06-13 19:31:46] Disable foreground lock: True
+[2026-06-13 19:31:46] COM AppActivate(title)=True
+[2026-06-13 19:31:46] SetForeground=True BringToTop=True
+[2026-06-13 19:31:46] SUCCESS: Window is now foreground!
+[2026-06-13 19:31:48] Foreground lock timeout restored to 0
+[2026-06-13 19:31:48] === done ===
+[2026-06-13 19:40:25] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 19:40:26] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 19:40:26] Current foreground lock timeout: 0
+[2026-06-13 19:40:26] Disable foreground lock: False
+[2026-06-13 19:40:26] COM AppActivate(title)=True
+[2026-06-13 19:40:26] SetForeground=True BringToTop=True
+[2026-06-13 19:40:26] SUCCESS: Window is now foreground!
+[2026-06-13 19:40:29] Foreground lock timeout restored to 0
+[2026-06-13 19:40:29] === done ===
+[2026-06-13 19:43:39] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 19:43:40] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 19:43:40] Current foreground lock timeout: 0
+[2026-06-13 19:43:40] Disable foreground lock: True
+[2026-06-13 19:43:40] COM AppActivate(title)=True
+[2026-06-13 19:43:40] SetForeground=True BringToTop=True
+[2026-06-13 19:43:40] WARNING: Foreground is still 199318 (target 199146)
+[2026-06-13 19:43:43] Foreground lock timeout restored to 0
+[2026-06-13 19:43:43] === done ===
+[2026-06-13 20:44:46] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 20:44:47] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 20:44:47] Current foreground lock timeout: 0
+[2026-06-13 20:44:47] Disable foreground lock: True
+[2026-06-13 20:44:47] COM AppActivate(title)=True
+[2026-06-13 20:44:47] SetForeground=True BringToTop=True
+[2026-06-13 20:44:47] SUCCESS: Window is now foreground!
+[2026-06-13 20:44:49] Foreground lock timeout restored to 0
+[2026-06-13 20:44:49] === done ===
+[2026-06-13 21:03:15] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 21:03:17] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 21:03:17] Current foreground lock timeout: 0
+[2026-06-13 21:03:17] Disable foreground lock: True
+[2026-06-13 21:03:17] COM AppActivate(title)=True
+[2026-06-13 21:03:17] SetForeground=True BringToTop=True
+[2026-06-13 21:03:17] SUCCESS: Window is now foreground!
+[2026-06-13 21:03:19] Foreground lock timeout restored to 0
+[2026-06-13 21:03:19] === done ===
+[2026-06-13 21:07:35] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 21:07:36] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 21:07:36] Current foreground lock timeout: 0
+[2026-06-13 21:07:36] Disable foreground lock: True
+[2026-06-13 21:07:36] COM AppActivate(title)=True
+[2026-06-13 21:07:36] SetForeground=True BringToTop=True
+[2026-06-13 21:07:36] SUCCESS: Window is now foreground!
+[2026-06-13 21:07:39] Foreground lock timeout restored to 0
+[2026-06-13 21:07:39] === done ===
+[2026-06-13 21:37:07] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 21:37:08] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 21:37:08] Current foreground lock timeout: 0
+[2026-06-13 21:37:08] Disable foreground lock: True
+[2026-06-13 21:37:08] COM AppActivate(title)=True
+[2026-06-13 21:37:08] SetForeground=True BringToTop=True
+[2026-06-13 21:37:08] SUCCESS: Window is now foreground!
+[2026-06-13 21:37:11] Foreground lock timeout restored to 0
+[2026-06-13 21:37:11] === done ===
+[2026-06-13 22:50:51] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 22:50:52] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 22:50:52] Current foreground lock timeout: 0
+[2026-06-13 22:50:52] Disable foreground lock: True
+[2026-06-13 22:50:52] COM AppActivate(title)=True
+[2026-06-13 22:50:52] SetForeground=True BringToTop=True
+[2026-06-13 22:50:52] SUCCESS: Window is now foreground!
+[2026-06-13 22:50:54] Foreground lock timeout restored to 0
+[2026-06-13 22:50:54] === done ===
+[2026-06-13 23:08:05] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 23:08:07] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 23:08:07] Current foreground lock timeout: 0
+[2026-06-13 23:08:07] Disable foreground lock: False
+[2026-06-13 23:08:07] COM AppActivate(title)=True
+[2026-06-13 23:08:07] SetForeground=True BringToTop=True
+[2026-06-13 23:08:07] SUCCESS: Window is now foreground!
+[2026-06-13 23:08:09] Foreground lock timeout restored to 0
+[2026-06-13 23:08:09] === done ===
+[2026-06-13 23:28:06] === win32-foreground started (hint='claude-hk') ===
+[2026-06-13 23:28:08] Target: WindowsTerminal.exe PID=12532 hwnd=199146 title='? Review claude_tap_plus DDD architecture'
+[2026-06-13 23:28:08] Current foreground lock timeout: 0
+[2026-06-13 23:28:08] Disable foreground lock: True
+[2026-06-13 23:28:08] COM AppActivate(title)=True
+[2026-06-13 23:28:08] SetForeground=True BringToTop=True
+[2026-06-13 23:28:08] SUCCESS: Window is now foreground!
+[2026-06-13 23:28:10] Foreground lock timeout restored to 0
+[2026-06-13 23:28:10] === done ===
+[2026-06-15 23:00:05] === win32-foreground started (hint='claude-hk') ===
+[2026-06-15 23:00:06] Multiple windows found (2), selecting best match...
+[2026-06-15 23:00:06] Claude indicator matched (char=10035): ? Check for updates
+[2026-06-15 23:00:06] Target: WindowsTerminal.exe PID=29868 hwnd=264180 title='? Check for updates'
+[2026-06-15 23:00:06] Current foreground lock timeout: 0
+[2026-06-15 23:00:06] Disable foreground lock: False
+[2026-06-15 23:00:06] COM AppActivate(title)=True
+[2026-06-15 23:00:06] SetForeground=True BringToTop=True
+[2026-06-15 23:00:07] SUCCESS: Window is now foreground!
+[2026-06-15 23:00:09] Foreground lock timeout restored to 0
+[2026-06-15 23:00:09] === done ===
+[2026-06-15 23:01:34] === win32-foreground started (hint='claude-hk') ===
+[2026-06-15 23:01:35] Multiple windows found (2), selecting best match...
+[2026-06-15 23:01:35] Claude indicator matched (char=10242): ? Check for updates
+[2026-06-15 23:01:35] Target: WindowsTerminal.exe PID=29868 hwnd=264180 title='? Check for updates'
+[2026-06-15 23:01:35] Current foreground lock timeout: 0
+[2026-06-15 23:01:35] Disable foreground lock: True
+[2026-06-15 23:01:35] COM AppActivate(title)=True
+[2026-06-15 23:01:35] SetForeground=True BringToTop=True
+[2026-06-15 23:01:35] SUCCESS: Window is now foreground!
+[2026-06-15 23:01:38] Foreground lock timeout restored to 0
+[2026-06-15 23:01:38] === done ===
