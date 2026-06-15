@@ -7353,3 +7353,14 @@
 [2026-06-15 23:01:35] SUCCESS: Window is now foreground!
 [2026-06-15 23:01:38] Foreground lock timeout restored to 0
 [2026-06-15 23:01:38] === done ===
+[2026-06-15 23:10:55] === win32-foreground started (hint='claude-hk') ===
+[2026-06-15 23:10:56] Multiple windows found (2), selecting best match...
+[2026-06-15 23:10:56] Claude indicator matched (char=10256): ? Check for updates
+[2026-06-15 23:10:56] Target: WindowsTerminal.exe PID=29868 hwnd=264180 title='? Check for updates'
+[2026-06-15 23:10:56] Current foreground lock timeout: 0
+[2026-06-15 23:10:56] Disable foreground lock: True
+[2026-06-15 23:10:57] COM AppActivate(title)=True
+[2026-06-15 23:10:57] SetForeground=True BringToTop=True
+[2026-06-15 23:10:57] WARNING: Foreground is still 657196 (target 264180)
+[2026-06-15 23:10:59] Foreground lock timeout restored to 0
+[2026-06-15 23:10:59] === done ===
