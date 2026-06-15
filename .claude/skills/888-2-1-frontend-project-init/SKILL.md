@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Grep
   - Write
+  - Edit
 ---
 
 # 前端项目初始化
