@@ -7712,3 +7712,58 @@
 [2026-06-16 23:11:50] SUCCESS: Window is now foreground!
 [2026-06-16 23:11:52] Foreground lock timeout restored to 0
 [2026-06-16 23:11:52] === done ===
+[2026-06-17 00:05:07] === win32-foreground started (hint='claude-hk') ===
+[2026-06-17 00:05:07] Multiple windows found (2), selecting best match...
+[2026-06-17 00:05:07] Claude indicator matched (char=10242): ? Create startup command for new feature
+[2026-06-17 00:05:07] Target: WindowsTerminal.exe PID=19172 hwnd=66696 title='? Create startup command for new feature'
+[2026-06-17 00:05:07] Current foreground lock timeout: 0
+[2026-06-17 00:05:07] Disable foreground lock: True
+[2026-06-17 00:05:07] COM AppActivate(title)=True
+[2026-06-17 00:05:07] SetForeground=True BringToTop=True
+[2026-06-17 00:05:08] SUCCESS: Window is now foreground!
+[2026-06-17 00:05:10] Foreground lock timeout restored to 0
+[2026-06-17 00:05:10] === done ===
+[2026-06-17 00:06:00] === win32-foreground started (hint='claude-hk') ===
+[2026-06-17 00:06:01] Multiple windows found (2), selecting best match...
+[2026-06-17 00:06:01] Claude indicator matched (char=10035): ? Create startup command for new feature
+[2026-06-17 00:06:01] Target: WindowsTerminal.exe PID=19172 hwnd=66696 title='? Create startup command for new feature'
+[2026-06-17 00:06:01] Current foreground lock timeout: 0
+[2026-06-17 00:06:01] Disable foreground lock: True
+[2026-06-17 00:06:01] COM AppActivate(title)=True
+[2026-06-17 00:06:01] SetForeground=True BringToTop=True
+[2026-06-17 00:06:01] SUCCESS: Window is now foreground!
+[2026-06-17 00:06:03] Foreground lock timeout restored to 0
+[2026-06-17 00:06:03] === done ===
+[2026-06-17 00:08:33] === win32-foreground started (hint='claude-hk') ===
+[2026-06-17 00:08:34] Multiple windows found (2), selecting best match...
+[2026-06-17 00:08:34] Claude indicator matched (char=10256): ? Create startup command for new feature
+[2026-06-17 00:08:34] Target: WindowsTerminal.exe PID=19172 hwnd=66696 title='? Create startup command for new feature'
+[2026-06-17 00:08:34] Current foreground lock timeout: 0
+[2026-06-17 00:08:34] Disable foreground lock: True
+[2026-06-17 00:08:34] COM AppActivate(title)=True
+[2026-06-17 00:08:34] SetForeground=True BringToTop=True
+[2026-06-17 00:08:34] SUCCESS: Window is now foreground!
+[2026-06-17 00:08:36] Foreground lock timeout restored to 0
+[2026-06-17 00:08:36] === done ===
+[2026-06-17 00:19:53] === win32-foreground started (hint='claude-hk') ===
+[2026-06-17 00:19:54] Multiple windows found (2), selecting best match...
+[2026-06-17 00:19:54] Claude indicator matched (char=10242): ? Create startup command for new feature
+[2026-06-17 00:19:54] Target: WindowsTerminal.exe PID=19172 hwnd=66696 title='? Create startup command for new feature'
+[2026-06-17 00:19:54] Current foreground lock timeout: 0
+[2026-06-17 00:19:54] Disable foreground lock: True
+[2026-06-17 00:19:54] COM AppActivate(title)=True
+[2026-06-17 00:19:54] SetForeground=True BringToTop=True
+[2026-06-17 00:19:54] SUCCESS: Window is now foreground!
+[2026-06-17 00:19:56] Foreground lock timeout restored to 0
+[2026-06-17 00:19:56] === done ===
+[2026-06-17 00:20:41] === win32-foreground started (hint='claude-hk') ===
+[2026-06-17 00:20:42] Multiple windows found (2), selecting best match...
+[2026-06-17 00:20:42] Claude indicator matched (char=10035): ? Create startup command for new feature
+[2026-06-17 00:20:42] Target: WindowsTerminal.exe PID=19172 hwnd=66696 title='? Create startup command for new feature'
+[2026-06-17 00:20:42] Current foreground lock timeout: 0
+[2026-06-17 00:20:42] Disable foreground lock: True
+[2026-06-17 00:20:42] COM AppActivate(title)=True
+[2026-06-17 00:20:42] SetForeground=True BringToTop=True
+[2026-06-17 00:20:42] SUCCESS: Window is now foreground!
+[2026-06-17 00:20:44] Foreground lock timeout restored to 0
+[2026-06-17 00:20:44] === done ===
