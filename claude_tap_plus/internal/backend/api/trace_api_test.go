@@ -1,7 +1,7 @@
-// Package backend_test 包含 GET /api/session/{id}/traces 接口的 BDD + TDD 验收测试。
+// Package api_test 包含 GET /api/session/{id}/traces 接口的 BDD + TDD 验收测试。
 // 覆盖：获取 Trace 文件列表（含元数据）、无 trace 文件返回空、不存在会话 404、方法限制。
 // 测试数据通过 API 注册会话（指定 local_trace_path）+ 手动创建 JSONL 文件产生。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"

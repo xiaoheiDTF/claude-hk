@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 API 的降级与恢复测试，覆盖服务重启、异常请求等场景。
-package backend_test
+// Package api_test 包含 API 的降级与恢复测试，覆盖服务重启、异常请求等场景。
+package api_test
 
 import (
 	"net/http"

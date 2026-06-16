@@ -1,6 +1,6 @@
-// Package backend_test 包含 GET /api/status 接口的 BDD 验收测试。
+// Package api_test 包含 GET /api/status 接口的 BDD 验收测试。
 // 覆盖：获取系统状态（含统计数据）、无活跃会话时状态、方法限制。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"

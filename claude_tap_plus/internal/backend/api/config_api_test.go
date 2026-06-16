@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 Config API 的验收测试，覆盖 GET/PUT /api/config 接口。
-package backend_test
+// Package api_test 包含 Config API 的验收测试，覆盖 GET/PUT /api/config 接口。
+package api_test
 
 import (
 	"encoding/json"

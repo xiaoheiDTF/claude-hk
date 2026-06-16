@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 Log API 的验收测试，覆盖 GET /api/logs 接口。
-package backend_test
+// Package api_test 包含 Log API 的验收测试，覆盖 GET /api/logs 接口。
+package api_test
 
 import (
 	"encoding/json"

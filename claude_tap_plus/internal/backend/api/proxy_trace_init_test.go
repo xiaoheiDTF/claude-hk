@@ -1,6 +1,6 @@
-// Package backend_test 包含 /api/proxy/trace-init 精确路由的验收测试。
+// Package api_test 包含 /api/proxy/trace-init 精确路由的验收测试。
 // 覆盖：PID 精确路由、注销清理映射、参数校验。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"

@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 API 的验收测试，覆盖后端服务启动、配置、数据库等基础设施。
-package backend_test
+// Package api_test 包含 API 的验收测试，覆盖后端服务启动、配置、数据库等基础设施。
+package api_test
 
 import (
 	"database/sql"

@@ -1,7 +1,7 @@
-// Package backend_test 包含 GET /api/machines 接口的 BDD + TDD 验收测试。
+// Package api_test 包含 GET /api/machines 接口的 BDD + TDD 验收测试。
 // 覆盖：获取全部、按 OS/hostname 过滤、空列表、方法限制。
 // 所有测试数据均通过 POST /api/session/register 产生（该接口 upsert machines 表）。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"
