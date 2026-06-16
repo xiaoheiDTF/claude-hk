@@ -206,8 +206,8 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	turn := int(p.turn.Add(1))
 	t0 := time.Now()
 
-	logger.Debug("proxy", "[Turn %d] inbound(ClaudeCode): %s %s\n  headers(明文):%s\n  body: %s",
-		turn, r.Method, r.URL.Path, dumpHeaders(r.Header), summarizeBody(originalBody))
+	logger.Debug("proxy", "[Turn %d] inbound(ClaudeCode): %s %s\n  headers:%s",
+		turn, r.Method, r.URL.Path, dumpHeaders(r.Header))
 
 	// 别名路由模式：按请求 model 查表改写 + 按别名选凭证 + 同真实 model 容错（F1/F2/F6）。
 	// aliases != nil 即启用；否则走下面的 bypass（单一 target + 粘性 fallback 状态机）路径。
@@ -251,8 +251,8 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		upstreamReq.Header.Del("Host")
 
-		logger.Debug("proxy", "[Turn %d] outbound(primary): base_url=%s\n  headers(明文):%s\n  body: %s",
-			turn, p.target, dumpHeaders(upstreamReq.Header), summarizeBody(bodyBytes))
+		logger.Debug("proxy", "[Turn %d] outbound(primary): base_url=%s\n  headers:%s",
+			turn, p.target, dumpHeaders(upstreamReq.Header))
 
 		resp, err := p.doWithRetry(upstreamReq, turn, hasFallback)
 		if err != nil {
@@ -830,8 +830,8 @@ func drainBodyForLog(resp *http.Response, maxBytes int) string {
 	return s
 }
 
-// dumpHeaders 将 HTTP 请求头按「Key: Value」逐行展开（含明文鉴权头），用于排查 401/403 时核对实际发出的凭证与请求元数据。
-// 仅在 DEBUG 级别调用，明文输出——排查完请及时清理含密钥的日志文件。
+// dumpHeaders 将 HTTP 请求头按「Key: Value」逐行展开，鉴权头（x-api-key / Authorization）脱敏输出。
+// 用于诊断日志核对实际发出的请求元数据，不泄露完整凭证。
 func dumpHeaders(h http.Header) string {
 	if len(h) == 0 {
 		return " (empty)"
@@ -842,81 +842,25 @@ func dumpHeaders(h http.Header) string {
 			b.WriteString("\n    ")
 			b.WriteString(k)
 			b.WriteString(": ")
-			b.WriteString(v)
+			b.WriteString(maskHeaderValue(k, v))
 		}
 	}
 	return b.String()
 }
 
-// summarizeBody 将请求体解析为结构摘要：model + 每个 message 的 role 与 content block 类型/关键属性，
-// 剥离 text/thinking 全文。用于诊断日志对比代理前后（model 改写、reasoning 注入）而不泄露对话内容。
-func summarizeBody(body []byte) string {
-	if len(body) == 0 {
-		return "(empty body)"
-	}
-	var m map[string]any
-	if err := json.Unmarshal(body, &m); err != nil {
-		return fmt.Sprintf("(非 JSON body, %d bytes)", len(body))
-	}
-
-	var b strings.Builder
-	model, _ := m["model"].(string)
-	msgs, _ := m["messages"].([]any)
-	b.WriteString(fmt.Sprintf("model=%s  msgs=%d", model, len(msgs)))
-
-	for i, msgRaw := range msgs {
-		msg, ok := msgRaw.(map[string]any)
-		if !ok {
-			continue
+// maskHeaderValue 对鉴权头脱敏（复用 maskKey 前4后4），其余 header 原样返回。
+func maskHeaderValue(key, val string) string {
+	switch strings.ToLower(key) {
+	case "x-api-key":
+		return maskKey("", val)
+	case "authorization":
+		if strings.HasPrefix(val, "Bearer ") {
+			return "Bearer " + maskKey("", strings.TrimPrefix(val, "Bearer "))
 		}
-		role, _ := msg["role"].(string)
-		b.WriteString(fmt.Sprintf("\n    [%d] %-10s %s", i, role, summarizeContent(msg["content"])))
+		return maskKey("", val)
+	default:
+		return val
 	}
-	return b.String()
-}
-
-// summarizeContent 摘要单条消息的 content：字符串→"text x1"；block 数组→各 block 类型/关键属性，
-// tool_use/tool_result 保留 id/name，text/thinking 仅计数。
-func summarizeContent(content any) string {
-	if _, ok := content.(string); ok {
-		return "text x1"
-	}
-	blocks, ok := content.([]any)
-	if !ok {
-		return "(unknown content)"
-	}
-
-	counts := map[string]int{}
-	var calls []string
-	for _, blockRaw := range blocks {
-		block, ok := blockRaw.(map[string]any)
-		if !ok {
-			continue
-		}
-		switch bt, _ := block["type"].(string); bt {
-		case "tool_use":
-			id, _ := block["id"].(string)
-			name, _ := block["name"].(string)
-			calls = append(calls, fmt.Sprintf("tool_use(id=%s, name=%s)", id, name))
-		case "tool_result":
-			tuid, _ := block["tool_use_id"].(string)
-			calls = append(calls, fmt.Sprintf("tool_result(for=%s)", tuid))
-		default:
-			counts[bt]++
-		}
-	}
-
-	var parts []string
-	for _, bt := range []string{"text", "thinking"} {
-		if c := counts[bt]; c > 0 {
-			parts = append(parts, fmt.Sprintf("%s x%d", bt, c))
-		}
-	}
-	parts = append(parts, calls...)
-	if len(parts) == 0 {
-		return "(empty content)"
-	}
-	return strings.Join(parts, " + ")
 }
 
 // logProxyError 将友好中文提示输出到日志，同时返回 Anthropic API 格式的 JSON 错误响应。
@@ -1150,6 +1094,8 @@ func (p *ReverseProxy) forwardAlias(w http.ResponseWriter, r *http.Request, a *A
 	}
 	upstreamReq.Header.Del("Host")
 	applyAliasAuth(upstreamReq.Header, a)
+	logger.Debug("proxy", "[Turn %d] outbound(alias=%s real_model=%s base_url=%s)\n  headers:%s",
+		turn, a.Name, a.Model, a.BaseURL, dumpHeaders(upstreamReq.Header))
 
 	resp, err := p.client.Do(upstreamReq)
 	if err != nil {
