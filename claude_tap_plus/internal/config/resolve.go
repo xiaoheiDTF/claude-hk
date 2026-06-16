@@ -14,32 +14,22 @@ type ResolvedConfig struct {
 	Model     string // 最终的模型名（可能为空，空表示不做替换）
 }
 
-// ResolveTargetConfig 按优先级解析最终的上游 API 配置。
+// ResolveTargetConfig 按优先级解析最终的上游 API 配置（仅 bypass 模式使用）。
+//
+// 别名路由模式下凭证随别名变化，不由此函数解析；此函数仅供 CLI 全局旁路（--tap-base-url 等）
+// 或无 profiles.json 时的自动探测使用。profile 不再承载凭证（凭证集中在 aliases 表），
+// profile.env 由调用方另行注入。
 //
 // 优先级（从高到低）：
 //
 //	1. cliBaseURL / cliAPIKey / cliAuthToken（命令行直接指定）
-//	2. profileName（读取 profiles.json）
-//	3. 环境变量（ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL）
-//	4. ~/.claude.json（Claude Code 配置文件）
-//	5. 默认值
-func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string, cfg *ClientConfig) (*ResolvedConfig, error) {
+//	2. 环境变量（ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL）
+//	3. ~/.claude.json（Claude Code 配置文件）
+//	4. 默认值
+func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken string, cfg *ClientConfig) (*ResolvedConfig, error) {
 	result := &ResolvedConfig{}
 
-	// Level 2: 从 profiles.json 读取配置
-	if profileName != "" {
-		p, err := ResolveProfileConfig(profileName)
-		if err != nil {
-			logger.Warn("config", "profile resolution failed: %v", err)
-		} else {
-			result.BaseURL = p.BaseURL
-			result.APIKey = p.APIKey
-			result.AuthToken = p.AuthToken
-			result.Model = p.Model
-		}
-	}
-
-	// Level 1: 命令行直接指定，覆盖 profile 值
+	// Level 1: 命令行直接指定
 	if cliBaseURL != "" {
 		result.BaseURL = cliBaseURL
 	}
@@ -50,7 +40,7 @@ func ResolveTargetConfig(cliBaseURL, cliAPIKey, cliAuthToken, profileName string
 		result.AuthToken = cliAuthToken
 	}
 
-	// Level 3: 环境变量（仅在仍为空时）
+	// Level 2: 环境变量（仅在仍为空时）
 	if result.BaseURL == "" {
 		if env := os.Getenv(cfg.BaseURLEnv); env != "" {
 			result.BaseURL = env

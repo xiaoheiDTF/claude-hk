@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -224,39 +225,71 @@ func runProxy(args []string) {
 	}
 	logger.Info("main", "proxy mode: output_dir=%s verbose=%v", tapOutputDir, tapVerbose)
 
-	// 按优先级解析上游 API 配置（--tap-base-url > --tap-target > profile > env > ~/.claude.json > default）
-	resolved, err := config.ResolveTargetConfig(
-		firstNonEmpty(tapBaseURL, tapTarget),
-		tapAPIKey,
-		tapAuthToken,
-		tapProfile,
-		&config.ClaudeClient,
-	)
+	// 加载 profiles.json（新格式；文件缺失不致命，旧扁平格式报错退出 F4.2）
+	pf, err := config.ReadProfiles()
 	if err != nil {
-		log.Fatalf("resolve config: %v", err)
-	}
-	target := resolved.BaseURL
-	if tapVerbose {
-		log.Printf("upstream target: %s", target)
+		log.Fatalf("load profiles: %v", err)
 	}
 
-	// 创建反向代理实例，绑定上游目标和追踪输出目录
+	// 模式判定：CLI 覆盖参数（--tap-base-url/--tap-api-key/--tap-auth-token/--tap-target）任一存在 → bypass 全局旁路；
+	// 否则若有可用别名表 → 别名路由模式；都没有 → 退回自动探测的 bypass。
+	cliOverride := tapAPIKey != "" || tapAuthToken != "" || tapBaseURL != "" || tapTarget != ""
+	aliasMode := !cliOverride && pf != nil && len(pf.Aliases) > 0
+
+	var (
+		target   string
+		resolved *config.ResolvedConfig
+	)
+	if aliasMode {
+		// 别名模式：target 仅作占位（trace 的 upstream_base_url 走命别名 base_url）
+		target = pf.Aliases[0].BaseURL
+	} else {
+		// bypass 模式：CLI 覆盖 > env > ~/.claude.json > default（凭证单值，注入 Claude Code 子进程）
+		resolved, err = config.ResolveTargetConfig(
+			firstNonEmpty(tapBaseURL, tapTarget),
+			tapAPIKey,
+			tapAuthToken,
+			&config.ClaudeClient,
+		)
+		if err != nil {
+			log.Fatalf("resolve config: %v", err)
+		}
+		target = resolved.BaseURL
+	}
+	if tapVerbose {
+		log.Printf("mode=%s upstream target: %s", map[bool]string{true: "alias", false: "bypass"}[aliasMode], target)
+	}
+
+	// 创建反向代理实例
 	rp := proxy.NewReverseProxy(target, tapOutputDir)
 
-	// 设置 model 改写（契约 2：resolved.Model 优先级链）
-	rp.SetModel(resolved.Model)
-
-	// 检测是否为 kimi 上游，启用 reasoning_content 缓存。
-	// 同时依据 BaseURL 前缀与 model 名：别名路由/自建网关下 BaseURL 可能非官方域名，
-	// 只要 model 仍为 kimi/moonshot/deepseek 即应启用 reasoning_content 注入。
-	if proxy.IsKimiUpstream(resolved.BaseURL, resolved.Model) {
-		rp.SetKimiMode(true)
-	}
-
-	// 加载兜底配置（契约 4：优先 profiles.json → 再 Claude settings）
-	fallbackCfgs := loadFallbackConfigs(resolved.Model, tapProfile)
-	if len(fallbackCfgs) > 0 {
-		rp.SetFallbackConfigs(fallbackCfgs)
+	if aliasMode {
+		// 别名模式：装配别名表，proxy 按请求 model 查表改写 + 选凭证 + 同真实 model 容错
+		pas := make([]*proxy.Alias, 0, len(pf.Aliases))
+		for i := range pf.Aliases {
+			a := pf.Aliases[i]
+			pas = append(pas, &proxy.Alias{
+				Name:      a.Name,
+				Model:     a.Model,
+				BaseURL:   a.BaseURL,
+				APIKey:    a.APIKey,
+				AuthToken: a.AuthToken,
+				Provider:  a.Provider,
+				KimiMode:  a.KimiMode,
+			})
+		}
+		rp.SetAliases(pas, pf.DefaultAlias)
+	} else {
+		// bypass 模式：单一 model 改写 + kimi 检测 + settings 兜底
+		rp.SetModel(resolved.Model)
+		// kimi 检测：BaseURL 前缀与 model 名任一命中即启用 reasoning_content 注入，
+		// 覆盖自建网关下 BaseURL 非官方域名但 model 仍为 kimi/moonshot/deepseek 的场景
+		if proxy.IsKimiUpstream(resolved.BaseURL, resolved.Model) {
+			rp.SetKimiMode(true)
+		}
+		if fallbackCfgs := loadFallbackConfigs(); len(fallbackCfgs) > 0 {
+			rp.SetFallbackConfigs(fallbackCfgs)
+		}
 	}
 
 	port := tapPort
@@ -279,23 +312,44 @@ func runProxy(args []string) {
 	// 代理退出时注销
 	defer unregisterProxyFromBackend()
 
-	// 设置会话初始化回调：注册到 proxy.json
-	rp.OnSessionInit = func(sessionID, projectSlug string) {
-		key := ProxySessionKey(projectSlug, sessionID)
-		if err := RegisterProxySession(key, time.Now().Format(time.RFC3339)); err != nil {
-			logger.Warn("main", "register proxy session failed: %v", err)
-		}
-	}
-	// 代理退出时注销 proxy.json 中的会话
-	defer func() {
-		if sid := rp.SessionID(); sid != "" {
-			slug := rp.ProjectSlug()
-			key := ProxySessionKey(slug, sid)
+	// 本代理进程注册过的所有 proxy.json key（/clear 会重绑定产生新 key，旧 key 需一并清理）。
+	var (
+		registeredKeysMu sync.Mutex
+		registeredKeys   []string
+	)
+	// 注销本代理注册过的全部会话条目。由 session-close 端点和进程退出 defer 共用。
+	unregisterAllProxySessions := func() {
+		registeredKeysMu.Lock()
+		keys := append([]string(nil), registeredKeys...)
+		registeredKeys = nil
+		registeredKeysMu.Unlock()
+		for _, key := range keys {
 			if err := UnregisterProxySession(key); err != nil {
 				logger.Warn("main", "unregister proxy session failed: %v", err)
 			}
 		}
-	}()
+		if len(keys) > 0 {
+			logger.Info("main", "unregistered %d proxy session(s) from proxy.json", len(keys))
+		}
+	}
+
+	// 设置会话初始化回调：注册到 proxy.json（由 01-session-start 钩子经 trace-init 触发）
+	rp.OnSessionInit = func(sessionID, projectSlug string) {
+		key := ProxySessionKey(projectSlug, sessionID)
+		if err := RegisterProxySession(key, ProxySession{
+			StartedAt: time.Now().Format(time.RFC3339),
+			URL:       proxyURL,
+		}); err != nil {
+			logger.Warn("main", "register proxy session failed: %v", err)
+		}
+		registeredKeysMu.Lock()
+		registeredKeys = append(registeredKeys, key)
+		registeredKeysMu.Unlock()
+	}
+	// 设置会话关闭回调：注销 proxy.json（由 29-session-end 钩子经 session-close 触发，对称于注册）
+	rp.OnSessionClose = unregisterAllProxySessions
+	// 进程退出兜底：优雅退出时即时清理（强杀场景由下次启动的 session-close/兜底清理）
+	defer unregisterAllProxySessions()
 
 	// 解析 Claude Code 可执行文件路径
 	claudePath, err := config.ResolveCmd(&config.ClaudeClient)
@@ -310,13 +364,42 @@ func runProxy(args []string) {
 	childEnv = append(childEnv, "CLAUDE_TAP_PROXY_PID="+strconv.Itoa(os.Getpid()))
 	childEnv = append(childEnv, "CLAUDE_TAP_PROXY_URL="+proxyURL)
 
-	// 注入认证信息：有 API Key 用 API Key，有 Token 用 Token，互斥避免冲突
-	if resolved.APIKey != "" {
+	// 注入认证信息（凭证职责随模式不同）：
+	//   bypass 模式 —— 真实凭证注入 Claude Code 子进程，Claude Code 自带鉴权头，proxy 透传；
+	//   别名模式  —— 凭证随别名变，由 proxy 按命别名覆盖请求头；此处只注入占位值让 Claude Code 能构造请求。
+	if aliasMode {
 		childEnv = removeEnvVar(childEnv, "ANTHROPIC_AUTH_TOKEN")
-		childEnv = append(childEnv, "ANTHROPIC_API_KEY="+resolved.APIKey)
-	} else if resolved.AuthToken != "" {
 		childEnv = removeEnvVar(childEnv, "ANTHROPIC_API_KEY")
-		childEnv = append(childEnv, "ANTHROPIC_AUTH_TOKEN="+resolved.AuthToken)
+		childEnv = append(childEnv, "ANTHROPIC_API_KEY=alias-mode-placeholder")
+	} else if resolved != nil {
+		if resolved.APIKey != "" {
+			childEnv = removeEnvVar(childEnv, "ANTHROPIC_AUTH_TOKEN")
+			childEnv = append(childEnv, "ANTHROPIC_API_KEY="+resolved.APIKey)
+		} else if resolved.AuthToken != "" {
+			childEnv = removeEnvVar(childEnv, "ANTHROPIC_API_KEY")
+			childEnv = append(childEnv, "ANTHROPIC_AUTH_TOKEN="+resolved.AuthToken)
+		}
+	}
+
+	// 注入 profile.env（两种模式均适用；--tap-profile 缺省时用 default_profile）。
+	// env 与凭证解耦：env 决定 Claude Code 各角色发出的别名 name（如 ANTHROPIC_MODEL=opus[1m]），
+	// 凭证在别名表。ResolveProfileEnv 会剔除与 proxy 冲突的禁止项（ANTHROPIC_BASE_URL 等）。
+	if pf != nil {
+		envName := tapProfile
+		if envName == "" {
+			envName = pf.DefaultProfile
+		}
+		if envName != "" {
+			if envMap, err := pf.ResolveProfileEnv(envName); err != nil {
+				logger.Warn("main", "profile env: %v", err)
+			} else {
+				for k, v := range envMap {
+					childEnv = removeEnvVar(childEnv, k)
+					childEnv = append(childEnv, k+"="+v)
+				}
+				logger.Info("main", "profile env injected: %s (%d vars)", envName, len(envMap))
+			}
+		}
 	}
 
 	// 对于需要注入 --settings 参数的客户端（如 Claude Code），自动添加
@@ -394,30 +477,11 @@ func runProxy(args []string) {
 	}
 }
 
-// loadFallbackConfigs 按优先级加载兜底配置列表。
+// loadFallbackConfigs 加载 bypass 模式的兜底配置（仅 ~/.claude/settings.json）。
 //
-// 优先级（从高到低）：
-//  1. profiles.json 中与 targetModel 同 model 的其他 profile
-//  2. profiles.json 中其他 model 的 profile
-//  3. ~/.claude/settings.json 中的配置（原始 fallback 逻辑）
-func loadFallbackConfigs(targetModel, excludeProfile string) []*proxy.FallbackConfig {
-	// Level 1 & 2: 优先从 profiles.json 查找
-	profiles, err := config.ResolveFallbackProfiles(targetModel, excludeProfile)
-	if err == nil && len(profiles) > 0 {
-		var result []*proxy.FallbackConfig
-		for _, p := range profiles {
-			result = append(result, &proxy.FallbackConfig{
-				BaseURL:   p.BaseURL,
-				Model:     p.Model,
-				AuthToken: p.AuthToken,
-				APIKey:    p.APIKey,
-			})
-		}
-		logger.Info("main", "fallback loaded from profiles.json: %d candidates", len(result))
-		return result
-	}
-
-	// Level 3: 回退到原始逻辑（Claude settings）
+// 别名路由模式下，按真实 model 容错的候选链由 proxy 自己从别名表计算（ResolveFallbackAliases），
+// 不走此函数。此函数仅供 bypass（单一 target）模式在主上游失败时提供 settings 兜底。
+func loadFallbackConfigs() []*proxy.FallbackConfig {
 	s, err := config.ReadClaudeSettings()
 	if err != nil || s == nil {
 		return nil

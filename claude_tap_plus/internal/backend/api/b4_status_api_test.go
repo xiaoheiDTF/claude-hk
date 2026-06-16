@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 API 的验收测试，覆盖 Issue 状态流转相关接口。
-package backend_test
+// Package api_test 包含 API 的验收测试，覆盖 Issue 状态流转相关接口。
+package api_test
 
 import (
 	"fmt"

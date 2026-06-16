@@ -1,7 +1,7 @@
-// Package backend_test 包含 GET /api/session/{id}/tokens 接口的 BDD + TDD 验收测试。
+// Package api_test 包含 GET /api/session/{id}/tokens 接口的 BDD + TDD 验收测试。
 // 覆盖：获取 Token 统计、无 trace 文件零值、不存在会话 404、方法限制。
 // 测试数据通过 API 注册会话 + 手动创建 JSONL trace 文件产生。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"

@@ -41,6 +41,7 @@ type ReverseProxy struct {
 	sessionID         string                              // 当前会话 ID（由 trace-init 设置）
 	projectSlug       string                              // 当前项目标识（由 trace-init 设置）
 	OnSessionInit     func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
+	OnSessionClose    func()                              // 会话关闭回调（注销 proxy.json，由 /_internal/session-close 触发）
 	model             string                              // 强制替换的模型名（空=不改写）
 	upstreamAvailable bool                                // 上游可用性标记，初始 true
 	fallbackConfigs   []*FallbackConfig                   // 兜底配置列表（上游不可用时轮询）
@@ -50,6 +51,10 @@ type ReverseProxy struct {
 	kimiMode          bool                                // 是否为 kimi 上游
 	fallbackIndex     int                                 // fallback 轮询索引
 	retryInterval     time.Duration                       // 重试间隔（默认 retryInterval，测试可覆盖）
+	// === 别名路由模式（aliases != nil 时启用，绕过下面的单一 target/fallback 状态机）===
+	aliases      map[string]*Alias // name→别名；nil 表示处于 bypass（单一 target）模式
+	aliasOrder   []string          // 别名数组顺序（fallback 顺序与 F6.2 可用列表用）
+	defaultAlias string            // 请求 model 未命中时的兜底别名 name
 }
 
 // FallbackConfig 存储上游不可用时的兜底配置。
@@ -58,6 +63,18 @@ type FallbackConfig struct {
 	Model     string // 兜底模型名
 	AuthToken string // 兜底认证 Token
 	APIKey    string // 兜底 API Key
+}
+
+// Alias 是 proxy 侧的别名定义（由 main.go 从 config.Alias 转换而来，保持 proxy 包不依赖 config）。
+// proxy 收到请求后按请求体 model（=别名 name）查表：改写为真实 model、选用对应 base_url/凭证转发。
+type Alias struct {
+	Name      string // 别名，Claude Code 发来的 model 名
+	Model     string // 真实模型名，转发时改写进请求体
+	BaseURL   string // 后端 API 地址
+	APIKey    string // API Key（与 AuthToken 互斥；config 层已保证不会同时非空）
+	AuthToken string // OAuth token（优先于 APIKey）
+	Provider  string // anthropic/openai/gemini，决定 APIKey 的鉴权头格式
+	KimiMode  *bool  // 显式指定 reasoning 注入；nil 时按 BaseURL 自动判断
 }
 
 // NewReverseProxy 创建一个代理实例，将请求转发到指定的 target URL。
@@ -192,6 +209,13 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("proxy", "[Turn %d] inbound(ClaudeCode): %s %s\n  headers(明文):%s\n  body: %s",
 		turn, r.Method, r.URL.Path, dumpHeaders(r.Header), summarizeBody(originalBody))
 
+	// 别名路由模式：按请求 model 查表改写 + 按别名选凭证 + 同真实 model 容错（F1/F2/F6）。
+	// aliases != nil 即启用；否则走下面的 bypass（单一 target + 粘性 fallback 状态机）路径。
+	if p.aliases != nil {
+		p.serveAlias(w, r, originalBody, reqBody, reqID, turn, t0)
+		return
+	}
+
 	// 读取当前状态快照
 	p.availableMu.Lock()
 	upstreamAvailable := p.upstreamAvailable
@@ -207,6 +231,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.URL.RawQuery != "" {
 			upstreamURL += "?" + r.URL.RawQuery
 		}
+		logger.Info("proxy", "[Turn %d] -> %s %s (primary)", turn, r.Method, upstreamURL)
 
 		upstreamReq, err := http.NewRequest(r.Method, upstreamURL, bytes.NewReader(bodyBytes))
 		if err != nil {
@@ -238,7 +263,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if !shouldFallback(resp.StatusCode) {
 			// 主上游成功（或非降级错误如 400），直接处理响应
 			defer resp.Body.Close()
-			p.dispatchResponse(w, resp, reqID, turn, r, reqBody, t0)
+			p.dispatchResponse(w, resp, reqID, turn, r, reqBody, t0, p.target)
 			return
 		} else {
 			// 主上游返回需要降级的状态码 → 读取上游错误体后标记不可用，进入 fallback 链
@@ -281,6 +306,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			if r.URL.RawQuery != "" {
 				fbURL += "?" + r.URL.RawQuery
 			}
+			logger.Info("proxy", "[Turn %d] -> %s %s (fallback[%d])", turn, r.Method, fbURL, idx)
 
 			fbReq, err := http.NewRequest(r.Method, fbURL, bytes.NewReader(fbBody))
 			if err != nil {
@@ -330,7 +356,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			logger.Info("proxy", "[Turn %d] fallback[%d] succeeded (status %d)", turn, idx, fbResp.StatusCode)
 
 			defer fbResp.Body.Close()
-			p.dispatchResponse(w, fbResp, reqID, turn, r, fbParsed, t0)
+			p.dispatchResponse(w, fbResp, reqID, turn, r, fbParsed, t0, fb.BaseURL)
 			return
 		}
 	}
@@ -349,7 +375,7 @@ func (p *ReverseProxy) handleStreaming(
 	upstreamResp *http.Response,
 	reqID string, turn, durationMs int,
 	r *http.Request, reqBody any,
-	t0 time.Time, model string,
+	t0 time.Time, model, upstreamBaseURL string,
 ) {
 	// 复制响应头
 	respHeaders := FilterHeaders(upstreamResp.Header, false)
@@ -396,7 +422,7 @@ func (p *ReverseProxy) handleStreaming(
 		upstreamResp.StatusCode, upstreamResp.Header,
 		reconstructed,
 		reassembler.Events,
-		p.target,
+		upstreamBaseURL,
 	)
 
 	if w := p.getWriter(); w != nil {
@@ -419,7 +445,7 @@ func (p *ReverseProxy) handleNonStreaming(
 	w http.ResponseWriter,
 	upstreamResp *http.Response,
 	reqID string, turn, durationMs int,
-	r *http.Request, reqBody any, model string,
+	r *http.Request, reqBody any, model, upstreamBaseURL string,
 ) {
 	respBytes, err := io.ReadAll(upstreamResp.Body)
 	if err != nil {
@@ -467,7 +493,7 @@ func (p *ReverseProxy) handleNonStreaming(
 		upstreamResp.StatusCode, upstreamResp.Header,
 		respBody,
 		nil,
-		p.target,
+		upstreamBaseURL,
 	)
 
 	if w := p.getWriter(); w != nil {
@@ -555,9 +581,28 @@ func (p *ReverseProxy) handleInternal(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/_internal/trace-init":
 		p.handleTraceInit(w, r)
+	case "/_internal/session-close":
+		p.handleSessionClose(w, r)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// handleSessionClose 注销 proxy.json 中的会话条目（由 29-session-end 钩子触发）。
+// 与 trace-init 对称：注册走钩子→trace-init，注销走钩子→session-close，
+// 不再单靠 proxy 进程的 defer（进程被强杀时 defer 不执行，会残留条目）。
+func (p *ReverseProxy) handleSessionClose(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "use POST", http.StatusMethodNotAllowed)
+		return
+	}
+	if p.OnSessionClose != nil {
+		p.OnSessionClose()
+	}
+	logger.Info("proxy", "session-close: proxy.json sessions unregistered")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 // handleTraceInit 接收 SessionStart 钩子传来的会话信息，创建 Trace 写入器。
@@ -908,7 +953,8 @@ func logProxyError(w http.ResponseWriter, turn int, lastErr error, lastStatusCod
 }
 
 // dispatchResponse extracts model/stream info from reqBody and dispatches to the appropriate handler.
-func (p *ReverseProxy) dispatchResponse(w http.ResponseWriter, resp *http.Response, reqID string, turn int, r *http.Request, reqBody any, t0 time.Time) {
+// upstreamBaseURL 为本次实际命中的上游地址，写入 trace 的 upstream_base_url 字段。
+func (p *ReverseProxy) dispatchResponse(w http.ResponseWriter, resp *http.Response, reqID string, turn int, r *http.Request, reqBody any, t0 time.Time, upstreamBaseURL string) {
 	durationMs := int(time.Since(t0).Milliseconds())
 
 	model := ""
@@ -923,9 +969,9 @@ func (p *ReverseProxy) dispatchResponse(w http.ResponseWriter, resp *http.Respon
 	}
 
 	if isStreaming {
-		p.handleStreaming(w, resp, reqID, turn, durationMs, r, reqBody, t0, model)
+		p.handleStreaming(w, resp, reqID, turn, durationMs, r, reqBody, t0, model, upstreamBaseURL)
 	} else {
-		p.handleNonStreaming(w, resp, reqID, turn, durationMs, r, reqBody, model)
+		p.handleNonStreaming(w, resp, reqID, turn, durationMs, r, reqBody, model, upstreamBaseURL)
 	}
 }
 
@@ -968,6 +1014,200 @@ func (p *ReverseProxy) advanceFallback() {
 	defer p.availableMu.Unlock()
 	p.fallbackIndex++
 	logger.Info("proxy", "fallback advanced to index %d", p.fallbackIndex)
+}
+
+// SetAliases 装配别名表，启用别名路由模式。
+// 别名表为启动时一次性加载（本期不支持热重载）；重复 name 由调用方去重（后者覆盖）。
+// 若任一别名为 kimi（显式或按 base_url 自动判断），预先创建 reasoning_content 缓存。
+func (p *ReverseProxy) SetAliases(aliases []*Alias, defaultAlias string) {
+	p.aliases = make(map[string]*Alias, len(aliases))
+	p.aliasOrder = make([]string, 0, len(aliases))
+	needKimi := false
+	for _, a := range aliases {
+		if a == nil {
+			continue
+		}
+		p.aliases[a.Name] = a
+		p.aliasOrder = append(p.aliasOrder, a.Name)
+		if aliasKimiMode(a) {
+			needKimi = true
+		}
+	}
+	p.defaultAlias = defaultAlias
+	if needKimi && p.reasoningCache == nil {
+		p.reasoningCache = NewReasoningCache()
+		logger.Info("proxy", "reasoning_content cache enabled (alias mode)")
+	}
+	logger.Info("proxy", "alias routing enabled: %d aliases, default_alias=%q", len(p.aliasOrder), defaultAlias)
+}
+
+// aliasKimiMode 计算别名的 kimi 注入开关：显式值优先，缺省按 base_url 自动判断（复用 IsKimiURL）。
+func aliasKimiMode(a *Alias) bool {
+	if a.KimiMode != nil {
+		return *a.KimiMode
+	}
+	return IsKimiURL(a.BaseURL)
+}
+
+// serveAlias 是别名路由模式的核心处理：解析别名 → 主别名 + 同真实 model 候选链 → 逐个转发。
+func (p *ReverseProxy) serveAlias(w http.ResponseWriter, r *http.Request, originalBody []byte, reqBody any, reqID string, turn int, t0 time.Time) {
+	reqModel := extractModel(reqBody)
+
+	primary, hit := p.aliases[reqModel]
+	if !hit {
+		if p.defaultAlias != "" {
+			primary = p.aliases[p.defaultAlias]
+			logger.Warn("proxy", "[Turn %d] model %q 未命中别名，兜底 default_alias=%q", turn, reqModel, p.defaultAlias)
+		}
+	}
+	if primary == nil {
+		// F6.2：打印原始 model 与可用别名列表，便于定位（如 Claude Code 是否剥离了 [1m]）
+		logger.Warn("proxy", "[Turn %d] model %q 未命中任何别名且无 default_alias，可用别名: %v", turn, reqModel, p.aliasOrder)
+		logProxyError(w, turn, fmt.Errorf("unknown model %q: no matching alias and no default_alias", reqModel), 0)
+		return
+	}
+	if hit {
+		logger.Info("proxy", "[Turn %d] alias=%s real_model=%s base_url=%s key=%s",
+			turn, primary.Name, primary.Model, primary.BaseURL, maskKey(primary.AuthToken, primary.APIKey))
+	}
+
+	// 候选链：主别名在前，其后是同真实 model 的其他别名（按数组顺序，F2.2）。
+	candidates := []*Alias{primary}
+	candidates = append(candidates, p.fallbackAliasesFor(primary)...)
+
+	var lastStatus int
+	for _, a := range candidates {
+		dispatched, status := p.forwardAlias(w, r, a, originalBody, reqID, turn, t0)
+		if dispatched {
+			return
+		}
+		if status > lastStatus {
+			lastStatus = status
+		}
+	}
+
+	logger.Error("proxy", "[Turn %d] model %q 所有别名（含候选）均失败", turn, reqModel)
+	logProxyError(w, turn, fmt.Errorf("all aliases failed for model %q", reqModel), lastStatus)
+}
+
+// fallbackAliasesFor 返回真实 model 与 primary 相同、排除 primary 自身的别名，按数组顺序。
+func (p *ReverseProxy) fallbackAliasesFor(primary *Alias) []*Alias {
+	var out []*Alias
+	for _, name := range p.aliasOrder {
+		a := p.aliases[name]
+		if a == nil || a.Name == primary.Name || primary.Model == "" {
+			continue
+		}
+		if a.Model == primary.Model {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// forwardAlias 按单个别名转发一次请求。
+// 返回 (dispatched, lastStatus)：dispatched=true 表示已向客户端写出响应（成功或非降级状态如 400），调用方应停止重试；
+// dispatched=false 表示命中降级条件（连接错误或 401/403/429/5xx），调用方应尝试下一个候选。
+func (p *ReverseProxy) forwardAlias(w http.ResponseWriter, r *http.Request, a *Alias, originalBody []byte, reqID string, turn int, t0 time.Time) (bool, int) {
+	// 改写 model 为真实 model
+	body := originalBody
+	var parsed any
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &parsed)
+	}
+	body = rewriteModel(body, parsed, a.Model)
+	parsed = nil
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &parsed)
+	}
+
+	// 按该别名注入 reasoning_content（kimi 系）
+	body = injectReasoningContentCached(body, parsed, p.reasoningCache, aliasKimiMode(a))
+	parsed = nil
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &parsed)
+	}
+
+	// 构建上游请求
+	upstreamURL := strings.TrimRight(a.BaseURL, "/") + r.URL.Path
+	if r.URL.RawQuery != "" {
+		upstreamURL += "?" + r.URL.RawQuery
+	}
+	logger.Info("proxy", "[Turn %d] -> %s %s (alias=%s real_model=%s)",
+		turn, r.Method, upstreamURL, a.Name, a.Model)
+	upstreamReq, err := http.NewRequest(r.Method, upstreamURL, bytes.NewReader(body))
+	if err != nil {
+		logger.Warn("proxy", "[Turn %d] alias %s build request error: %v", turn, a.Name, err)
+		return false, 0
+	}
+	for k, vals := range r.Header {
+		if hopByHopHeaders[strings.ToLower(k)] {
+			continue
+		}
+		for _, v := range vals {
+			upstreamReq.Header.Add(k, v)
+		}
+	}
+	upstreamReq.Header.Del("Host")
+	applyAliasAuth(upstreamReq.Header, a)
+
+	resp, err := p.client.Do(upstreamReq)
+	if err != nil {
+		logger.Warn("proxy", "[Turn %d] alias %s connection error: %v", turn, a.Name, err)
+		return false, 0
+	}
+	if shouldFallback(resp.StatusCode) {
+		resp.Body.Close()
+		logger.Warn("proxy", "[Turn %d] alias %s returned %d, trying next", turn, a.Name, resp.StatusCode)
+		return false, resp.StatusCode
+	}
+
+	logger.Info("proxy", "[Turn %d] alias %s <- %d", turn, a.Name, resp.StatusCode)
+	defer resp.Body.Close()
+	p.dispatchResponse(w, resp, reqID, turn, r, parsed, t0, a.BaseURL)
+	return true, resp.StatusCode
+}
+
+// applyAliasAuth 按别名凭证与 provider 设置鉴权头（覆盖 Claude Code 自带的占位凭证）。
+// 决策 5：auth_token 优先于 api_key；provider 决定 api_key 走 x-api-key 还是 Bearer。
+func applyAliasAuth(h http.Header, a *Alias) {
+	h.Del("Authorization")
+	h.Del("x-api-key")
+	switch {
+	case a.AuthToken != "":
+		h.Set("Authorization", "Bearer "+a.AuthToken)
+	case a.APIKey != "":
+		if strings.EqualFold(a.Provider, "openai") || strings.EqualFold(a.Provider, "gemini") {
+			h.Set("Authorization", "Bearer "+a.APIKey)
+		} else {
+			h.Set("x-api-key", a.APIKey)
+		}
+	}
+}
+
+// extractModel 从请求体解析 model 字段（即 Claude Code 发来的别名 name）。
+func extractModel(reqBody any) string {
+	m, ok := reqBody.(map[string]any)
+	if !ok {
+		return ""
+	}
+	s, _ := m["model"].(string)
+	return s
+}
+
+// maskKey 脱敏凭证用于日志：保留前 4 后 4，过短则全掩。
+func maskKey(token, key string) string {
+	s := token
+	if s == "" {
+		s = key
+	}
+	if s == "" {
+		return "<none>"
+	}
+	if len(s) <= 8 {
+		return strings.Repeat("*", len(s))
+	}
+	return s[:4] + "..." + s[len(s)-4:]
 }
 
 // SetKimiMode 启用或禁用 kimi 模式。

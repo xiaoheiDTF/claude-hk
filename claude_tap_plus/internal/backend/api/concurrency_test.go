@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 API 的并发测试，验证 issue 领取的原子性。
-package backend_test
+// Package api_test 包含 API 的并发测试，验证 issue 领取的原子性。
+package api_test
 
 import (
 	"fmt"

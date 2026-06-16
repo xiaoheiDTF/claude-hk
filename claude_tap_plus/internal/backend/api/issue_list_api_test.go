@@ -1,7 +1,7 @@
-// Package backend_test 包含 GET /api/issues 接口的 BDD + TDD 验收测试。
+// Package api_test 包含 GET /api/issues 接口的 BDD + TDD 验收测试。
 // 覆盖：获取全部、按仓库/状态/session_id 过滤、组合过滤、分页、空列表、方法限制。
 // 所有测试数据均通过系统自身 API（claim、release、status）产生，不直接操作数据库。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"

@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 Session API 的验收测试，覆盖注册、关闭、列表、详情等接口。
-package backend_test
+// Package api_test 包含 Session API 的验收测试，覆盖注册、关闭、列表、详情等接口。
+package api_test
 
 import (
 	"context"

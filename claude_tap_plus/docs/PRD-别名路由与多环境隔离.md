@@ -79,7 +79,6 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
       "api_key":   "<API key>",           // 与 auth_token 二选一
       "auth_token":"<OAuth token>",       // 可选，与 api_key 互斥
       "kimi_mode": true,                  // 可选，显式开启 reasoning_content 注入（默认按 base_url 自动判断）
-      "priority":  100                    // 可选，同真实 model 多别名时的选用优先级，大者优先；默认 0，相同则按数组顺序
     }
   ],
 
@@ -106,7 +105,6 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
 | `aliases[].api_key` | 否 | API key，与 `auth_token` 互斥 |
 | `aliases[].auth_token` | 否 | OAuth token，与 `api_key` 互斥 |
 | `aliases[].kimi_mode` | 否 | 显式指定是否注入 reasoning_content；缺省时按 `base_url` 是否匹配 kimi/moonshot/deepseek 自动判断 |
-| `aliases[].priority` | 否 | 同真实 model 存在多个别名时的选用优先级（含 fallback 排序） |
 | `profiles[].env` | 是 | 启动时注入 Claude Code 子进程的环境变量 |
 
 ### 4.3 完整示例
@@ -129,7 +127,6 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
       "env": {
         "ANTHROPIC_MODEL": "opus[1m]",
         "CLAUDE_CODE_SUBAGENT_MODEL": "kimi",
-        "ANTHROPIC_SMALL_FAST_MODEL": "haiku",
         "ANTHROPIC_DEFAULT_OPUS_MODEL": "opus[1m]",
         "ANTHROPIC_DEFAULT_SONNET_MODEL": "sonnet",
         "ANTHROPIC_DEFAULT_HAIKU_MODEL": "haiku",
@@ -147,6 +144,35 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
 
 > 示例覆盖：同 model 不同 key（`opus[1m]`/`opus2[1m]` 都是 `glm-5.2[1m]`）；多 model 共用 key（`opus[1m]`/`sonnet` 都用 `sk-aaa`）；不同后端（kimi）；1M 别名（`opus[1m]`）；env 随 profile 切换。
 
+### 4.4 需适配的 Claude Code 环境变量（与开发密切相关）
+
+profile.env 本质是注入给 Claude Code 子进程的环境变量。下列变量**直接决定 Claude Code 各角色发往 proxy 的 model 名（即我们的别名 name）**，是别名路由生效的前提。proxy 不关心 Claude Code 内部如何解析，只按收到的请求 model 查别名表改写（见 F1、F6 日志）。
+
+**模型路由核心（影响请求 model 字段）：**
+
+| 环境变量 | 作用 | 别名路由意义 |
+|---|---|---|
+| `ANTHROPIC_MODEL` | 主对话模型别名 | 主对话发出的别名，proxy 据此路由 |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | 子代理（Agent 工具）模型；可设 `inherit` | 实现「subagent 走 kimi」等按角色路由 |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `opus` 别名映射 | Claude Code 发 `opus`，proxy 改写 |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `sonnet` 别名映射 | 同上 |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `haiku` 别名 + 后台任务模型 | 后台小模型分工 |
+| `ANTHROPIC_DEFAULT_FABLE_MODEL` | `fable` 别名映射（Fable 5） | 接 Fable 后端时用 |
+
+> ⚠️ `ANTHROPIC_SMALL_FAST_MODEL` 已废弃，统一用 `ANTHROPIC_DEFAULT_HAIKU_MODEL`。
+
+**别名 `[1m]` 处理约定（本期决策）：**
+- 别名 `name` 直接带 `[1m]` 后缀（如 `opus[1m]`），proxy 原样接收 Claude Code 发来的 model 字段、原样转发到后端，**不解析、不剥离、不关心 Claude Code 内部行为**。
+- 若运行中出现 Claude Code 剥离/改写后缀导致别名不命中等问题，**通过 F6 日志定位**后再决定是否加兼容层，本期不预先处理。
+
+**禁止在 profile.env 中设置：**
+- `ANTHROPIC_BASE_URL` —— proxy 已强制指向本地（F3.3）。
+- `CLAUDE_CODE_USE_BEDROCK` / `_VERTEX` / `_FOUNDRY` 等 provider 开关 —— 走代理场景不需要。
+
+**可选（按需）：**
+- `ANTHROPIC_CUSTOM_MODEL_OPTION` / `_NAME` / `_DESCRIPTION` / `_SUPPORTED_CAPABILITIES` —— 自定义别名在 `/model` 选择器里可显示并声明能力（`effort`/`thinking`/`adaptive_thinking`/`interleaved_thinking`/`xhigh_effort`/`max_effort`）。
+- `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` —— 禁用 1M 变体。
+
 ---
 
 ## 5. 功能需求
@@ -160,7 +186,7 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
 
 ### F2 key 池与 fallback
 - F2.1 主别名转发失败（连接错误，或响应码命中 `shouldFallback`：401/403/429/5xx）时进入 fallback。
-- F2.2 fallback 候选 = `aliases` 中**真实 model 与主别名相同**、且排除主别名自身的其他别名，按 `priority` 降序、同 priority 按数组顺序排列。
+- F2.2 fallback 候选 = `aliases` 中**真实 model 与主别名相同**、且排除主别名自身的其他别名，**按数组顺序**逐一尝试（本期不引入 priority）。
 - F2.3 逐个尝试候选（复用现有 fallback 转发逻辑：按候选的 base_url/key 改写认证、按其 base_url 判断 kimi 注入）。
 - F2.4 主别名 + 所有候选均失败 → 返回友好错误（复用 `logProxyError`）。
 - F2.5 fallback 选用策略本期仅"失败容错"，不做轮询/负载均衡。
@@ -179,6 +205,12 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
 ### F5 安全
 - F5.1 `profiles.json` 含明文密钥，创建/读取时应校验文件权限，权限过宽（如其他用户可读）时告警。
 - F5.2 trace 记录中 api_key/auth_token 沿用现有脱敏逻辑（`FilterHeaders`）。
+
+### F6 路由日志（排查用）
+- F6.1 每个转发请求记录：**Claude Code 实际发来的 model**（原始请求体 `model` 字段）、**命中的别名 name**（或未命中）、**改写后的真实 model**、**选用的 base_url**（key 脱敏）。
+- F6.2 未命中别名且无 `default_alias` 时，日志中打印原始 model 与可用别名列表，便于定位（如 Claude Code 是否剥离了 `[1m]` 等后缀）。
+- F6.3 fallback 触发时记录：失败别名、失败原因（HTTP 码或连接错误）、逐个候选别名的尝试结果。
+- F6.4 复用现有 `logProxyError` 等日志通道，不引入新日志体系。
 
 ---
 
@@ -241,13 +273,20 @@ claude_tap_plus 是 Claude Code 的本地反向代理（Go），通过拦截 API
 
 ---
 
-## 10. 未决项（需评审确认）
+## 10. 未决项（已评审确认）
 
-1. **同别名名重复**：aliases 中出现相同 `name` 时，报错 还是 后者覆盖？（倾向报错）
-2. **default_alias 必填还是可选**：当前设计可选。是否强制要求配置以避免未命中？
-3. **priority 字段**：是否需要，还是直接按数组顺序？（当前提供 priority，默认 0）
-4. **旧格式兼容层**：是否需要在过渡期同时支持旧扁平格式自动转换？（当前设计为检测+提示，不做自动转换）
-5. **auth_token 与 api_key 互斥校验**：同一别名同时配置两者时，报错还是优先级取一？
+| 编号 | 决策 |
+|---|---|
+| 1. 同名别名重复 | **启动时打印 warn，后者覆盖前者**（不报错退出） |
+| 2. default_alias 必填/可选 | **可选**；但需对配置做校验（缺失时命中失败行为见 F1.5、F6.2） |
+| 3. priority 字段 | **不需要**；fallback 兜底顺序由程序按数组顺序决定，schema 中移除 `priority` 字段 |
+| 4. 旧格式自动转换 | **不做自动转换**；仅检测+提示退出（F4.2）。本期为 breaking change，需手动适配旧 `profiles.json` |
+| 5. auth_token 与 api_key 互斥 | **同时配置时打印 warn，优先使用 `auth_token`**（忽略 `api_key`） |
+
+> 对应需在 schema 与实现中落地的调整：
+> - `Alias` 结构**移除 `priority` 字段**；4.1/4.2 字段说明表同步删除。
+> - `Alias` 同时配置 `api_key` + `auth_token`：warn + 以 `auth_token` 为准。
+> - 别名解析阶段对重复 `name`：warn + 后者覆盖。
 
 ---
 

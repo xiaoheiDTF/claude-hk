@@ -1,5 +1,5 @@
-// Package backend_test 包含后端 Issue API 的验收测试，覆盖 check、claim、release、status 等接口。
-package backend_test
+// Package api_test 包含 Issue API 的验收测试，覆盖 check、claim、release、status 等接口。
+package api_test
 
 import (
 	"database/sql"

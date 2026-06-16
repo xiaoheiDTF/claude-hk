@@ -1,6 +1,6 @@
-// Package backend_test 包含 GET /api/proxies 接口的 BDD 验收测试。
+// Package api_test 包含 GET /api/proxies 接口的 BDD 验收测试。
 // 覆盖：获取全部、按 status/project 过滤、组合过滤、空列表、方法限制。
-package backend_test
+package api_test
 
 import (
 	"encoding/json"
