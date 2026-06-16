@@ -246,8 +246,10 @@ func runProxy(args []string) {
 	// 设置 model 改写（契约 2：resolved.Model 优先级链）
 	rp.SetModel(resolved.Model)
 
-	// 检测是否为 kimi 上游，启用 reasoning_content 缓存
-	if proxy.IsKimiURL(resolved.BaseURL) {
+	// 检测是否为 kimi 上游，启用 reasoning_content 缓存。
+	// 同时依据 BaseURL 前缀与 model 名：别名路由/自建网关下 BaseURL 可能非官方域名，
+	// 只要 model 仍为 kimi/moonshot/deepseek 即应启用 reasoning_content 注入。
+	if proxy.IsKimiUpstream(resolved.BaseURL, resolved.Model) {
 		rp.SetKimiMode(true)
 	}
 

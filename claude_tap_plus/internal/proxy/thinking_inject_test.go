@@ -2,10 +2,13 @@ package proxy
 
 import (
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +39,102 @@ func TestIsKimiURL(t *testing.T) {
 			got := IsKimiURL(tt.url)
 			if got != tt.want {
 				t.Errorf("IsKimiURL(%q) = %v, want %v", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsKimiModel 验证 IsKimiModel 对各 model 名的前缀匹配（不区分大小写）。
+func TestIsKimiModel(t *testing.T) {
+	tests := []struct {
+		model string
+		want  bool
+	}{
+		// Kimi/Moonshot
+		{"kimi-k2", true},
+		{"kimi-thinking-preview", true},
+		{"KIMI-K2", true}, // 大小写不敏感
+		{"moonshot-v1-128k", true},
+		// DeepSeek
+		{"deepseek-reasoner", true},
+		{"DeepSeek-Chat", true},
+		// 不匹配：其他厂商
+		{"claude-sonnet-4-6", false},
+		{"gpt-4o", false},
+		{"qwen-max", false},
+		// 不匹配：空串、子串
+		{"", false},
+		{"anti-kimi", false}, // 前缀不是 kimi
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			got := IsKimiModel(tt.model)
+			if got != tt.want {
+				t.Errorf("IsKimiModel(%q) = %v, want %v", tt.model, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsKimiUpstream 验证 URL 与 model 任一命中即启用 reasoning_content 注入。
+// 重点覆盖「BaseURL 非官方域名（别名路由/自建网关）但 model 是 kimi」的核心场景。
+func TestIsKimiUpstream(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		model   string
+		want    bool
+	}{
+		{
+			name:    "别名路由网关 + kimi model → 命中（核心场景）",
+			baseURL: "https://gateway.example.com/v1/chat/completions",
+			model:   "kimi-k2",
+			want:    true,
+		},
+		{
+			name:    "官方域名 URL 命中（model 无关）",
+			baseURL: "https://api.kimi.com/v1",
+			model:   "claude-sonnet-4-6",
+			want:    true,
+		},
+		{
+			name:    "URL 与 model 同时命中",
+			baseURL: "https://api.moonshot.cn/v1",
+			model:   "moonshot-v1-8k",
+			want:    true,
+		},
+		{
+			name:    "自建网关 + deepseek model → 命中",
+			baseURL: "https://llm.internal.corp/api/v1",
+			model:   "deepseek-reasoner",
+			want:    true,
+		},
+		{
+			name:    "非 kimi URL + 非 kimi model → 不命中",
+			baseURL: "https://api.anthropic.com/v1/messages",
+			model:   "claude-sonnet-4-6",
+			want:    false,
+		},
+		{
+			name:    "自建网关 + 非 kimi model → 不命中",
+			baseURL: "https://gateway.example.com/v1",
+			model:   "gpt-4o",
+			want:    false,
+		},
+		{
+			name:    "URL 与 model 均空 → 不命中",
+			baseURL: "",
+			model:   "",
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsKimiUpstream(tt.baseURL, tt.model)
+			if got != tt.want {
+				t.Errorf("IsKimiUpstream(%q, %q) = %v, want %v", tt.baseURL, tt.model, got, tt.want)
 			}
 		})
 	}
@@ -500,4 +599,101 @@ func TestInjectReasoningContentCached_IntegrationWithCache(t *testing.T) {
 	if rc1 != "" {
 		t.Errorf("request 1 reasoning_content should be empty, got %q", rc1)
 	}
+}
+
+// TestDrainBodyForLog 验证降级日志在读取上游错误体时能正确解压 gzip/deflate，
+// 并对明文、超长截断、空响应做处理。
+func TestDrainBodyForLog(t *testing.T) {
+	t.Run("plain body", func(t *testing.T) {
+		resp := &http.Response{Body: io.NopCloser(strings.NewReader(`{"error":"bad key"}`))}
+		if got := drainBodyForLog(resp, 512); got != `{"error":"bad key"}` {
+			t.Errorf("plain body = %q", got)
+		}
+	})
+
+	t.Run("gzip body", func(t *testing.T) {
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		_, _ = gw.Write([]byte(`{"error":"forbidden"}`))
+		_ = gw.Close()
+		resp := &http.Response{
+			Header: http.Header{"Content-Encoding": []string{"gzip"}},
+			Body:   io.NopCloser(bytes.NewReader(buf.Bytes())),
+		}
+		if got := drainBodyForLog(resp, 512); got != `{"error":"forbidden"}` {
+			t.Errorf("gzip body = %q, want decompressed JSON", got)
+		}
+	})
+
+	t.Run("deflate body", func(t *testing.T) {
+		var buf bytes.Buffer
+		zw := zlib.NewWriter(&buf)
+		_, _ = zw.Write([]byte(`{"error":"rate limit"}`))
+		_ = zw.Close()
+		resp := &http.Response{
+			Header: http.Header{"Content-Encoding": []string{"deflate"}},
+			Body:   io.NopCloser(bytes.NewReader(buf.Bytes())),
+		}
+		if got := drainBodyForLog(resp, 512); got != `{"error":"rate limit"}` {
+			t.Errorf("deflate body = %q", got)
+		}
+	})
+
+	t.Run("truncation", func(t *testing.T) {
+		resp := &http.Response{Body: io.NopCloser(strings.NewReader(strings.Repeat("a", 1000)))}
+		got := drainBodyForLog(resp, 32)
+		if !strings.HasSuffix(got, "...(truncated)") {
+			t.Errorf("truncation: missing suffix, got %q", got)
+		}
+	})
+
+	t.Run("nil resp", func(t *testing.T) {
+		if got := drainBodyForLog(nil, 512); got != "" {
+			t.Errorf("nil resp = %q, want empty", got)
+		}
+	})
+}
+
+// TestSummarizeBody 验证请求体结构摘要：model + messages 骨架，剥离对话全文。
+func TestSummarizeBody(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		if got := summarizeBody(nil); got != "(empty body)" {
+			t.Errorf("empty = %q", got)
+		}
+	})
+
+	t.Run("non-json", func(t *testing.T) {
+		if got := summarizeBody([]byte("not json")); !strings.Contains(got, "非 JSON") {
+			t.Errorf("non-json = %q", got)
+		}
+	})
+
+	t.Run("structured", func(t *testing.T) {
+		body := []byte(`{"model":"kimi-k2","messages":[
+			{"role":"user","content":"hi"},
+			{"role":"assistant","content":[
+				{"type":"thinking","thinking":"let me think"},
+				{"type":"tool_use","id":"tu_1","name":"Read","input":{}}
+			]},
+			{"role":"user","content":[
+				{"type":"tool_result","tool_use_id":"tu_1","content":"data"}
+			]}
+		]}`)
+		got := summarizeBody(body)
+		wants := []string{
+			"model=kimi-k2", "msgs=3",
+			"[0] user", "text x1",
+			"[1] assistant", "thinking x1", "tool_use(id=tu_1, name=Read)",
+			"[2] user", "tool_result(for=tu_1)",
+		}
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Errorf("structured: missing %q in:\n%s", want, got)
+			}
+		}
+		// 不应泄露对话全文
+		if strings.Contains(got, "let me think") {
+			t.Errorf("structured: leaked thinking content: %s", got)
+		}
+	})
 }

@@ -21,35 +21,35 @@ import (
 )
 
 const (
-	maxUpstreamRetries = 5                    // 上游请求最大重试次数
-	retryInterval      = 30 * time.Second     // 重试间隔
-	proxyDialTimeout   = 10 * time.Second     // TCP 连接超时
-	proxyTLSHandshake  = 10 * time.Second     // TLS 握手超时
-	proxyResponseHdr   = 60 * time.Second     // 等待响应头超时
-	proxyIdleConn      = 90 * time.Second     // 空闲连接超时
+	maxUpstreamRetries = 5                // 上游请求最大重试次数
+	retryInterval      = 30 * time.Second // 重试间隔
+	proxyDialTimeout   = 10 * time.Second // TCP 连接超时
+	proxyTLSHandshake  = 10 * time.Second // TLS 握手超时
+	proxyResponseHdr   = 60 * time.Second // 等待响应头超时
+	proxyIdleConn      = 90 * time.Second // 空闲连接超时
 )
 
 // ReverseProxy 拦截 HTTP 请求并转发到上游 API，同时记录请求/响应到 JSONL Trace，并处理 SSE 流式响应。
 type ReverseProxy struct {
-	target             string              // 上游 API 目标地址
-	baseDir            string              // Trace 文件存放的基础目录
-	writer             *trace.TraceWriter  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
-	client             *http.Client        // 转发请求的 HTTP 客户端
-	turn               atomic.Int64        // 请求计数器，用于标记 Turn 编号
-	server             *http.Server        // 本地代理 HTTP 服务器
-	startOnce          sync.Once           // 确保 Start 只执行一次
-	sessionID          string              // 当前会话 ID（由 trace-init 设置）
-	projectSlug        string              // 当前项目标识（由 trace-init 设置）
-	OnSessionInit      func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
-	model              string              // 强制替换的模型名（空=不改写）
-	upstreamAvailable  bool                // 上游可用性标记，初始 true
-	fallbackConfigs    []*FallbackConfig   // 兜底配置列表（上游不可用时轮询）
-	availableMu        sync.Mutex          // 保护 upstreamAvailable 和 fallbackConfigs 的并发安全
-	actualAddr         string              // 实际监听地址（启动后设置）
-	reasoningCache     *ReasoningCache     // reasoning_content 缓存（仅 kimi 模式）
-	kimiMode           bool                // 是否为 kimi 上游
-	fallbackIndex      int                 // fallback 轮询索引
-	retryInterval      time.Duration       // 重试间隔（默认 retryInterval，测试可覆盖）
+	target            string                              // 上游 API 目标地址
+	baseDir           string                              // Trace 文件存放的基础目录
+	writer            *trace.TraceWriter                  // 当前会话的 Trace 写入器（由 _internal/trace-init 创建）
+	client            *http.Client                        // 转发请求的 HTTP 客户端
+	turn              atomic.Int64                        // 请求计数器，用于标记 Turn 编号
+	server            *http.Server                        // 本地代理 HTTP 服务器
+	startOnce         sync.Once                           // 确保 Start 只执行一次
+	sessionID         string                              // 当前会话 ID（由 trace-init 设置）
+	projectSlug       string                              // 当前项目标识（由 trace-init 设置）
+	OnSessionInit     func(sessionID, projectSlug string) // 会话初始化回调（注册 proxy.json）
+	model             string                              // 强制替换的模型名（空=不改写）
+	upstreamAvailable bool                                // 上游可用性标记，初始 true
+	fallbackConfigs   []*FallbackConfig                   // 兜底配置列表（上游不可用时轮询）
+	availableMu       sync.Mutex                          // 保护 upstreamAvailable 和 fallbackConfigs 的并发安全
+	actualAddr        string                              // 实际监听地址（启动后设置）
+	reasoningCache    *ReasoningCache                     // reasoning_content 缓存（仅 kimi 模式）
+	kimiMode          bool                                // 是否为 kimi 上游
+	fallbackIndex     int                                 // fallback 轮询索引
+	retryInterval     time.Duration                       // 重试间隔（默认 retryInterval，测试可覆盖）
 }
 
 // FallbackConfig 存储上游不可用时的兜底配置。
@@ -189,7 +189,8 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	turn := int(p.turn.Add(1))
 	t0 := time.Now()
 
-	logger.Debug("proxy", "[Turn %d] request: %s %s (%d bytes)", turn, r.Method, r.URL.Path, len(bodyBytes))
+	logger.Debug("proxy", "[Turn %d] inbound(ClaudeCode): %s %s\n  headers(明文):%s\n  body: %s",
+		turn, r.Method, r.URL.Path, dumpHeaders(r.Header), summarizeBody(originalBody))
 
 	// 读取当前状态快照
 	p.availableMu.Lock()
@@ -225,6 +226,9 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		upstreamReq.Header.Del("Host")
 
+		logger.Debug("proxy", "[Turn %d] outbound(primary): base_url=%s\n  headers(明文):%s\n  body: %s",
+			turn, p.target, dumpHeaders(upstreamReq.Header), summarizeBody(bodyBytes))
+
 		resp, err := p.doWithRetry(upstreamReq, turn, hasFallback)
 		if err != nil {
 			// 连接错误 → 标记不可用，进入 fallback 链
@@ -237,9 +241,10 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			p.dispatchResponse(w, resp, reqID, turn, r, reqBody, t0)
 			return
 		} else {
-			// 主上游返回需要降级的状态码 → 标记不可用，进入 fallback 链
-			logger.Warn("proxy", "[Turn %d] primary returned %d, triggering fallback", turn, resp.StatusCode)
-			resp.Body.Close()
+			// 主上游返回需要降级的状态码 → 读取上游错误体后标记不可用，进入 fallback 链
+			bodySnippet := drainBodyForLog(resp, 512)
+			logger.Warn("proxy", "[Turn %d] primary returned %d, triggering fallback; upstream_body=%s",
+				turn, resp.StatusCode, bodySnippet)
 			p.markUnavailable()
 			// fall through to fallback chain
 		}
@@ -265,7 +270,7 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 					_ = json.Unmarshal(fbBody, &fbParsed)
 				}
 			}
-			fbBody = injectReasoningContentCached(fbBody, fbParsed, p.reasoningCache, IsKimiURL(fb.BaseURL))
+			fbBody = injectReasoningContentCached(fbBody, fbParsed, p.reasoningCache, IsKimiUpstream(fb.BaseURL, fb.Model))
 			fbParsed = nil
 			if len(fbBody) > 0 {
 				_ = json.Unmarshal(fbBody, &fbParsed)
@@ -311,8 +316,9 @@ func (p *ReverseProxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if shouldFallback(fbResp.StatusCode) {
-				fbResp.Body.Close()
-				logger.Warn("proxy", "[Turn %d] fallback[%d] returned %d, trying next", turn, idx, fbResp.StatusCode)
+				bodySnippet := drainBodyForLog(fbResp, 512)
+				logger.Warn("proxy", "[Turn %d] fallback[%d] returned %d, trying next; upstream_body=%s",
+					turn, idx, fbResp.StatusCode, bodySnippet)
 				p.advanceFallback()
 				continue
 			}
@@ -602,19 +608,19 @@ func (p *ReverseProxy) handleTraceInit(w http.ResponseWriter, r *http.Request) {
 	// 创建会话专属的 Trace 写入器
 	tracePath := trace.NewSessionTracePath(p.baseDir, machineID, projectSlug, req.SessionID)
 	writer, err := trace.NewTraceWriter(tracePath)
-	p.sessionID = req.SessionID   // 记录当前会话 ID
-	p.projectSlug = projectSlug   // 记录当前项目标识
+	p.sessionID = req.SessionID // 记录当前会话 ID
+	p.projectSlug = projectSlug // 记录当前项目标识
 	if err != nil {
 		logger.Error("proxy", "trace-init: failed to create writer: %v", err)
 		http.Error(w, "failed to create trace file", http.StatusInternalServerError)
 		return
 	}
 
-		// 关闭之前的写入器（如果存在，如 session resume 场景）
-		if p.writer != nil {
-			p.writer.Close()
-			logger.Debug("proxy", "previous writer closed")
-		}
+	// 关闭之前的写入器（如果存在，如 session resume 场景）
+	if p.writer != nil {
+		p.writer.Close()
+		logger.Debug("proxy", "previous writer closed")
+	}
 	p.writer = writer
 	logger.Info("proxy", "trace initialized: %s", tracePath)
 
@@ -747,6 +753,127 @@ func shouldFallback(statusCode int) bool {
 		statusCode >= http.StatusInternalServerError
 }
 
+// drainBodyForLog 读取响应体前 maxBytes 字节用于日志记录，随后关闭响应体。
+//
+// 用于在触发 fallback 前保留上游错误原因：401/403/429/5xx 的响应体通常含具体 error message，
+// 而原本直接 resp.Body.Close() 会将其丢弃，导致日志只能看到状态码、看不到根因（如 key 过期、
+// 模型无权限、凭证头格式错等）。
+func drainBodyForLog(resp *http.Response, maxBytes int) string {
+	if resp == nil || resp.Body == nil {
+		return ""
+	}
+	// 按 Content-Encoding 解压：上游错误响应常被 gzip/deflate 压缩，
+	// 直接读取会得到二进制乱码（如 ?\x1f\x8b...），必须先解压再截断。
+	reader := io.Reader(resp.Body)
+	switch strings.ToLower(resp.Header.Get("Content-Encoding")) {
+	case "gzip":
+		if gr, err := gzip.NewReader(resp.Body); err == nil {
+			reader = gr
+		}
+	case "deflate":
+		if zr, err := zlib.NewReader(resp.Body); err == nil {
+			reader = zr
+		}
+	}
+	// 多读 1 字节用于探测是否超长：若读到 maxBytes+1 字节，说明原始更长，需要截断。
+	snippet, _ := io.ReadAll(io.LimitReader(reader, int64(maxBytes)+1))
+	resp.Body.Close()
+	s := strings.TrimSpace(string(snippet))
+	if len(s) > maxBytes {
+		s = s[:maxBytes] + "...(truncated)"
+	}
+	return s
+}
+
+// dumpHeaders 将 HTTP 请求头按「Key: Value」逐行展开（含明文鉴权头），用于排查 401/403 时核对实际发出的凭证与请求元数据。
+// 仅在 DEBUG 级别调用，明文输出——排查完请及时清理含密钥的日志文件。
+func dumpHeaders(h http.Header) string {
+	if len(h) == 0 {
+		return " (empty)"
+	}
+	var b strings.Builder
+	for k, vs := range h {
+		for _, v := range vs {
+			b.WriteString("\n    ")
+			b.WriteString(k)
+			b.WriteString(": ")
+			b.WriteString(v)
+		}
+	}
+	return b.String()
+}
+
+// summarizeBody 将请求体解析为结构摘要：model + 每个 message 的 role 与 content block 类型/关键属性，
+// 剥离 text/thinking 全文。用于诊断日志对比代理前后（model 改写、reasoning 注入）而不泄露对话内容。
+func summarizeBody(body []byte) string {
+	if len(body) == 0 {
+		return "(empty body)"
+	}
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil {
+		return fmt.Sprintf("(非 JSON body, %d bytes)", len(body))
+	}
+
+	var b strings.Builder
+	model, _ := m["model"].(string)
+	msgs, _ := m["messages"].([]any)
+	b.WriteString(fmt.Sprintf("model=%s  msgs=%d", model, len(msgs)))
+
+	for i, msgRaw := range msgs {
+		msg, ok := msgRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+		role, _ := msg["role"].(string)
+		b.WriteString(fmt.Sprintf("\n    [%d] %-10s %s", i, role, summarizeContent(msg["content"])))
+	}
+	return b.String()
+}
+
+// summarizeContent 摘要单条消息的 content：字符串→"text x1"；block 数组→各 block 类型/关键属性，
+// tool_use/tool_result 保留 id/name，text/thinking 仅计数。
+func summarizeContent(content any) string {
+	if _, ok := content.(string); ok {
+		return "text x1"
+	}
+	blocks, ok := content.([]any)
+	if !ok {
+		return "(unknown content)"
+	}
+
+	counts := map[string]int{}
+	var calls []string
+	for _, blockRaw := range blocks {
+		block, ok := blockRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+		switch bt, _ := block["type"].(string); bt {
+		case "tool_use":
+			id, _ := block["id"].(string)
+			name, _ := block["name"].(string)
+			calls = append(calls, fmt.Sprintf("tool_use(id=%s, name=%s)", id, name))
+		case "tool_result":
+			tuid, _ := block["tool_use_id"].(string)
+			calls = append(calls, fmt.Sprintf("tool_result(for=%s)", tuid))
+		default:
+			counts[bt]++
+		}
+	}
+
+	var parts []string
+	for _, bt := range []string{"text", "thinking"} {
+		if c := counts[bt]; c > 0 {
+			parts = append(parts, fmt.Sprintf("%s x%d", bt, c))
+		}
+	}
+	parts = append(parts, calls...)
+	if len(parts) == 0 {
+		return "(empty content)"
+	}
+	return strings.Join(parts, " + ")
+}
+
 // logProxyError 将友好中文提示输出到日志，同时返回 Anthropic API 格式的 JSON 错误响应。
 // 必须返回 JSON 而非纯文本，否则 Claude Code 解析会崩溃。
 func logProxyError(w http.ResponseWriter, turn int, lastErr error, lastStatusCode int) {
@@ -870,6 +997,34 @@ func IsKimiURL(url string) bool {
 		}
 	}
 	return false
+}
+
+// reasoningModelKeywords 定义需要 reasoning_content 注入的 model 名前缀（小写）。
+// 与 reasoningPrefixes 保持同步：kimi/moonshot/deepseek。
+var reasoningModelKeywords = []string{
+	"kimi",
+	"moonshot",
+	"deepseek",
+}
+
+// IsKimiModel 判断 model 名是否为需要 reasoning_content 注入的上游（kimi/moonshot/deepseek）。
+// 基于 model 名前缀匹配（不区分大小写）。
+func IsKimiModel(model string) bool {
+	lower := strings.ToLower(model)
+	for _, kw := range reasoningModelKeywords {
+		if strings.HasPrefix(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsKimiUpstream 综合 BaseURL 与 model 名判断是否需要 reasoning_content 注入，任一命中即启用。
+//
+// 覆盖别名路由 / 自建网关 / 多环境隔离场景：上游 BaseURL 可能不再是官方域名，
+// 但只要 model 仍是 kimi/moonshot/deepseek，就应启用 reasoning_content 注入与缓存。
+func IsKimiUpstream(baseURL, model string) bool {
+	return IsKimiURL(baseURL) || IsKimiModel(model)
 }
 
 // cacheFromResponse 从 API 响应快照中提取 reasoning_content 并存入缓存。
