@@ -1,84 +1,41 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-// TestProfileConfig_Model 测试 ProfileConfig 解析 model 字段
-// 来源：契约 1 — profiles.json ProfileConfig 结构
-func TestProfileConfig_Model(t *testing.T) {
-	jsonData := `{
-		"default": "my-glm",
-		"profiles": {
-			"my-glm": {
-				"base_url": "https://api.example.com",
-				"api_key": "sk-xxx",
-				"provider": "anthropic",
-				"model": "glm-5.1"
-			},
-			"official": {
-				"base_url": "https://api.anthropic.com",
-				"provider": "anthropic"
-			}
-		}
-	}`
-
-	var pf ProfilesFile
-	if err := json.Unmarshal([]byte(jsonData), &pf); err != nil {
-		t.Fatalf("parse profiles: %v", err)
-	}
-
-	// 验证有 model 的 profile
-	glm, ok := pf.Profiles["my-glm"]
-	if !ok {
-		t.Fatal("profile my-glm not found")
-	}
-	if glm.Model != "glm-5.1" {
-		t.Errorf("my-glm model = %q, want %q", glm.Model, "glm-5.1")
-	}
-
-	// 验证没有 model 的 profile
-	official, ok := pf.Profiles["official"]
-	if !ok {
-		t.Fatal("profile official not found")
-	}
-	if official.Model != "" {
-		t.Errorf("official model = %q, want empty string", official.Model)
-	}
-}
-
-// TestReadProfiles_WithModel 测试从文件读取含 model 的 profiles.json
-// 来源：契约 1 — profiles.json ProfileConfig 结构
-func TestReadProfiles_WithModel(t *testing.T) {
-	// 创建临时 profiles.json
-	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
+// writeProfilesFile 在临时 home 下写入 profiles.json（新格式）。
+func writeProfilesFile(t *testing.T, home, content string) {
+	t.Helper()
+	configDir := filepath.Join(home, ".claude-tap-plus")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	profilesContent := `{
-		"default": "my-glm",
-		"profiles": {
-			"my-glm": {
-				"base_url": "https://api.example.com",
-				"api_key": "sk-test",
-				"model": "glm-5.1"
-			}
-		}
-	}`
-	profilesFile := filepath.Join(configDir, "profiles.json")
-	if err := os.WriteFile(profilesFile, []byte(profilesContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, "profiles.json"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
 
-	// 覆盖 homeDir 使其指向临时目录
-	origHomeDir := homeDir
-	SetHomeDir(func() string { return tmpDir })
-	defer func() { SetHomeDir(origHomeDir) }()
+// TestReadProfiles_NewFormat 测试新格式解析（aliases + profiles.env）
+func TestReadProfiles_NewFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	writeProfilesFile(t, tmpDir, `{
+		"default_profile": "work",
+		"default_alias": "sonnet",
+		"aliases": [
+			{"name": "opus[1m]", "model": "glm-5.2[1m]", "base_url": "https://glm.example.com", "api_key": "sk-aaa"},
+			{"name": "kimi", "model": "kimi-k2", "base_url": "https://api.kimi.com", "auth_token": "tok-kkk"}
+		],
+		"profiles": {
+			"work": {"env": {"ANTHROPIC_MODEL": "opus[1m]"}}
+		}
+	}`)
+
+	orig := homeDir
+	homeDir = func() string { return tmpDir }
+	defer func() { homeDir = orig }()
 
 	pf, err := ReadProfiles()
 	if err != nil {
@@ -87,84 +44,155 @@ func TestReadProfiles_WithModel(t *testing.T) {
 	if pf == nil {
 		t.Fatal("ReadProfiles returned nil")
 	}
-
-	glm, ok := pf.Profiles["my-glm"]
-	if !ok {
-		t.Fatal("profile my-glm not found")
+	if len(pf.Aliases) != 2 {
+		t.Fatalf("aliases count = %d, want 2", len(pf.Aliases))
 	}
-	if glm.Model != "glm-5.1" {
-		t.Errorf("model = %q, want %q", glm.Model, "glm-5.1")
+	if pf.DefaultProfile != "work" || pf.DefaultAlias != "sonnet" {
+		t.Errorf("defaults = %q/%q, want work/sonnet", pf.DefaultProfile, pf.DefaultAlias)
+	}
+	// provider 缺省补 anthropic
+	if pf.Aliases[0].Provider != "anthropic" {
+		t.Errorf("provider = %q, want anthropic", pf.Aliases[0].Provider)
+	}
+	// auth_token 优先：同时配置时 api_key 被清空
+	if pf.Aliases[1].AuthToken != "tok-kkk" || pf.Aliases[1].APIKey != "" {
+		t.Errorf("auth_token/api_key conflict not resolved: token=%q key=%q", pf.Aliases[1].AuthToken, pf.Aliases[1].APIKey)
 	}
 }
 
-// TestResolveProfileConfig_WithModel 测试解析指定 profile 并返回 model
-// 来源：契约 1
-func TestResolveProfileConfig_WithModel(t *testing.T) {
+// TestReadProfiles_OldFormatDetected 测试旧扁平格式被检测并报错（F4.2）
+func TestReadProfiles_OldFormatDetected(t *testing.T) {
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	profilesContent := `{
-		"default": "with-model",
+	writeProfilesFile(t, tmpDir, `{
+		"default": "my-glm",
 		"profiles": {
-			"with-model": {
-				"base_url": "https://api.example.com",
-				"model": "glm-5.1"
-			},
-			"without-model": {
-				"base_url": "https://api.anthropic.com"
-			}
+			"my-glm": {"base_url": "https://api.example.com", "api_key": "sk-xxx", "model": "glm-5.1"}
 		}
-	}`
-	if err := os.WriteFile(filepath.Join(configDir, "profiles.json"), []byte(profilesContent), 0o644); err != nil {
-		t.Fatal(err)
+	}`)
+
+	orig := homeDir
+	homeDir = func() string { return tmpDir }
+	defer func() { homeDir = orig }()
+
+	pf, err := ReadProfiles()
+	if err == nil {
+		t.Fatalf("expected error for old format, got pf=%v", pf)
+	}
+}
+
+// TestReadProfiles_NotFound 测试文件缺失返回 (nil, nil)
+func TestReadProfiles_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := homeDir
+	homeDir = func() string { return tmpDir }
+	defer func() { homeDir = orig }()
+
+	pf, err := ReadProfiles()
+	if err != nil || pf != nil {
+		t.Fatalf("expected (nil, nil), got (%v, %v)", pf, err)
+	}
+}
+
+// TestResolveAlias 测试精确命中、default_alias 兜底、未命中
+func TestResolveAlias(t *testing.T) {
+	pf := &ProfilesFile{
+		DefaultAlias: "sonnet",
+		Aliases: []Alias{
+			{Name: "opus[1m]", Model: "glm-5.2[1m]"},
+			{Name: "sonnet", Model: "glm-5.1"},
+		},
 	}
 
-	origHomeDir := homeDir
-	SetHomeDir(func() string { return tmpDir })
-	defer func() { SetHomeDir(origHomeDir) }()
+	// 精确命中
+	a, ok := pf.ResolveAlias("opus[1m]")
+	if !ok || a.Model != "glm-5.2[1m]" {
+		t.Errorf("ResolveAlias(opus[1m]) = %v,%v, want glm-5.2[1m],true", a, ok)
+	}
+	// default_alias 兜底
+	a, ok = pf.ResolveAlias("unknown-xxx")
+	if !ok || a.Name != "sonnet" {
+		t.Errorf("ResolveAlias(unknown) = %v,%v, want default sonnet", a, ok)
+	}
+	// 无 default_alias 时未命中
+	pf.DefaultAlias = ""
+	_, ok = pf.ResolveAlias("unknown-xxx")
+	if ok {
+		t.Error("expected miss when no default_alias")
+	}
+}
 
-	tests := []struct {
-		name         string
-		profileName  string
-		wantModel    string
-		wantBaseURL  string
-		wantErr      bool
-	}{
-		{
-			name:        "profile with model",
-			profileName: "with-model",
-			wantModel:   "glm-5.1",
-			wantBaseURL: "https://api.example.com",
-		},
-		{
-			name:        "profile without model",
-			profileName: "without-model",
-			wantModel:   "",
-			wantBaseURL: "https://api.anthropic.com",
-		},
-		{
-			name:        "use default profile name",
-			profileName: "",
-			wantModel:   "glm-5.1",
-			wantBaseURL: "https://api.example.com",
+// TestResolveAlias_DupNameLatterWins 测试同名别名后者覆盖（决策 1）
+func TestResolveAlias_DupNameLatterWins(t *testing.T) {
+	pf := &ProfilesFile{
+		Aliases: []Alias{
+			{Name: "dup", Model: "first"},
+			{Name: "dup", Model: "second"},
 		},
 	}
+	a, ok := pf.ResolveAlias("dup")
+	if !ok || a.Model != "second" {
+		t.Errorf("dup alias model = %q, want second (latter wins)", a.Model)
+	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p, err := ResolveProfileConfig(tt.profileName)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ResolveProfileConfig(%q) error = %v, wantErr %v", tt.profileName, err, tt.wantErr)
-			}
-			if p.Model != tt.wantModel {
-				t.Errorf("model = %q, want %q", p.Model, tt.wantModel)
-			}
-			if p.BaseURL != tt.wantBaseURL {
-				t.Errorf("base_url = %q, want %q", p.BaseURL, tt.wantBaseURL)
-			}
-		})
+// TestResolveFallbackAliases 测试同真实 model 候选链：排除自身、按数组顺序
+func TestResolveFallbackAliases(t *testing.T) {
+	pf := &ProfilesFile{
+		Aliases: []Alias{
+			{Name: "opus[1m]", Model: "glm-5.2[1m]", APIKey: "sk-aaa"},
+			{Name: "opus2[1m]", Model: "glm-5.2[1m]", APIKey: "sk-bbb"},
+			{Name: "sonnet", Model: "glm-5.1"},
+			{Name: "opus3[1m]", Model: "glm-5.2[1m]", APIKey: "sk-ccc"},
+		},
+	}
+	cands := pf.ResolveFallbackAliases("glm-5.2[1m]", "opus[1m]")
+	if len(cands) != 2 {
+		t.Fatalf("candidates = %d, want 2", len(cands))
+	}
+	if cands[0].Name != "opus2[1m]" || cands[1].Name != "opus3[1m]" {
+		t.Errorf("order = %s,%s, want opus2[1m],opus3[1m]", cands[0].Name, cands[1].Name)
+	}
+}
+
+// TestResolveProfileEnv_ForbiddenStripped 测试禁止项被剔除（F3.3）
+func TestResolveProfileEnv_ForbiddenStripped(t *testing.T) {
+	pf := &ProfilesFile{
+		Profiles: map[string]Profile{
+			"work": {Env: map[string]string{
+				"ANTHROPIC_MODEL":         "opus[1m]",
+				"ANTHROPIC_BASE_URL":      "https://should-be-stripped.com",
+				"CLAUDE_CODE_USE_BEDROCK": "1",
+			}},
+		},
+	}
+	env, err := pf.ResolveProfileEnv("work")
+	if err != nil {
+		t.Fatalf("ResolveProfileEnv: %v", err)
+	}
+	if env["ANTHROPIC_BASE_URL"] != "" {
+		t.Error("ANTHROPIC_BASE_URL should be stripped")
+	}
+	if _, ok := env["CLAUDE_CODE_USE_BEDROCK"]; ok {
+		t.Error("CLAUDE_CODE_USE_BEDROCK should be stripped")
+	}
+	if env["ANTHROPIC_MODEL"] != "opus[1m]" {
+		t.Errorf("ANTHROPIC_MODEL = %q, want opus[1m]", env["ANTHROPIC_MODEL"])
+	}
+}
+
+// TestResolveProfileEnv_DefaultProfile 测试 name 缺省时使用 default_profile
+func TestResolveProfileEnv_DefaultProfile(t *testing.T) {
+	pf := &ProfilesFile{
+		DefaultProfile: "work",
+		Profiles: map[string]Profile{
+			"work": {Env: map[string]string{"ANTHROPIC_MODEL": "opus[1m]"}},
+		},
+	}
+	env, err := pf.ResolveProfileEnv("")
+	if err != nil {
+		t.Fatalf("ResolveProfileEnv: %v", err)
+	}
+	if env["ANTHROPIC_MODEL"] != "opus[1m]" {
+		t.Errorf("ANTHROPIC_MODEL = %q, want opus[1m]", env["ANTHROPIC_MODEL"])
 	}
 }

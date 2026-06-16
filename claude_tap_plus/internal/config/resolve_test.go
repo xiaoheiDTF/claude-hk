@@ -7,107 +7,69 @@ import (
 	"testing"
 )
 
-// TestResolveTargetConfig_ModelPriority 测试 model 优先级链
-// 来源：契约 2 — ResolvedConfig 内部数据传递
-//
-// 优先级：profile model > Claude settings model > 空
-func TestResolveTargetConfig_ModelPriority(t *testing.T) {
+// TestResolveTargetConfig_SourcePriority 测试 bypass 模式凭证/base_url 来源优先级
+// CLI > env > ~/.claude.json > default。profile 不再贡献凭证（凭证集中在 aliases）。
+func TestResolveTargetConfig_SourcePriority(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tests := []struct {
-		name      string
-		setup     func(t *testing.T) // 创建 profiles.json 和 ~/.claude.json
-		profile   string
-		cliModel  string // 命令行直接指定的 model（暂不实现，预留）
-		wantModel string
-	}{
-		{
-			name: "profile has model - use profile model",
-			setup: func(t *testing.T) {
-				writeProfilesJSON(t, tmpDir, `{
-					"default": "my-glm",
-					"profiles": {
-						"my-glm": {
-							"base_url": "https://api.example.com",
-							"model": "glm-5.1"
-						}
-					}
-				}`)
-			},
-			profile:   "my-glm",
-			wantModel: "glm-5.1",
-		},
-		{
-			name: "profile no model, claude settings has model - use claude settings",
-			setup: func(t *testing.T) {
-				writeProfilesJSON(t, tmpDir, `{
-					"default": "basic",
-					"profiles": {
-						"basic": {
-							"base_url": "https://api.example.com"
-						}
-					}
-				}`)
-				writeClaudeJSON(t, tmpDir, map[string]any{
-					"model":    "claude-sonnet-4-6",
-					"base_url": "https://api.anthropic.com",
-				})
-			},
-			profile:   "basic",
-			wantModel: "claude-sonnet-4-6",
-		},
-		{
-			name: "no profile, claude settings has model - use claude settings",
-			setup: func(t *testing.T) {
-				writeClaudeJSON(t, tmpDir, map[string]any{
-					"model":    "claude-sonnet-4-6",
-					"base_url": "https://api.anthropic.com",
-				})
-			},
-			profile:   "",
-			wantModel: "claude-sonnet-4-6",
-		},
-		{
-			name: "no profile, no claude settings model - model empty",
-			setup: func(t *testing.T) {
-				writeClaudeJSON(t, tmpDir, map[string]any{
-					"base_url": "https://api.anthropic.com",
-				})
-			},
-			profile:   "",
-			wantModel: "",
-		},
+	// ~/.claude.json 提供 base_url + model 兜底
+	writeClaudeJSON(t, tmpDir, map[string]any{
+		"model":    "claude-sonnet-4-6",
+		"base_url": "https://api.anthropic.com",
+	})
+
+	origHomeDir := homeDir
+	homeDir = func() string { return tmpDir }
+	defer func() { homeDir = origHomeDir }()
+
+	// 清理真实环境变量，避免干扰优先级判定
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
+
+	// 无 CLI 覆盖 → 走 ~/.claude.json
+	resolved, err := ResolveTargetConfig("", "", "", &ClaudeClient)
+	if err != nil {
+		t.Fatalf("ResolveTargetConfig: %v", err)
+	}
+	if resolved.BaseURL != "https://api.anthropic.com" {
+		t.Errorf("base_url = %q, want claude.json value", resolved.BaseURL)
+	}
+	if resolved.Model != "claude-sonnet-4-6" {
+		t.Errorf("model = %q, want claude-sonnet-4-6", resolved.Model)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// 设置临时 home 目录
-			origHomeDir := homeDir
-			homeDir = func() string { return tmpDir }
-	// Note: using homeDir directly inside config package is fine
-			defer func() { homeDir = origHomeDir }()
+	// CLI 覆盖优先级最高
+	resolved, _ = ResolveTargetConfig("https://cli.example.com", "sk-cli", "", &ClaudeClient)
+	if resolved.BaseURL != "https://cli.example.com" {
+		t.Errorf("base_url = %q, want cli override", resolved.BaseURL)
+	}
+	if resolved.APIKey != "sk-cli" {
+		t.Errorf("api_key = %q, want sk-cli", resolved.APIKey)
+	}
+}
 
-			tt.setup(t)
+// TestResolveTargetConfig_DefaultFallback 无任何配置时回退默认值
+func TestResolveTargetConfig_DefaultFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	origHomeDir := homeDir
+	homeDir = func() string { return tmpDir }
+	defer func() { homeDir = origHomeDir }()
 
-			resolved, err := ResolveTargetConfig(
-				"",   // cliBaseURL
-				"",   // cliAPIKey
-				"",   // cliAuthToken
-				tt.profile,
-				&ClaudeClient,
-			)
-			if err != nil {
-				t.Fatalf("ResolveTargetConfig error: %v", err)
-			}
-			if resolved.Model != tt.wantModel {
-				t.Errorf("Model = %q, want %q", resolved.Model, tt.wantModel)
-			}
-		})
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
+
+	resolved, err := ResolveTargetConfig("", "", "", &ClaudeClient)
+	if err != nil {
+		t.Fatalf("ResolveTargetConfig: %v", err)
+	}
+	if resolved.BaseURL != ClaudeClient.DefaultTarget {
+		t.Errorf("base_url = %q, want default %q", resolved.BaseURL, ClaudeClient.DefaultTarget)
 	}
 }
 
 // TestReadClaudeConfig_Model 测试从 ~/.claude.json 读取 model
-// 来源：契约 2 — Claude settings 作为默认兜底
 func TestReadClaudeConfig_Model(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -139,7 +101,6 @@ func TestReadClaudeConfig_Model(t *testing.T) {
 
 			origHomeDir := homeDir
 			homeDir = func() string { return tmpDir }
-	// Note: using homeDir directly inside config package is fine
 			defer func() { homeDir = origHomeDir }()
 
 			cfg, err := ReadClaudeConfig()
@@ -154,17 +115,6 @@ func TestReadClaudeConfig_Model(t *testing.T) {
 }
 
 // --- 测试辅助函数 ---
-
-func writeProfilesJSON(t *testing.T, homeDir, content string) {
-	t.Helper()
-	configDir := filepath.Join(homeDir, ".claude-tap-plus")
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(configDir, "profiles.json"), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
 
 func writeClaudeJSON(t *testing.T, homeDir string, content map[string]any) {
 	t.Helper()
