@@ -9,8 +9,20 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/logger"
 )
 
+// baseDir 是 BaseDir 的可覆盖实现，测试中可替换为临时目录。
+var baseDir = defaultBaseDir
+
 // BaseDir 返回 ~/.claude-tap-plus/ 根目录。
 func BaseDir() string {
+	return baseDir()
+}
+
+// SetBaseDir 设置 BaseDir 的实现（用于测试隔离，避免读写真实 ~/.claude-tap-plus/）。
+func SetBaseDir(fn func() string) {
+	baseDir = fn
+}
+
+func defaultBaseDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ".claude-tap-plus"
@@ -70,7 +82,8 @@ func RemoveBackendInfo() error {
 
 // ProxySession 记录一个活跃的代理会话。
 type ProxySession struct {
-	StartedAt string `json:"started_at"` // 会话启动时间（ISO 8601）
+	StartedAt string `json:"started_at"`           // 会话启动时间（ISO 8601）
+	URL       string `json:"url,omitempty"`        // 本代理监听地址（如 http://127.0.0.1:64902），供排查/存活探测
 }
 
 // ProxyJSONPath 返回 proxy.json 的完整路径。
@@ -87,12 +100,12 @@ func ProxySessionKey(projectSlug, sessionID string) string {
 
 // RegisterProxySession 向 proxy.json 注册一个会话。
 // key 格式为 {projectSlug}_{sessionID}，确保同一项目同一会话唯一。
-func RegisterProxySession(key string, startedAt string) error {
+func RegisterProxySession(key string, session ProxySession) error {
 	proxyMu.Lock()
 	defer proxyMu.Unlock()
 
 	sessions := readProxySessions()
-	sessions[key] = ProxySession{StartedAt: startedAt}
+	sessions[key] = session
 	return writeProxySessions(sessions)
 }
 

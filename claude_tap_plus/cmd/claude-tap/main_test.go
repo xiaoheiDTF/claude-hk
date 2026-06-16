@@ -14,78 +14,9 @@ import (
 	"github.com/liaohch3/claude-tap/claude_tap_plus/internal/proxy"
 )
 
-// TestLoadFallbackConfigs_FromProfiles 测试从 profiles.json 加载 fallback
-func TestLoadFallbackConfigs_FromProfiles(t *testing.T) {
-	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
-	os.MkdirAll(configDir, 0o755)
-
-	profiles := map[string]any{
-		"default": "current",
-		"profiles": map[string]any{
-			"current": map[string]any{
-				"base_url": "https://api.current.com",
-				"model":    "glm-5.1",
-				"api_key":  "sk-current",
-			},
-			"fb-same": map[string]any{
-				"base_url": "https://api.fbsame.com",
-				"model":    "glm-5.1",
-				"api_key":  "sk-fbsame",
-			},
-			"fb-other": map[string]any{
-				"base_url": "https://api.fbothe.com",
-				"model":    "claude-sonnet-4-6",
-				"api_key":  "sk-fbothe",
-			},
-		},
-	}
-	pData, _ := json.Marshal(profiles)
-	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
-
-	origHomeDir := config.HomeDir
-	config.SetHomeDir(func() string { return tmpDir })
-	defer config.SetHomeDir(origHomeDir)
-
-	cfgs := loadFallbackConfigs("glm-5.1", "current")
-	if len(cfgs) != 2 {
-		t.Fatalf("expected 2 fallback configs, got %d", len(cfgs))
-	}
-
-	// 第一个应该是同 model 的 fb-same
-	if cfgs[0].BaseURL != "https://api.fbsame.com" {
-		t.Errorf("first fallback base_url = %q, want %q", cfgs[0].BaseURL, "https://api.fbsame.com")
-	}
-	if cfgs[0].Model != "glm-5.1" {
-		t.Errorf("first fallback model = %q, want %q", cfgs[0].Model, "glm-5.1")
-	}
-
-	// 第二个应该是其他 model 的 fb-other
-	if cfgs[1].BaseURL != "https://api.fbothe.com" {
-		t.Errorf("second fallback base_url = %q, want %q", cfgs[1].BaseURL, "https://api.fbothe.com")
-	}
-}
-
-// TestLoadFallbackConfigs_FromSettings 测试 profiles 无匹配时回退到 settings
+// TestLoadFallbackConfigs_FromSettings 测试 bypass 模式从 ~/.claude/settings.json 加载兜底
 func TestLoadFallbackConfigs_FromSettings(t *testing.T) {
 	tmpDir := t.TempDir()
-
-	// 创建空的 profiles.json（只有当前 profile）
-	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
-	os.MkdirAll(configDir, 0o755)
-	profiles := map[string]any{
-		"default": "only",
-		"profiles": map[string]any{
-			"only": map[string]any{
-				"base_url": "https://api.only.com",
-				"model":    "glm-5.1",
-			},
-		},
-	}
-	pData, _ := json.Marshal(profiles)
-	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
-
-	// 创建 settings.json
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	os.MkdirAll(claudeDir, 0o755)
 	settings := map[string]any{
@@ -102,138 +33,85 @@ func TestLoadFallbackConfigs_FromSettings(t *testing.T) {
 	config.SetHomeDir(func() string { return tmpDir })
 	defer config.SetHomeDir(origHomeDir)
 
-	cfgs := loadFallbackConfigs("glm-5.1", "only")
+	cfgs := loadFallbackConfigs()
 	if len(cfgs) != 1 {
 		t.Fatalf("expected 1 fallback config from settings, got %d", len(cfgs))
 	}
 	if cfgs[0].BaseURL != "https://api.anthropic.com" {
-		t.Errorf("fallback base_url = %q, want %q", cfgs[0].BaseURL, "https://api.anthropic.com")
+		t.Errorf("fallback base_url = %q, want api.anthropic.com", cfgs[0].BaseURL)
 	}
 	if cfgs[0].Model != "claude-sonnet-4-6" {
-		t.Errorf("fallback model = %q, want %q", cfgs[0].Model, "claude-sonnet-4-6")
+		t.Errorf("fallback model = %q, want claude-sonnet-4-6", cfgs[0].Model)
 	}
 }
 
 // TestLoadFallbackConfigs_NoSettings 测试无配置时返回空
 func TestLoadFallbackConfigs_NoSettings(t *testing.T) {
 	tmpDir := t.TempDir()
-	// 不创建任何配置文件
-
 	origHomeDir := config.HomeDir
 	config.SetHomeDir(func() string { return tmpDir })
 	defer config.SetHomeDir(origHomeDir)
 
-	cfgs := loadFallbackConfigs("glm-5.1", "nonexistent")
-	if len(cfgs) != 0 {
+	if cfgs := loadFallbackConfigs(); len(cfgs) != 0 {
 		t.Errorf("expected 0 fallback configs, got %d", len(cfgs))
 	}
 }
 
-// TestIntegration_FullStartupFlow 测试完整启动链路
-// profile → resolved config → proxy model → fallback → 请求转发
-func TestIntegration_FullStartupFlow(t *testing.T) {
-	tmpDir := t.TempDir()
+// TestIntegration_AliasRouting 别名路由核心链路：
+//  1. 请求 model="opus[1m]" → 上游收到 model="glm-5.2[1m]"
+//  2. proxy 用别名凭证覆盖请求头（provider=anthropic → x-api-key）
+//  3. 主别名返回 401 → 切同真实 model 的候选别名重试成功
+func TestIntegration_AliasRouting(t *testing.T) {
+	var (
+		primaryHits   int
+		fallbackHits  int
+		capturedKey   string
+		capturedModel string
+	)
 
-	// 1. 创建 profiles.json
-	configDir := filepath.Join(tmpDir, ".claude-tap-plus")
-	os.MkdirAll(configDir, 0o755)
-	profiles := map[string]any{
-		"default": "test-profile",
-		"profiles": map[string]any{
-			"test-profile": map[string]any{
-				"base_url": "PLACEHOLDER", // 会被 mock 替换
-				"model":    "glm-5.1",
-			},
-			"fallback": map[string]any{
-				"base_url": "PLACEHOLDER",
-				"model":    "glm-5.1",
-			},
-		},
-	}
-	pData, _ := json.Marshal(profiles)
-	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
+	// 主别名上游：始终 401，触发 fallback
+	primaryUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		primaryHits++
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"unauthorized"}`))
+	}))
+	defer primaryUpstream.Close()
 
-	// 2. 创建 ~/.claude/settings.json（fallback 用）
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	os.MkdirAll(claudeDir, 0o755)
-	settings := map[string]any{
-		"model": "claude-sonnet-4-6",
-		"env": map[string]string{
-			"ANTHROPIC_BASE_URL":   "https://api.anthropic.com",
-			"ANTHROPIC_AUTH_TOKEN": "tok-fallback-token",
-		},
-	}
-	sData, _ := json.Marshal(settings)
-	os.WriteFile(filepath.Join(claudeDir, "settings.json"), sData, 0o644)
-
-	// 3. 设置 home 目录
-	origHomeDir := config.HomeDir
-	config.SetHomeDir(func() string { return tmpDir })
-	defer config.SetHomeDir(origHomeDir)
-
-	// 4. 创建 mock 上游（profile target）
-	var capturedBody []byte
-	mockUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedBody, _ = io.ReadAll(r.Body)
+	// 候选别名上游（同真实 model）：成功，记录收到的 key 与 model
+	fallbackUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fallbackHits++
+		capturedKey = r.Header.Get("x-api-key")
+		body, _ := io.ReadAll(r.Body)
+		var m map[string]any
+		json.Unmarshal(body, &m)
+		capturedModel, _ = m["model"].(string)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[],"model":"test","stop_reason":"end_turn","usage":{"input_tokens":0,"output_tokens":0}}`))
+		w.Write([]byte(`{"id":"msg","type":"message","role":"assistant","content":[],"model":"x","stop_reason":"end_turn","usage":{"input_tokens":0,"output_tokens":0}}`))
 	}))
-	defer mockUpstream.Close()
+	defer fallbackUpstream.Close()
 
-	// 5. 更新 profile 的 base_url 为 mock 地址
-	profiles["profiles"] = map[string]any{
-		"test-profile": map[string]any{
-			"base_url": mockUpstream.URL,
-			"model":    "glm-5.1",
-		},
-		"fallback": map[string]any{
-			"base_url": "https://fallback.example.com",
-			"model":    "glm-5.1",
-		},
-	}
-	pData, _ = json.Marshal(profiles)
-	os.WriteFile(filepath.Join(configDir, "profiles.json"), pData, 0o644)
-
-	// 6. 解析配置（模拟 runProxy 的配置解析）
-	resolved, err := config.ResolveTargetConfig(
-		"",   // cliBaseURL
-		"",   // cliAPIKey
-		"",   // cliAuthToken
-		"test-profile",
-		&config.ClaudeClient,
-	)
-	if err != nil {
-		t.Fatalf("ResolveTargetConfig error: %v", err)
+	// 装配别名表：两个别名同真实 model glm-5.2[1m]，不同 key/base_url
+	aliases := []*proxy.Alias{
+		{Name: "opus[1m]", Model: "glm-5.2[1m]", BaseURL: primaryUpstream.URL, APIKey: "sk-primary", Provider: "anthropic"},
+		{Name: "opus2[1m]", Model: "glm-5.2[1m]", BaseURL: fallbackUpstream.URL, APIKey: "sk-fallback", Provider: "anthropic"},
 	}
 
-	// 验证 resolved model
-	if resolved.Model != "glm-5.1" {
-		t.Fatalf("resolved.Model = %q, want %q", resolved.Model, "glm-5.1")
-	}
-
-	// 7. 创建代理并设置 model + fallback
 	traceDir := t.TempDir()
-	rp := proxy.NewReverseProxy(resolved.BaseURL, traceDir)
-	rp.SetModel(resolved.Model)
+	rp := proxy.NewReverseProxy(primaryUpstream.URL, traceDir)
+	rp.SetAliases(aliases, "")
 
-	fbCfgs := loadFallbackConfigs(resolved.Model, "test-profile")
-	if len(fbCfgs) == 0 {
-		t.Fatal("loadFallbackConfigs returned empty")
-	}
-	rp.SetFallbackConfigs(fbCfgs)
-
-	// 8. 启动代理
-	_, err = rp.Start("127.0.0.1", 0)
-	if err != nil {
+	if _, err := rp.Start("127.0.0.1", 0); err != nil {
 		t.Fatalf("start proxy: %v", err)
 	}
 	defer rp.Stop()
 
-	// 9. 通过代理发送请求
-	reqBody := `{"model":"claude-sonnet-4-6","stream":false,"messages":[{"role":"user","content":"hello"}]}`
+	// Claude Code 发来的 model = 别名 name
+	reqBody := `{"model":"opus[1m]","stream":false,"messages":[{"role":"user","content":"hi"}]}`
 	req, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(reqBody)))
 	req.Header.Set("Content-Type", "application/json")
+	// Claude Code 自带的占位凭证（proxy 应覆盖）
+	req.Header.Set("x-api-key", "alias-mode-placeholder")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -241,18 +119,149 @@ func TestIntegration_FullStartupFlow(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// 10. 验证上游收到改写后的 model
-	var upstreamBody map[string]any
-	if err := json.Unmarshal(capturedBody, &upstreamBody); err != nil {
-		t.Fatalf("parse upstream body: %v", err)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (fallback should succeed)", resp.StatusCode)
 	}
-	gotModel, _ := upstreamBody["model"].(string)
-	if gotModel != "glm-5.1" {
-		t.Errorf("upstream model = %q, want %q (should be overridden by profile model)", gotModel, "glm-5.1")
+	if primaryHits != 1 {
+		t.Errorf("primary hits = %d, want 1", primaryHits)
+	}
+	if fallbackHits != 1 {
+		t.Errorf("fallback hits = %d, want 1", fallbackHits)
+	}
+	// 改写为真实 model
+	if capturedModel != "glm-5.2[1m]" {
+		t.Errorf("upstream model = %q, want glm-5.2[1m]", capturedModel)
+	}
+	// 用候选别名的凭证，而非占位值
+	if capturedKey != "sk-fallback" {
+		t.Errorf("upstream x-api-key = %q, want sk-fallback (alias credential override)", capturedKey)
+	}
+}
+
+// TestIntegration_AliasRouting_DefaultAlias 测试未命中别名时走 default_alias 兜底
+func TestIntegration_AliasRouting_DefaultAlias(t *testing.T) {
+	var capturedModel string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var m map[string]any
+		json.Unmarshal(body, &m)
+		capturedModel, _ = m["model"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg","type":"message","role":"assistant","content":[],"model":"x","stop_reason":"end_turn","usage":{"input_tokens":0,"output_tokens":0}}`))
+	}))
+	defer upstream.Close()
+
+	aliases := []*proxy.Alias{
+		{Name: "sonnet", Model: "glm-5.1", BaseURL: upstream.URL, APIKey: "sk-aaa", Provider: "anthropic"},
+	}
+	traceDir := t.TempDir()
+	rp := proxy.NewReverseProxy(upstream.URL, traceDir)
+	rp.SetAliases(aliases, "sonnet") // default_alias = sonnet
+	if _, err := rp.Start("127.0.0.1", 0); err != nil {
+		t.Fatalf("start proxy: %v", err)
+	}
+	defer rp.Stop()
+
+	// 未知 model → 兜底 sonnet → 改写为 glm-5.1
+	reqBody := `{"model":"unknown-xxx","stream":false,"messages":[]}`
+	req, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(reqBody)))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (default_alias)", resp.StatusCode)
+	}
+	if capturedModel != "glm-5.1" {
+		t.Errorf("upstream model = %q, want glm-5.1 (default_alias real model)", capturedModel)
+	}
+}
+
+// TestIntegration_AliasRouting_NoMatchNoDefault 测试未命中且无 default_alias → 明确错误
+func TestIntegration_AliasRouting_NoMatchNoDefault(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("upstream should not be hit")
+	}))
+	defer upstream.Close()
+
+	aliases := []*proxy.Alias{
+		{Name: "sonnet", Model: "glm-5.1", BaseURL: upstream.URL, APIKey: "sk-aaa"},
+	}
+	traceDir := t.TempDir()
+	rp := proxy.NewReverseProxy(upstream.URL, traceDir)
+	rp.SetAliases(aliases, "") // 无 default_alias
+	if _, err := rp.Start("127.0.0.1", 0); err != nil {
+		t.Fatalf("start proxy: %v", err)
+	}
+	defer rp.Stop()
+
+	reqBody := `{"model":"unknown-xxx","stream":false,"messages":[]}`
+	req, _ := http.NewRequest("POST", rp.URL()+"/v1/messages", bytes.NewReader([]byte(reqBody)))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("status = 200, want error (no match, no default_alias)")
+	}
+}
+
+// TestProxySessionCloseEndpoint 验证 /_internal/session-close 端点触发 OnSessionClose
+// 并真正清掉 proxy.json 中的条目（对称于 trace-init 注册，由 29-session-end 钩子调用）。
+func TestProxySessionCloseEndpoint(t *testing.T) {
+	tmpDir := t.TempDir()
+	origBase := BaseDir
+	SetBaseDir(func() string { return filepath.Join(tmpDir, ".claude-tap-plus") })
+	defer SetBaseDir(origBase)
+
+	key := "testproj_testsess"
+	if err := RegisterProxySession(key, ProxySession{StartedAt: "2026-06-16T00:00:00Z", URL: "http://127.0.0.1:9999"}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if got := len(ReadProxySessions()); got != 1 {
+		t.Fatalf("after register: %d sessions, want 1", got)
+	}
+	sessions := ReadProxySessions()
+	if sessions[key].URL != "http://127.0.0.1:9999" {
+		t.Errorf("recorded URL = %q, want http://127.0.0.1:9999", sessions[key].URL)
 	}
 
-	// 11. 验证 fallback 配置正确
-	if fbCfgs[0].Model != "glm-5.1" {
-		t.Errorf("fallback model = %q, want %q", fbCfgs[0].Model, "glm-5.1")
+	rp := proxy.NewReverseProxy("http://127.0.0.1:0", t.TempDir())
+	rp.OnSessionClose = func() {
+		if err := UnregisterProxySession(key); err != nil {
+			t.Errorf("unregister: %v", err)
+		}
+	}
+	if _, err := rp.Start("127.0.0.1", 0); err != nil {
+		t.Fatalf("start proxy: %v", err)
+	}
+	defer rp.Stop()
+
+	resp, err := http.Post(rp.URL()+"/_internal/session-close", "application/json", bytes.NewReader([]byte(`{}`)))
+	if err != nil {
+		t.Fatalf("session-close: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if got := len(ReadProxySessions()); got != 0 {
+		t.Errorf("after session-close: %d sessions, want 0 (entry not cleaned)", got)
+	}
+
+	// GET 应被拒绝（仅 POST）
+	getResp, _ := http.Get(rp.URL() + "/_internal/session-close")
+	if getResp != nil {
+		getResp.Body.Close()
+		if getResp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("GET status = %d, want 405", getResp.StatusCode)
+		}
 	}
 }

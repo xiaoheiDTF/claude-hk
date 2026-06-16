@@ -50,4 +50,20 @@ unregister_session() {
 
 unregister_session
 
+# 注销 proxy.json 中的会话条目（对称于 01-session-start 的 trace-init 注册）。
+# 钩子是 Claude 生命周期事件，正常退出时必触发；比 proxy 进程 defer 可靠（强杀时 defer 不执行会残留）。
+unregister_proxy_session() {
+  local proxy_url
+  proxy_url="${CLAUDE_TAP_PROXY_URL:-}"
+  [ -z "$proxy_url" ] && return 0
+
+  curl -s --max-time 5 -X POST "$proxy_url/_internal/session-close" \
+    -H "Content-Type: application/json" \
+    -d '{}' > /dev/null 2>&1 \
+    && log "INFO" "Proxy session unregistered from proxy.json via $proxy_url" \
+    || log "DEBUG" "Proxy session-close unreachable at $proxy_url (proxy may have exited)"
+}
+
+unregister_proxy_session
+
 hook_output 0 '{}'
